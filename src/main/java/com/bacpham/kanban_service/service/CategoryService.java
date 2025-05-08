@@ -1,0 +1,69 @@
+package com.bacpham.kanban_service.service;
+
+import com.bacpham.kanban_service.dto.request.CategoryRequest;
+import com.bacpham.kanban_service.dto.response.CategoryResponse;
+import com.bacpham.kanban_service.dto.response.PageResponse;
+import com.bacpham.kanban_service.dto.response.UserResponse;
+import com.bacpham.kanban_service.entity.Category;
+import com.bacpham.kanban_service.entity.Product;
+import com.bacpham.kanban_service.mapper.CategoryMapper;
+import com.bacpham.kanban_service.repository.CategoryRepository;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
+import lombok.experimental.FieldDefaults;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
+@Slf4j
+public class CategoryService {
+
+    CategoryRepository categoryRepository;
+    CategoryMapper categoryMapper;
+
+    public CategoryResponse createCategory(CategoryRequest request) {
+        Category category = categoryMapper.toCategory(request);
+
+        category = categoryRepository.save(category);
+        return categoryMapper.toCategoryResponse(category);
+    }
+
+    public List<CategoryResponse> getCategories() {
+        return categoryRepository.findAll().stream().map(categoryMapper::toCategoryResponse).toList();
+    }
+
+    public PageResponse<CategoryResponse> getPageCategories(int page, int pageSize) {
+        Sort sort = Sort.by("createdAt").descending();
+        Pageable pageable = PageRequest.of(page - 1, pageSize, sort);
+        Page<Category> pageData;
+        pageData = categoryRepository.findAll(pageable);
+
+        return PageResponse.<CategoryResponse>builder()
+                .currentPage(page)
+                .pageSize(pageData.getSize())
+                .totalPages(pageData.getTotalPages())
+                .totalElements(pageData.getTotalElements())
+                .data(pageData.getContent().stream().map(categoryMapper::toCategoryResponse).toList())
+                .build();
+
+    }
+
+    @Transactional
+    public void deleteCategory(String categoryId) {
+
+        categoryRepository.deleteCategoryFromProducts(categoryId);
+
+        categoryRepository.deleteById(categoryId);
+    }
+
+
+}
