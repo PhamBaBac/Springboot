@@ -50,5 +50,14 @@ public class SubProductController {
                 .result(subProductService.updateSubProduct(request))
                 .build();
     }
+    @GetMapping("/get-all-sub-product/{id}")
+    ApiResponse<List<SubProductResponse>> getAllSubProduct(@PathVariable String id) {
+        return ApiResponse.<List<SubProductResponse>>builder()
+                .result(subProductService.getAllSubProduct(id))
+                .build();
+    }
+
+
+
 
 }

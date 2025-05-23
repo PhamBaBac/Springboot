@@ -6,6 +6,8 @@ import com.bacpham.kanban_service.dto.response.PageResponse;
 import com.bacpham.kanban_service.dto.response.UserResponse;
 import com.bacpham.kanban_service.entity.Category;
 import com.bacpham.kanban_service.entity.Product;
+import com.bacpham.kanban_service.exception.AppException;
+import com.bacpham.kanban_service.exception.ErrorCode;
 import com.bacpham.kanban_service.mapper.CategoryMapper;
 import com.bacpham.kanban_service.repository.CategoryRepository;
 import lombok.AccessLevel;
@@ -45,7 +47,7 @@ public class CategoryService {
         Sort sort = Sort.by("createdAt").descending();
         Pageable pageable = PageRequest.of(page - 1, pageSize, sort);
         Page<Category> pageData;
-        pageData = categoryRepository.findAll(pageable);
+        pageData = categoryRepository.findAllByDeletedFalse(pageable);
 
         return PageResponse.<CategoryResponse>builder()
                 .currentPage(page)
@@ -59,10 +61,10 @@ public class CategoryService {
 
     @Transactional
     public void deleteCategory(String categoryId) {
-
-        categoryRepository.deleteCategoryFromProducts(categoryId);
-
-        categoryRepository.deleteById(categoryId);
+        Category category = categoryRepository.findById(categoryId)
+                .orElseThrow(() -> new AppException(ErrorCode.CATEGORY_NOT_FOUND));
+        category.setDeleted(true);
+        categoryRepository.save(category);
     }
 
 

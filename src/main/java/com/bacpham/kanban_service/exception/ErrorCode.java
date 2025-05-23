@@ -23,7 +23,8 @@ public enum ErrorCode {
     INVALID_DOB(1010, "Invalid date of birth {min}", HttpStatus.BAD_REQUEST),
     PRODUCT_NOT_FOUND(1011, "Product not found", HttpStatus.NOT_FOUND),
     SUB_PRODUCT_NOT_FOUND(1012, "Sub product not found", HttpStatus.NOT_FOUND),
-    SUPPLIER_NOT_FOUND(1013, "Supplier not found", HttpStatus.NOT_FOUND),
+    CATEGORY_NOT_FOUND(1013, "Category not found", HttpStatus.NOT_FOUND),
+    SUPPLIER_NOT_FOUND(1014, "Supplier not found", HttpStatus.NOT_FOUND),
     ;
 
     ErrorCode(int code, String message, HttpStatusCode statusCode) {

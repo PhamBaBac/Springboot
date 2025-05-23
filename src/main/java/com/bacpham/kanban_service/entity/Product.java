@@ -37,8 +37,7 @@ public class Product {
     String content;
 
     @Column(nullable = false)
-    boolean deleted = false;
-
+    Boolean deleted = false;
 
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
     Set<SubProduct> subProducts;

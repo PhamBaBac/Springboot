@@ -75,7 +75,11 @@ public class SubProductService {
     }
 
     public void delete(String id) {
-        subProductRepository.deleteById(id);
+        SubProduct subProduct = subProductRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.SUB_PRODUCT_NOT_FOUND));
+
+        subProduct.setDeleted(true);
+        subProductRepository.save(subProduct);
     }
 
     public SubProductResponse updateSubProduct(SubProductCreationRequest request) {
@@ -86,5 +90,16 @@ public class SubProductService {
         subProduct = subProductRepository.save(subProduct);
 
         return subProductMapper.toSubProductResponse(subProduct);
+    }
+
+    public List<SubProductResponse> getAllSubProduct(String id) {
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_FOUND));
+
+        List<SubProduct> subProducts = subProductRepository.findAllByProductAndDeletedFalse(product);
+
+        return subProducts.stream()
+                .map(subProductMapper::toSubProductResponse)
+                .collect(Collectors.toList());
     }
 }

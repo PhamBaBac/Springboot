@@ -18,9 +18,8 @@ public class ProductResponse {
     String slug;
     String description;
     String content;
-    boolean isDeleted;
+    Boolean isDeleted;
     Set<CategoryResponse> categories;
     String supplierId;
-    Set<SubProductResponse> subProducts;
     Set<String> images;
 }

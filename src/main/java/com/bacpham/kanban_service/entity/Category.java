@@ -36,6 +36,10 @@ import java.util.Set;
         @JoinColumn(name = "supplier_id")
         private Supplier supplier;
 
+    @Column(nullable = false)
+    Boolean deleted = false;
+
+
 
         @Temporal(TemporalType.TIMESTAMP)
         @Column(nullable = false, updatable = false)

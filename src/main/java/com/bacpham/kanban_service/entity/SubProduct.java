@@ -41,6 +41,9 @@ public class SubProduct {
     @Column(columnDefinition = "JSON")
     List<String> images;
 
+    @Column(nullable = false)
+    Boolean deleted = false;
+
     @Temporal(TemporalType.TIMESTAMP)
     @Column(nullable = false, updatable = false)
     Date createdAt;
