@@ -53,4 +53,13 @@ public class CategoryController {
                 .build();
     }
 
+    @PutMapping("/{categoryId}")
+    ApiResponse<CategoryResponse> updateCategory(
+            @PathVariable String categoryId,
+            @RequestBody @Validated CategoryRequest request) {
+        return ApiResponse.<CategoryResponse>builder()
+                .result(categoryService.updateCategory(categoryId, request))
+                .build();
+    }
+
 }

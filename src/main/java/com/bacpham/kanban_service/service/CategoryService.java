@@ -68,4 +68,12 @@ public class CategoryService {
     }
 
 
+    public CategoryResponse updateCategory(String categoryId, CategoryRequest request) {
+        Category category = categoryRepository.findById(categoryId)
+                .orElseThrow(() -> new AppException(ErrorCode.CATEGORY_NOT_FOUND));
+
+        categoryMapper.updateCategoryFromRequest(request, category);
+        category = categoryRepository.save(category);
+        return categoryMapper.toCategoryResponse(category);
+    }
 }

@@ -12,6 +12,7 @@ import java.util.Set;
 @AllArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
+@ToString
 public class CategoryRequest {
     String id;
     String title;
