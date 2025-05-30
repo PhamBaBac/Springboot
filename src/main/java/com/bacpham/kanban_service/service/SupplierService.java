@@ -19,11 +19,15 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.stereotype.Service;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -114,4 +118,24 @@ public class SupplierService {
 
         return supplierMapper.toSupplierResponse(supplier);
     }
+
+    //findAllSupplier
+    public List<SupplierResponse> findAllSupplier() {
+        List<Supplier> suppliers = supplierRepository.findAll();
+        return suppliers.stream()
+                .map(supplierMapper::toSupplierResponse)
+                .toList();
+    }
+    public List<SupplierResponse> findSuppliersByDateRange(Date start, Date end) {
+        List<Supplier> suppliers = supplierRepository.findByCreatedAtBetweenOptional(start, end);
+        return suppliers.stream()
+                .map(supplierMapper::toSupplierResponse)
+                .collect(Collectors.toList());
+    }
+
+
+
+
+
+
 }

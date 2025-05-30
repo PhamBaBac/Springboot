@@ -29,14 +29,14 @@ public class BaseModel {
 
     @JsonSerialize(using = DateGenerator.class)
     @CreationTimestamp
-    @Column(name = "CreatedAt", updatable = false)
+    @Column(name = "created_at", updatable = false)
     Date createdAt;
 
     @JsonSerialize(using = DateGenerator.class)
     @UpdateTimestamp
-    @Column(name = "UpdatedAt")
+    @Column(name = "updated_at")
     Date updatedAt;
 
-    @Column(name = "Deleted", columnDefinition = "boolean default false")
+    @Column(name = "deleted", columnDefinition = "boolean default false")
     Boolean deleted = false;
 }

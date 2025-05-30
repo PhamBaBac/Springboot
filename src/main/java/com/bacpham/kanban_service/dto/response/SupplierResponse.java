@@ -13,6 +13,7 @@ import java.util.Set;
 @AllArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
+@ToString
 public class SupplierResponse {
     String id;
     String name;
@@ -26,4 +27,5 @@ public class SupplierResponse {
     Integer isTaking;
     Integer active;
     Boolean deleted;
+    Date createdAt;
 }

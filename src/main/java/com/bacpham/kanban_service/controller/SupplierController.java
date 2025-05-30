@@ -5,16 +5,20 @@ import com.bacpham.kanban_service.dto.request.FormItem;
 import com.bacpham.kanban_service.dto.request.SupplierFormDTO;
 import com.bacpham.kanban_service.dto.request.SupplierRequest;
 import com.bacpham.kanban_service.dto.response.PageResponse;
-import com.bacpham.kanban_service.dto.response.ProductResponse;
 import com.bacpham.kanban_service.dto.response.SupplierResponse;
 import com.bacpham.kanban_service.service.SupplierService;
+import com.bacpham.kanban_service.utils.excel.BaseExport;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 
 @RestController
@@ -80,5 +84,35 @@ public class SupplierController {
                 .result(supplierService.updateSupplier(id, request))
                 .build();
     }
+    @GetMapping("/export")
+    public void exportSuppliersToExcel(
+            HttpServletResponse response,
+            @RequestParam(required = false)
+            @DateTimeFormat(pattern = "yyyy-MM-dd") Date start,
 
+            @RequestParam(required = false)
+            @DateTimeFormat(pattern = "yyyy-MM-dd") Date end
+    ) throws IOException {
+        response.setContentType("application/octet-stream");
+        response.setHeader("Content-Disposition", "attachment; filename=suppliers.xlsx");
+
+        List<SupplierResponse> suppliers = supplierService.findAllSupplier();
+        log.info("Exporting suppliers to Excel", suppliers.toString());
+
+        // Nếu có truyền start và end thì lọc
+        if (start != null && end != null) {
+            suppliers = supplierService.findSuppliersByDateRange( start, end);
+        }
+
+        new BaseExport<>(suppliers)
+                .writeHeaderLine(new String[]{
+                        "ID", "Name", "Email", "Active", "Products",
+                        "Categories", "Price", "Contact", "Is Taking", "Created At"
+                })
+                .writeDataLines(new String[]{
+                        "id", "name", "email", "active", "products",
+                        "categories", "price", "contact", "isTaking", "createdAt"
+                }, SupplierResponse.class)
+                .export(response);
+    }
 }
