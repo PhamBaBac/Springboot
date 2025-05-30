@@ -1,4 +1,4 @@
-package com.bacpham.kanban_service.exception;
+package com.bacpham.kanban_service.helper.exception;
 
 import lombok.AccessLevel;
 import lombok.Builder;

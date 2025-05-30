@@ -1,22 +1,18 @@
 package com.bacpham.kanban_service.service;
 
 import com.bacpham.kanban_service.dto.request.AuthenticationRequest;
-import com.bacpham.kanban_service.dto.request.IntrospectRequest;
 import com.bacpham.kanban_service.dto.request.LogoutRequest;
 import com.bacpham.kanban_service.dto.request.RefreshRequest;
 import com.bacpham.kanban_service.dto.response.AuthenticationResponse;
-import com.bacpham.kanban_service.dto.response.IntrospectResponse;
-import com.bacpham.kanban_service.dto.response.UserResponse;
 import com.bacpham.kanban_service.entity.InvalidatedToken;
 import com.bacpham.kanban_service.entity.User;
-import com.bacpham.kanban_service.exception.AppException;
-import com.bacpham.kanban_service.exception.ErrorCode;
+import com.bacpham.kanban_service.helper.exception.AppException;
+import com.bacpham.kanban_service.helper.exception.ErrorCode;
 import com.bacpham.kanban_service.repository.InvalidatedTokenRepository;
 import com.bacpham.kanban_service.repository.UserRepository;
 import com.nimbusds.jose.*;
 import com.nimbusds.jose.crypto.MACSigner;
 import com.nimbusds.jose.crypto.MACVerifier;
-import com.nimbusds.jwt.JWTClaimNames;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import lombok.RequiredArgsConstructor;

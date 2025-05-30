@@ -4,8 +4,7 @@ package com.bacpham.kanban_service.configuration;
 import java.io.IOException;
 
 import com.bacpham.kanban_service.dto.request.ApiResponse;
-import com.bacpham.kanban_service.exception.ErrorCode;
-import jakarta.servlet.ServletException;
+import com.bacpham.kanban_service.helper.exception.ErrorCode;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
@@ -20,7 +19,7 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
     @Override
     public void commence(
             HttpServletRequest request, HttpServletResponse response, AuthenticationException authException)
-            throws IOException, ServletException {
+            throws IOException {
         ErrorCode errorCode = ErrorCode.UNAUTHENTICATED;
 
         response.setStatus(errorCode.getStatusCode().value());

@@ -1,5 +1,6 @@
 package com.bacpham.kanban_service.entity;
 
+import com.bacpham.kanban_service.helper.base.model.BaseModel;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -16,12 +17,7 @@ import java.util.Set;
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @Entity
-public class Supplier {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    String id;
-
+public class Supplier extends BaseModel {
     @Column(nullable = false)
     String name;
 
@@ -33,7 +29,7 @@ public class Supplier {
 
     String photoUrl;
 
-    @OneToMany(mappedBy = "supplier", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "supplier", cascade = CascadeType.ALL)
     List<Category> categories = new ArrayList<>();
 
     Double price;
@@ -43,29 +39,10 @@ public class Supplier {
 
     Integer active;
 
-    @Temporal(TemporalType.TIMESTAMP)
-    @Column(nullable = false, updatable = false)
-    Date createdAt;
-
-    @Temporal(TemporalType.TIMESTAMP)
-    @Column(nullable = false)
-    Date updatedAt;
-
     @Column(nullable = false)
     boolean deleted = false;
 
     @OneToMany(mappedBy = "supplier", cascade = CascadeType.ALL)
     List<Product> products = new ArrayList<>();
 
-    @PrePersist
-    protected void onCreate() {
-        Date now = new Date();
-        this.createdAt = now;
-        this.updatedAt = now;
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        this.updatedAt = new Date();
-    }
 }

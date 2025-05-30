@@ -12,6 +12,7 @@ import java.util.Set;
 @AllArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
+@ToString
 public class SupplierRequest {
     String id;
     String name;
@@ -20,7 +21,6 @@ public class SupplierRequest {
     String email;
     String photoUrl;
     List<String> categories;
-    List<String> products;
     Double price;
     Integer isTaking; // 0 or 1
     Integer active;

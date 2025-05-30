@@ -36,6 +36,8 @@ public interface SupplierMapper {
                     .toList();
         }
 
-
+    @Mapping(target = "categories", ignore = true)
+    @Mapping(target = "id", ignore = true)
+    void updateSupplierFromRequest(@MappingTarget Supplier supplier, SupplierRequest request);
 }
 

@@ -1,18 +1,14 @@
 package com.bacpham.kanban_service.service;
 
 import com.bacpham.kanban_service.dto.request.ProductCreationRequest;
-import com.bacpham.kanban_service.dto.request.SubProductCreationRequest;
 import com.bacpham.kanban_service.dto.response.PageResponse;
 import com.bacpham.kanban_service.dto.response.ProductResponse;
-import com.bacpham.kanban_service.dto.response.SubProductResponse;
 import com.bacpham.kanban_service.entity.Category;
 import com.bacpham.kanban_service.entity.Product;
-import com.bacpham.kanban_service.entity.SubProduct;
 import com.bacpham.kanban_service.entity.Supplier;
-import com.bacpham.kanban_service.exception.AppException;
-import com.bacpham.kanban_service.exception.ErrorCode;
+import com.bacpham.kanban_service.helper.exception.AppException;
+import com.bacpham.kanban_service.helper.exception.ErrorCode;
 import com.bacpham.kanban_service.mapper.ProductMapper;
-import com.bacpham.kanban_service.mapper.SubProductMapper;
 import com.bacpham.kanban_service.repository.CategoryRepository;
 import com.bacpham.kanban_service.repository.ProductRepository;
 import com.bacpham.kanban_service.repository.SubProductRepository;
@@ -25,8 +21,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.util.*;

@@ -74,4 +74,11 @@ public class SupplierController {
         return ApiResponse.<Void>builder().build();
     }
 
+    @PutMapping("/update/{id}")
+    ApiResponse<SupplierResponse> updateSupplier(@PathVariable String id, @RequestBody SupplierRequest request) {
+        return ApiResponse.<SupplierResponse>builder()
+                .result(supplierService.updateSupplier(id, request))
+                .build();
+    }
+
 }

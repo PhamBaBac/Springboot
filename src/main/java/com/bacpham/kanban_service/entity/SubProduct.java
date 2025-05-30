@@ -1,5 +1,6 @@
 package com.bacpham.kanban_service.entity;
 
+import com.bacpham.kanban_service.helper.base.model.BaseModel;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -19,12 +20,7 @@ import java.util.Set;
 @NoArgsConstructor
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class SubProduct {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    String id;
-
+public class SubProduct extends BaseModel {
     String size;
     String color;
     Double price;
@@ -41,26 +37,6 @@ public class SubProduct {
     @Column(columnDefinition = "JSON")
     List<String> images;
 
-    @Column(nullable = false)
-    Boolean deleted = false;
 
-    @Temporal(TemporalType.TIMESTAMP)
-    @Column(nullable = false, updatable = false)
-    Date createdAt;
-
-    @Temporal(TemporalType.TIMESTAMP)
-    @Column(nullable = false)
-    Date updatedAt;
-    @PrePersist
-    protected void onCreate() {
-        Date now = new Date();
-        this.createdAt = now;
-        this.updatedAt = now;
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        this.updatedAt = new Date();
-    }
 }
 

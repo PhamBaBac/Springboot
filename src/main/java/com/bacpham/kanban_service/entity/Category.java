@@ -1,5 +1,6 @@
 package com.bacpham.kanban_service.entity;
 
+import com.bacpham.kanban_service.helper.base.model.BaseModel;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -15,12 +16,7 @@ import java.util.Set;
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @Entity
-    public class Category {
-
-        @Id
-        @GeneratedValue(strategy = GenerationType.UUID)
-        String id;
-
+    public class Category extends BaseModel {
         @Column(nullable = false, unique = true, length = 255)
         String title;
 
@@ -35,27 +31,4 @@ import java.util.Set;
         @ManyToOne
         @JoinColumn(name = "supplier_id")
         private Supplier supplier;
-
-        @Column(nullable = false)
-        Boolean deleted = false;
-
-        @Temporal(TemporalType.TIMESTAMP)
-        @Column(nullable = false, updatable = false)
-        Date createdAt;
-
-        @Temporal(TemporalType.TIMESTAMP)
-        @Column(nullable = false)
-        Date updatedAt;
-
-        @PrePersist
-        protected void onCreate() {
-            Date now = new Date();
-            this.createdAt = now;
-            this.updatedAt = now;
-        }
-
-        @PreUpdate
-        protected void onUpdate() {
-            this.updatedAt = new Date();
-        }
 }

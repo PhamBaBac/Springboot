@@ -1,5 +1,6 @@
 package com.bacpham.kanban_service.entity;
 
+import com.bacpham.kanban_service.helper.base.model.BaseModel;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
@@ -18,11 +19,7 @@ import java.util.Date;
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @Entity
-public class Product {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    String id;
+public class Product extends BaseModel {
 
     @Column(nullable = false, unique = true, length = 255)
     String title;
@@ -35,9 +32,6 @@ public class Product {
     @Lob
     @Column(columnDefinition = "TEXT")
     String content;
-
-    @Column(nullable = false)
-    Boolean deleted = false;
 
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
     Set<SubProduct> subProducts;
@@ -57,24 +51,4 @@ public class Product {
     @ManyToOne
     @JoinColumn(name = "supplier_id", nullable = false)
     Supplier supplier;
-
-    @Temporal(TemporalType.TIMESTAMP)
-    @Column(nullable = false, updatable = false)
-    Date createdAt;
-
-    @Temporal(TemporalType.TIMESTAMP)
-    @Column(nullable = false)
-    Date updatedAt;
-
-    @PrePersist
-    protected void onCreate() {
-        Date now = new Date();
-        this.createdAt = now;
-        this.updatedAt = now;
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        this.updatedAt = new Date();
-    }
 }

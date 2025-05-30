@@ -2,13 +2,11 @@ package com.bacpham.kanban_service.service;
 
 import com.bacpham.kanban_service.dto.request.SupplierRequest;
 import com.bacpham.kanban_service.dto.response.PageResponse;
-import com.bacpham.kanban_service.dto.response.ProductResponse;
 import com.bacpham.kanban_service.dto.response.SupplierResponse;
 import com.bacpham.kanban_service.entity.Category;
-import com.bacpham.kanban_service.entity.Product;
 import com.bacpham.kanban_service.entity.Supplier;
-import com.bacpham.kanban_service.exception.AppException;
-import com.bacpham.kanban_service.exception.ErrorCode;
+import com.bacpham.kanban_service.helper.exception.AppException;
+import com.bacpham.kanban_service.helper.exception.ErrorCode;
 import com.bacpham.kanban_service.mapper.SupplierMapper;
 import com.bacpham.kanban_service.repository.CategoryRepository;
 import com.bacpham.kanban_service.repository.SupplierRepository;
@@ -39,6 +37,7 @@ public class SupplierService {
 
     @Transactional
     public SupplierResponse createSupplier(SupplierRequest request) {
+        log.info("Creating supplier with request: {}", request.toString());
         Supplier supplier = supplierMapper.toSupplier(request);
 
         if (request.getCategories() != null && !request.getCategories().isEmpty()) {
@@ -88,5 +87,31 @@ public class SupplierService {
 
         supplier.setDeleted(true);
         supplierRepository.save(supplier);
+    }
+
+    public SupplierResponse updateSupplier(String id, SupplierRequest request) {
+        log.info("all request: {}", request.toString());
+        Supplier supplier = supplierRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.SUPPLIER_NOT_FOUND));
+
+        supplierMapper.updateSupplierFromRequest(supplier, request);
+
+        if (request.getCategories() != null && !request.getCategories().isEmpty()) {
+            List<Category> categories = new ArrayList<>();
+
+            for (String categoryId : request.getCategories()) {
+                Optional<Category> optionalCategory = categoryRepository.findById(categoryId);
+                if (optionalCategory.isPresent()) {
+                    Category category = optionalCategory.get();
+                    category.setSupplier(supplier);
+                    categories.add(category);
+                }
+            }
+            supplier.setCategories(categories);
+        }
+
+        supplier = supplierRepository.save(supplier);
+
+        return supplierMapper.toSupplierResponse(supplier);
     }
 }
