@@ -4,7 +4,6 @@ import com.bacpham.kanban_service.dto.request.ApiResponse;
 import com.bacpham.kanban_service.dto.request.CategoryRequest;
 import com.bacpham.kanban_service.dto.response.CategoryResponse;
 import com.bacpham.kanban_service.dto.response.PageResponse;
-import com.bacpham.kanban_service.dto.response.UserResponse;
 import com.bacpham.kanban_service.service.CategoryService;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -15,7 +14,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/categories")
+@RequestMapping("/api/v1/categories")
 @RequiredArgsConstructor
 @FieldDefaults(makeFinal = true, level = lombok.AccessLevel.PRIVATE)
 @Slf4j

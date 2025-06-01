@@ -1,27 +1,51 @@
 package com.bacpham.kanban_service.entity;
+
+
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+
+import java.util.Collections;
+import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
-import com.bacpham.kanban_service.entity.Permission;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.ManyToMany;
+import static com.bacpham.kanban_service.entity.Permission.*;
 
-import lombok.*;
-import lombok.experimental.FieldDefaults;
+@RequiredArgsConstructor
+public enum Role {
 
-@Getter
-@Setter
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-@FieldDefaults(level = AccessLevel.PRIVATE)
-@Entity
-public class Role {
-    @Id
-    String name;
+    USER(Collections.emptySet()),
+    ADMIN(
+            Set.of(
+                    ADMIN_READ,
+                    ADMIN_UPDATE,
+                    ADMIN_DELETE,
+                    ADMIN_CREATE,
+                    MANAGER_READ,
+                    MANAGER_UPDATE,
+                    MANAGER_DELETE,
+                    MANAGER_CREATE
+            )
+    ),
+    MANAGER(
+            Set.of(
+                    MANAGER_READ,
+                    MANAGER_UPDATE,
+                    MANAGER_DELETE,
+                    MANAGER_CREATE
+            )
+    );
 
-    String description;
+    @Getter
+    private final Set<Permission> permissions;
 
-    @ManyToMany
-    Set<Permission> permissions;
+    public List<SimpleGrantedAuthority> getAuthorities() {
+        var authorities = getPermissions()
+                .stream()
+                .map(permission -> new SimpleGrantedAuthority(permission.getPermission()))
+                .collect(Collectors.toList());
+        authorities.add(new SimpleGrantedAuthority("ROLE_" + this.name()));
+        return authorities;
+    }
 }

@@ -1,7 +1,5 @@
 server:
   port: 8080
-  servlet:
-    context-path: /api/v1/kanban-service
 spring:
   datasource:
     driverClassName: com.mysql.cj.jdbc.Driver
@@ -12,7 +10,11 @@ spring:
     hibernate.ddl-auto: update
     generate-ddl: true
     show-sql: true
-jwt:
-  signerKey: "SC4Y5pmxSv8GO24vtdr5zka0P7yOV1TjGHXu0evkIXwdgKQflsRwUl9Fjh3jhcZg"
-  valid-duration: 3600 # in second
-  refreshable-duration:  604800 # in seconds
+
+application:
+  security:
+    jwt:
+      secret-key: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
+      expiration: 86400000 # a day
+      refresh-token:
+        expiration: 604800000 # 7 days

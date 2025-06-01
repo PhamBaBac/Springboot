@@ -1,22 +1,20 @@
 package com.bacpham.kanban_service.entity;
 
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
+@RequiredArgsConstructor
+public enum Permission {
+    ADMIN_READ("admin:read"),
+    ADMIN_UPDATE("admin:update"),
+    ADMIN_CREATE("admin:create"),
+    ADMIN_DELETE("admin:delete"),
 
-import lombok.*;
-import lombok.experimental.FieldDefaults;
+    MANAGER_READ("manager:read"),
+    MANAGER_UPDATE("manager:update"),
+    MANAGER_CREATE("manager:create"),
+    MANAGER_DELETE("manager:delete");
 
-@Getter
-@Setter
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-@FieldDefaults(level = AccessLevel.PRIVATE)
-@Entity
-    public class Permission {
-        @Id
-        String name;
-
-        String description;
-    }
+    @Getter
+    private final String permission;
+}
