@@ -80,16 +80,6 @@ public class JwtService {
                 && expectedTokenType.equals(tokenType);
     }
 
-    // Kiểm tra access token
-    public boolean isAccessTokenValid(String token, UserDetails userDetails) {
-        return isTokenValid(token, userDetails, TOKEN_TYPE_ACCESS);
-    }
-
-    // Kiểm tra refresh token
-    public boolean isRefreshTokenValid(String token, UserDetails userDetails) {
-        return isTokenValid(token, userDetails, TOKEN_TYPE_REFRESH);
-    }
-
     private boolean isTokenExpired(String token) {
         return extractExpiration(token).before(new Date());
     }

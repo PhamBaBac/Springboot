@@ -9,8 +9,8 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 
-import static com.bacpham.kanban_service.entity.Role.ADMIN;
-import static com.bacpham.kanban_service.entity.Role.MANAGER;
+import static com.bacpham.kanban_service.enums.Role.ADMIN;
+import static com.bacpham.kanban_service.enums.Role.MANAGER;
 
 @SpringBootApplication
 @EnableJpaAuditing(auditorAwareRef = "auditorAware")

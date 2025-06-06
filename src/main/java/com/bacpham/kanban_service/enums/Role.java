@@ -1,4 +1,4 @@
-package com.bacpham.kanban_service.entity;
+package com.bacpham.kanban_service.enums;
 
 
 import lombok.Getter;
@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static com.bacpham.kanban_service.entity.Permission.*;
+import static com.bacpham.kanban_service.enums.Permission.*;
 
 @RequiredArgsConstructor
 public enum Role {

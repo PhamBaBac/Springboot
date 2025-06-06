@@ -1,4 +1,4 @@
-package com.bacpham.kanban_service.entity;
+package com.bacpham.kanban_service.enums;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;

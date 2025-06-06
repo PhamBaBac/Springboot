@@ -1,20 +1,28 @@
 package com.bacpham.kanban_service.controller;
 
+import com.bacpham.kanban_service.configuration.JwtService;
 import com.bacpham.kanban_service.dto.request.ApiResponse;
 import com.bacpham.kanban_service.dto.request.AuthenticationRequest;
 import com.bacpham.kanban_service.dto.request.RegisterRequest;
 import com.bacpham.kanban_service.dto.response.AuthenticationResponse;
+import com.bacpham.kanban_service.dto.response.UserResponse;
+import com.bacpham.kanban_service.entity.User;
+import com.bacpham.kanban_service.enums.Role;
+import com.bacpham.kanban_service.mapper.UserMapper;
 import com.bacpham.kanban_service.service.AuthenticationService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.oauth2.core.user.OAuth2User;
+import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
+import java.security.Principal;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -32,13 +40,31 @@ public class AuthenticationController {
                 .build();
     }
     @PostMapping("/authenticate")
-    public ApiResponse<AuthenticationResponse> authenticate(
-            @RequestBody AuthenticationRequest request
+    public ResponseEntity<ApiResponse<?>> authenticate(
+            @RequestBody AuthenticationRequest request,
+            HttpServletResponse response
     ) {
-        return ApiResponse.<AuthenticationResponse>builder()
-                .result(service.authenticate(request))
+        AuthenticationResponse authResponse = service.authenticate(request);
+
+
+        ResponseCookie refreshTokenCookie = ResponseCookie.from("refresh_token", authResponse.getRefreshToken())
+                .httpOnly(true)
+                .secure(false)
+                .path("/")
+                .maxAge(60 * 60 * 24 * 7) // 7 ngày
+                .sameSite("Lax")
                 .build();
+
+        response.addHeader(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString());
+
+        return ResponseEntity.ok(
+                ApiResponse.builder()
+                        .message("Authentication successful")
+                        .result(authResponse)
+                        .build()
+        );
     }
+
 
     @PostMapping("/refresh-token")
     public void refreshToken(
@@ -55,5 +81,26 @@ public class AuthenticationController {
                 .message("Logout successful")
                 .build();
     }
+    @GetMapping("/login")
+    public String login() {
+        return "login"; // return login.html trong templates/
+    }
+
+    @GetMapping("/me")
+    public ApiResponse<UserResponse> getMyInfo(@AuthenticationPrincipal UserDetails userDetails) {
+        if (userDetails == null) {
+            return ApiResponse.<UserResponse>builder()
+                    .message("User not authenticated")
+                    .build();
+        }
+
+        UserResponse user = service.getUserByEmail(userDetails.getUsername()); // giả sử bạn có hàm này
+        return ApiResponse.<UserResponse>builder()
+                .result(user)
+                .message("Get user info successfully")
+                .build();
+    }
+
 
 }
+

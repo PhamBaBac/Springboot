@@ -1,4 +1,5 @@
-package com.bacpham.kanban_service.dto.request;
+package com.bacpham.kanban_service.dto.response;
+
 import com.bacpham.kanban_service.enums.Role;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -9,10 +10,10 @@ import lombok.NoArgsConstructor;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class RegisterRequest {
+public class UserResponse {
+    private String id;
     private String firstname;
     private String lastname;
     private String email;
-    private String password;
     private Role role;
 }

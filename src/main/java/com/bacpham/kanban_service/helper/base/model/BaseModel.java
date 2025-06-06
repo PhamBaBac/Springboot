@@ -12,8 +12,6 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.util.Date;
-import java.util.UUID;
-
 @MappedSuperclass
 @AllArgsConstructor
 @NoArgsConstructor
@@ -24,7 +22,7 @@ public class BaseModel {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "Id", columnDefinition = "uuid", updatable = false, nullable = false)
+    @Column(name = "Id", columnDefinition = "varchar(36)", updatable = false, nullable = false)
     String id;
 
     @JsonSerialize(using = DateGenerator.class)

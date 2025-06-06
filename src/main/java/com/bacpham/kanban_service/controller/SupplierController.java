@@ -13,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -26,6 +27,7 @@ import java.util.List;
 @RequiredArgsConstructor
 @FieldDefaults(makeFinal = true, level = lombok.AccessLevel.PRIVATE)
 @Slf4j
+@PreAuthorize("hasRole('MANAGER')")
 public class SupplierController {
      SupplierService supplierService;
 
@@ -61,7 +63,7 @@ public class SupplierController {
                  .build();
      }
 
-
+     @PreAuthorize("hasAuthority('manager:read')")
     @GetMapping("/page")
     ApiResponse<PageResponse<SupplierResponse>> productPage(
             @RequestParam(value = "page", required = false, defaultValue = "1") int page,

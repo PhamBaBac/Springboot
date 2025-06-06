@@ -1,5 +1,7 @@
 package com.bacpham.kanban_service.entity;
 
+import com.bacpham.kanban_service.enums.TokenType;
+import com.bacpham.kanban_service.helper.base.model.BaseModel;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -19,11 +21,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-public class Token {
-
-    @Id
-    @GeneratedValue
-    public Integer id;
+public class Token extends BaseModel {
 
     @Column(unique = true)
     public String token;

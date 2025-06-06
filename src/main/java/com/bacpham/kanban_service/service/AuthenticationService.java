@@ -4,25 +4,38 @@ import com.bacpham.kanban_service.configuration.JwtService;
 import com.bacpham.kanban_service.dto.request.AuthenticationRequest;
 import com.bacpham.kanban_service.dto.request.RegisterRequest;
 import com.bacpham.kanban_service.dto.response.AuthenticationResponse;
+import com.bacpham.kanban_service.dto.response.UserResponse;
 import com.bacpham.kanban_service.entity.Token;
-import com.bacpham.kanban_service.entity.TokenType;
+import com.bacpham.kanban_service.enums.TokenType;
 import com.bacpham.kanban_service.entity.User;
+import com.bacpham.kanban_service.helper.exception.AppException;
+import com.bacpham.kanban_service.helper.exception.ErrorCode;
+import com.bacpham.kanban_service.mapper.UserMapper;
 import com.bacpham.kanban_service.repository.TokenRepository;
 import com.bacpham.kanban_service.repository.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.time.Duration;
+import java.util.stream.Collectors;
+import org.springframework.http.MediaType;
+import java.util.Arrays;
+import java.util.Optional;
+
+
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuthenticationService {
@@ -31,6 +44,8 @@ public class AuthenticationService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
+    private final UserMapper userMapper;
+
 
     public AuthenticationResponse register(RegisterRequest request) {
         var user = User.builder()
@@ -91,50 +106,76 @@ public class AuthenticationService {
         tokenRepository.saveAll(validUserTokens);
     }
 
-    public void refreshToken(
-            HttpServletRequest request,
-            HttpServletResponse response
-    ) throws IOException {
-        final String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
-        final String refreshToken;
-        final String userEmail;
+  public void refreshToken(HttpServletRequest request, HttpServletResponse response) throws IOException {
+    String userEmail = null;
+    String refreshToken = Arrays.stream(Optional.ofNullable(request.getCookies()).orElse(new Cookie[0]))
+            .filter(c -> c.getName().equals("refresh_token"))
+            .findFirst()
+            .map(Cookie::getValue)
+            .orElse(null);
+    log.info("refreshToken: {}", refreshToken);
 
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Missing refresh token");
+    if (refreshToken == null) {
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        response.getWriter().write("{\"error\": \"Missing refresh token\"}");
+        return;
+    }
+
+    try {
+        userEmail = jwtService.extractUsername(refreshToken);
+        log.info("userEmail: {}", userEmail);   
+        
+        boolean isRefreshToken = jwtService.extractTokenType(refreshToken).equals("refresh");
+        if (!isRefreshToken) {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.getWriter().write("{\"error\": \"Invalid token type\"}");
             return;
         }
 
-        refreshToken = authHeader.substring(7);
-        userEmail = jwtService.extractUsername(refreshToken);
+        var user = repository.findByEmail(userEmail)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
-        if (userEmail != null) {
-            var user = this.repository.findByEmail(userEmail)
-                    .orElseThrow(() -> new RuntimeException("User not found"));
+        if (jwtService.isTokenValid(refreshToken, user, "refresh")) {
+            var accessToken = jwtService.generateAccessToken(user);
+            
+            revokeAllUserTokens(user);
+            
+            saveUserToken(user, accessToken);
 
-            // Kiểm tra đây phải là refresh token
-            boolean isRefreshToken = jwtService.extractTokenType(refreshToken).equals("refresh");
+            var newRefreshToken = jwtService.generateRefreshToken(user);
 
-            if (isRefreshToken && jwtService.isTokenValid(refreshToken, user, "refresh")) {
-                var accessToken = jwtService.generateAccessToken(user);
-                revokeAllUserTokens(user);
-                saveUserToken(user, accessToken);
+            var authResponse = AuthenticationResponse.builder()
+                    .accessToken(accessToken)
+                    .refreshToken(newRefreshToken)
+                    .build();
 
-                // Tạo refresh token mới nếu muốn (tuỳ chọn)
-                var newRefreshToken = jwtService.generateRefreshToken(user);
+            ResponseCookie cookie = ResponseCookie.from("refresh_token", newRefreshToken)
+                    .httpOnly(true)
+                    .secure(false)  // Set to true in production with HTTPS
+                    .path("/")
+                    .maxAge(Duration.ofDays(7))  // 7 days
+                    .sameSite("None")  // Required for cross-site requests
+                    .build();
 
-                var authResponse = AuthenticationResponse.builder()
-                        .accessToken(accessToken)
-                        .refreshToken(newRefreshToken) // Có thể dùng refreshToken cũ hoặc mới
-                        .build();
-
-                new ObjectMapper().writeValue(response.getOutputStream(), authResponse);
-            } else {
-                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid refresh token");
-            }
+            response.setHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+            
+            // Write response
+            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+            new ObjectMapper().writeValue(response.getOutputStream(), authResponse);
         } else {
-            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid refresh token");
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.getWriter().write("{\"error\": \"Invalid refresh token\"}");
         }
+    } catch (Exception e) {
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        response.getWriter().write("{\"error\": \"" + e.getMessage() + "\"}");
+    }
+}
+    public UserResponse getUserByEmail(String email) {
+        return repository.findByEmail(email)
+                .map(userMapper::toUserResponse)
+                .orElse(null);
     }
 
-
 }
+

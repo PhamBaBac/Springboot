@@ -1,6 +1,8 @@
 package com.bacpham.kanban_service.configuration;
 
 import com.bacpham.kanban_service.auditing.ApplicationAuditAware;
+import com.bacpham.kanban_service.helper.exception.AppException;
+import com.bacpham.kanban_service.helper.exception.ErrorCode;
 import com.bacpham.kanban_service.repository.UserRepository;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import lombok.RequiredArgsConstructor;
@@ -25,7 +27,7 @@ public class ApplicationConfig {
     @Bean
     public UserDetailsService userDetailsService() {
         return username -> repository.findByEmail(username)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
     }
 
     @Bean
@@ -37,7 +39,7 @@ public class ApplicationConfig {
     }
 
     @Bean
-    public AuditorAware<Integer> auditorAware() {
+    public AuditorAware<String> auditorAware() {
         return new ApplicationAuditAware();
     }
 
