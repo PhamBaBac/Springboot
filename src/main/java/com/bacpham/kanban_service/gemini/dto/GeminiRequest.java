@@ -1,4 +1,4 @@
-package com.bacpham.kanban_service.dto.request;
+package com.bacpham.kanban_service.gemini.dto;
 
 import java.util.List;
 
