@@ -3,6 +3,7 @@ package com.bacpham.kanban_service.service;
 import com.bacpham.kanban_service.configuration.JwtService;
 import com.bacpham.kanban_service.dto.request.AuthenticationRequest;
 import com.bacpham.kanban_service.dto.request.RegisterRequest;
+import com.bacpham.kanban_service.dto.request.VerificationRequest;
 import com.bacpham.kanban_service.dto.response.AuthenticationResponse;
 import com.bacpham.kanban_service.dto.response.UserResponse;
 import com.bacpham.kanban_service.entity.Token;
@@ -13,6 +14,7 @@ import com.bacpham.kanban_service.helper.exception.ErrorCode;
 import com.bacpham.kanban_service.mapper.UserMapper;
 import com.bacpham.kanban_service.repository.TokenRepository;
 import com.bacpham.kanban_service.repository.UserRepository;
+import com.bacpham.kanban_service.tfa.TwoFactorAuthenticationService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
@@ -22,6 +24,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -45,23 +48,31 @@ public class AuthenticationService {
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
     private final UserMapper userMapper;
+    private final TwoFactorAuthenticationService tfaService;
 
 
     public AuthenticationResponse register(RegisterRequest request) {
+
         var user = User.builder()
                 .firstname(request.getFirstname())
                 .lastname(request.getLastname())
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .role(request.getRole())
+                .mfaEnabled(request.isMfaEnabled())
                 .build();
+        if(request.isMfaEnabled()) {
+            user.setSecret(tfaService.generateNewSecret());
+        }
         var savedUser = repository.save(user);
         var jwtToken = jwtService.generateAccessToken(user);
         var refreshToken = jwtService.generateRefreshToken(user);
         saveUserToken(savedUser, jwtToken);
         return AuthenticationResponse.builder()
+                .secretImageUri(tfaService.generateQrCodeImageUri(user.getSecret()))
                 .accessToken(jwtToken)
                 .refreshToken(refreshToken)
+                .mfaEnabled(user.isMfaEnabled())
                 .build();
     }
 
@@ -74,6 +85,13 @@ public class AuthenticationService {
         );
         var user = repository.findByEmail(request.getEmail())
                 .orElseThrow();
+        if(user.isMfaEnabled()) {
+            return AuthenticationResponse.builder()
+                    .accessToken("")
+                    .refreshToken("")
+                    .mfaEnabled(true)
+                    .build();
+        }
         var jwtToken = jwtService.generateAccessToken(user);
         var refreshToken = jwtService.generateRefreshToken(user);
         revokeAllUserTokens(user);
@@ -81,6 +99,7 @@ public class AuthenticationService {
         return AuthenticationResponse.builder()
                 .accessToken(jwtToken)
                 .refreshToken(refreshToken)
+                .mfaEnabled(false)
                 .build();
     }
 
@@ -147,6 +166,7 @@ public class AuthenticationService {
             var authResponse = AuthenticationResponse.builder()
                     .accessToken(accessToken)
                     .refreshToken(newRefreshToken)
+                    .mfaEnabled(false)
                     .build();
 
             ResponseCookie cookie = ResponseCookie.from("refresh_token", newRefreshToken)
@@ -177,5 +197,21 @@ public class AuthenticationService {
                 .orElse(null);
     }
 
+    public AuthenticationResponse verifyCode(VerificationRequest verificationRequest) {
+        User user = repository.findByEmail(verificationRequest.getEmail())
+                .orElseThrow(() -> new UsernameNotFoundException(String.format("User %s not found", verificationRequest.getEmail())));
+
+        if(tfaService.isOtpNotValid(user.getSecret(), verificationRequest.getCode())) {
+            throw new BadCredentialsException("Code is not valid");
+        }
+
+        var jwtToken = jwtService.generateAccessToken(user);
+
+        return AuthenticationResponse.builder()
+                .accessToken(jwtToken)
+                .mfaEnabled(user.isMfaEnabled())
+                .build();
+
+    }
 }
 

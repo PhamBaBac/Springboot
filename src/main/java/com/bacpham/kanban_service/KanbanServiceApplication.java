@@ -31,7 +31,6 @@ public class KanbanServiceApplication {
 						.password("password")
 						.role(ADMIN)
 						.build();
-				System.out.println("Admin token: " + service.register(admin).getAccessToken());
 			}
 
 			if (userRepository.findByEmail("manager@mail.com").isEmpty()) {
@@ -42,7 +41,6 @@ public class KanbanServiceApplication {
 						.password("password")
 						.role(MANAGER)
 						.build();
-				System.out.println("Manager token: " + service.register(manager).getAccessToken());
 			}
 		};
 	}

@@ -4,6 +4,7 @@ import com.bacpham.kanban_service.configuration.JwtService;
 import com.bacpham.kanban_service.dto.request.ApiResponse;
 import com.bacpham.kanban_service.dto.request.AuthenticationRequest;
 import com.bacpham.kanban_service.dto.request.RegisterRequest;
+import com.bacpham.kanban_service.dto.request.VerificationRequest;
 import com.bacpham.kanban_service.dto.response.AuthenticationResponse;
 import com.bacpham.kanban_service.dto.response.UserResponse;
 import com.bacpham.kanban_service.entity.User;
@@ -35,9 +36,18 @@ public class AuthenticationController {
     public ApiResponse<AuthenticationResponse> register(
             @RequestBody RegisterRequest request
     ) {
-        return ApiResponse.<AuthenticationResponse>builder()
-                .result(service.register(request))
-                .build();
+        var response = service.register(request);
+        if(response.isMfaEnabled()){
+            return ApiResponse.<AuthenticationResponse>builder()
+                    .message("Registration successful, please complete 2FA setup")
+                    .result(response)
+                    .build();
+        } else {
+            return ApiResponse.<AuthenticationResponse>builder()
+                    .message("Registration successful")
+                    .result(response)
+                    .build();
+        }
     }
     @PostMapping("/authenticate")
     public ResponseEntity<ApiResponse<?>> authenticate(
@@ -81,16 +91,14 @@ public class AuthenticationController {
                 .message("Logout successful")
                 .build();
     }
-    @GetMapping("/login")
-    public String login() {
-        return "login"; // return login.html trong templates/
-    }
+
 
     @GetMapping("/me")
     public ApiResponse<UserResponse> getMyInfo(@AuthenticationPrincipal UserDetails userDetails) {
         if (userDetails == null) {
             return ApiResponse.<UserResponse>builder()
                     .message("User not authenticated")
+                    .result(null)
                     .build();
         }
 
@@ -98,6 +106,16 @@ public class AuthenticationController {
         return ApiResponse.<UserResponse>builder()
                 .result(user)
                 .message("Get user info successfully")
+                .build();
+    }
+
+    @PostMapping("/verify")
+    public ApiResponse<?> verifyToken(
+            @RequestBody VerificationRequest verificationRequest
+    ){
+        return ApiResponse.<AuthenticationResponse>builder()
+                .message("Your message here")
+                .result(service.verifyCode(verificationRequest))
                 .build();
     }
 
