@@ -4,10 +4,13 @@ import com.bacpham.kanban_service.dto.request.ApiResponse;
 import com.bacpham.kanban_service.dto.request.ProductCreationRequest;
 import com.bacpham.kanban_service.dto.response.PageResponse;
 import com.bacpham.kanban_service.dto.response.ProductResponse;
+import com.bacpham.kanban_service.entity.User;
 import com.bacpham.kanban_service.service.ProductService;
+import com.bacpham.kanban_service.service.UserActivityService;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,7 +23,7 @@ import java.util.List;
 @Slf4j
 public class ProductController {
     ProductService productService;
-
+    UserActivityService userActivityService;
     @PostMapping
     ApiResponse<ProductResponse> createProduct(@RequestBody @Validated ProductCreationRequest request) {
         return ApiResponse.<ProductResponse>builder()
@@ -53,9 +56,24 @@ public class ProductController {
     }
 
     @GetMapping("/{id}")
-    ApiResponse<ProductResponse> getProduct(@PathVariable String id) {
+    ApiResponse<ProductResponse> getProduct(
+            @PathVariable String id,
+            @AuthenticationPrincipal User currentUser // <- 2. LẤY USER ĐANG ĐĂNG NHẬP
+    ) {
+        // Lấy thông tin sản phẩm như bình thường
+        ProductResponse productResponse = productService.getProductById(id);
+
+        // --- BẮT ĐẦU PHẦN THÊM MỚI ---
+        // 3. GHI LẠI HOẠT ĐỘNG NẾU USER ĐÃ ĐĂNG NHẬP
+        if (currentUser != null) {
+            userActivityService.recordViewProductActivity(currentUser, id);
+            log.info("Recorded view activity for user: {} on product: {}", currentUser.getEmail(), id);
+        }
+        // --- KẾT THÚC PHẦN THÊM MỚI ---
+
+        // Trả về kết quả
         return ApiResponse.<ProductResponse>builder()
-                .result(productService.getProductById(id))
+                .result(productResponse)
                 .build();
     }
 
@@ -77,5 +95,6 @@ public class ProductController {
                 .build();
 
     }
+
 
 }

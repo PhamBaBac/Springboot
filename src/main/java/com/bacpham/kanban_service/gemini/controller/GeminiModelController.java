@@ -1,66 +1,36 @@
+// src/main/java/com/bacpham/kanban_service/gemini/controller/GeminiModelController.java
 package com.bacpham.kanban_service.gemini.controller;
 
-
-import com.bacpham.kanban_service.gemini.dto.GeminiRequest;
-import com.bacpham.kanban_service.gemini.dto.GeminiResponse;
-import com.bacpham.kanban_service.gemini.dto.GeminiImageRequest;
-import com.bacpham.kanban_service.gemini.dto.Part;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpHeaders;
+import com.bacpham.kanban_service.entity.User;
+import com.bacpham.kanban_service.gemini.service.GeminiService;
+import com.bacpham.kanban_service.gemini.service.RecommendationService;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.client.RestClient;
 import org.springframework.web.multipart.MultipartFile;
-
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.Collections;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/v1/gemini")
+@RequestMapping("/api/v1/ai")
+@RequiredArgsConstructor
 public class GeminiModelController {
-    private static final Logger log = LoggerFactory.getLogger(GeminiModelController.class);
-    private static final String GEMINI_API_BASE_URL = "https://generativelanguage.googleapis.com";
-    private static final String DEFAULT_MODEL = "gemini-1.5-flash-latest";
-    @Value("${spring.ai.openai.api-key}")
-    private String GEMINI_API_KEY;
-    private final RestClient restClient;
 
-    public GeminiModelController(RestClient.Builder builder) {
-        log.info("Initializing GeminiModelController...");
-        this.restClient = builder
-                .baseUrl(GEMINI_API_BASE_URL)
-                .defaultHeader(HttpHeaders.CONTENT_TYPE, "application/json")
-                .build();
-    }
-
+    private final GeminiService geminiService;
+    private final RecommendationService recommendationService;
+    private final ObjectMapper objectMapper;
     @PostMapping("/chat")
     public Map<String, String> chat(@RequestBody Map<String, String> payload) {
         String message = payload.getOrDefault("message", "Tell me a joke");
 
-        GeminiRequest requestBody = GeminiRequest.fromText(message);
-
-        String url = "/v1beta/models/%s:generateContent".formatted(DEFAULT_MODEL);
-
-        ResponseEntity<GeminiResponse> responseEntity = restClient.post()
-                .uri(uriBuilder -> uriBuilder
-                        .path(url)
-                        .queryParam("key",  GEMINI_API_KEY)
-                        .build())
-                .body(requestBody)
-                .retrieve()
-                .toEntity(GeminiResponse.class);
-
-        String reply = responseEntity.getBody() != null ?
-                responseEntity.getBody().getFirstCandidateText().orElse("No response text found.") :
-                "Failed to get response from API.";
-
-        log.info("Gemini reply: {}", reply);
+        String reply = geminiService.generateContent(message);
 
         return Map.of("response", reply);
     }
@@ -70,35 +40,23 @@ public class GeminiModelController {
             @RequestParam("prompt") String prompt,
             @RequestParam("image") MultipartFile imageFile) throws IOException {
 
-        log.info("Gửi prompt '{}' và ảnh '{}' tới Gemini", prompt, imageFile.getOriginalFilename());
+        String reply = geminiService.generateContent(prompt, imageFile);
 
-        String base64Image = Base64.getEncoder().encodeToString(imageFile.getBytes());
-        String mimeType = imageFile.getContentType();
-
-        List<Part> parts = new ArrayList<>();
-        parts.add(Part.fromText(prompt)); // Phần text
-        parts.add(Part.fromImage(mimeType, base64Image)); // Phần ảnh
-
-        GeminiImageRequest requestBody = GeminiImageRequest.fromParts(parts);
-
-        String url = "/v1beta/models/%s:generateContent".formatted(DEFAULT_MODEL);
-
-        ResponseEntity<GeminiResponse> responseEntity = restClient.post()
-                .uri(uriBuilder -> uriBuilder
-                        .path(url)
-                        .queryParam("key", GEMINI_API_KEY)
-                        .build())
-                .body(requestBody)
-                .retrieve()
-                .toEntity(GeminiResponse.class);
-
-        String reply = responseEntity.getBody() != null ?
-                responseEntity.getBody().getFirstCandidateText().orElse("No response text found.") :
-                "Failed to get response from API.";
-
-        log.info("Gemini reply: {}", reply);
         return Map.of("response", reply);
     }
 
+    @GetMapping("/recommendations")
+    public Map<String, Object> getRecommendations(@AuthenticationPrincipal User currentUser) {
+        if (currentUser == null) {
+            return Map.of("error", "User not logged in");
+        }
+        String recommendationJsonString = recommendationService.getRecommendationsForUser(currentUser);
 
+        try {
+            List<String> recommendationList = objectMapper.readValue(recommendationJsonString, new TypeReference<List<String>>() {});
+            return Map.of("recommendations", recommendationList);
+        } catch (JsonProcessingException e) {
+            return Map.of("recommendations", Collections.emptyList(), "error", "Failed to parse recommendations");
+        }
+    }
 }

@@ -1,5 +1,6 @@
 package com.bacpham.kanban_service.repository;
 
+import com.bacpham.kanban_service.entity.Category;
 import com.bacpham.kanban_service.entity.Product;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -8,7 +9,9 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 
 @Repository
 public interface ProductRepository extends JpaRepository<Product, String> {
@@ -39,4 +42,9 @@ public interface ProductRepository extends JpaRepository<Product, String> {
             @Param("maxPrice") Double maxPrice
     );
 
+    List<Product> findTop20ByCategoriesInAndIdNotIn(Set<Category> categories, Collection<String> ids);
+
+    List<Product> findTop20ByIdNotInOrderByCreatedAtDesc(Collection<String> ids);
+
+    List<Product> findTop20ByOrderByCreatedAtDesc();
 }

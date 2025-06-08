@@ -6,6 +6,7 @@ import com.bacpham.kanban_service.helper.exception.ErrorCode;
 import com.bacpham.kanban_service.repository.UserRepository;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.domain.AuditorAware;
@@ -17,6 +18,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.client.RestClient;
 
 @Configuration
 @RequiredArgsConstructor
@@ -53,4 +55,11 @@ public class ApplicationConfig {
         return new BCryptPasswordEncoder();
     }
 
+    @Bean
+    @Qualifier("geminiRestClient")
+    public RestClient geminiRestClient() {
+        return RestClient.builder()
+                .baseUrl("https://generativelanguage.googleapis.com")
+                .build();
+    }
 }
