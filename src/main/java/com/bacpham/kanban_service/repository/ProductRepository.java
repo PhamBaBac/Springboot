@@ -42,9 +42,17 @@ public interface ProductRepository extends JpaRepository<Product, String> {
             @Param("maxPrice") Double maxPrice
     );
 
-    List<Product> findTop20ByCategoriesInAndIdNotIn(Set<Category> categories, Collection<String> ids);
+    @Query("""
+        SELECT DISTINCT p FROM Product p
+        JOIN p.categories c
+        WHERE p.deleted = false
+          AND (:productIds IS NULL OR p.id NOT IN :productIds)
+          AND c IN :categories
+        """)
+    List<Product> findCandidateProducts(
+            @Param("categories") Set<Category> categories,
+            @Param("productIds") List<String> productIds,
+            Pageable pageable
+    );
 
-    List<Product> findTop20ByIdNotInOrderByCreatedAtDesc(Collection<String> ids);
-
-    List<Product> findTop20ByOrderByCreatedAtDesc();
 }

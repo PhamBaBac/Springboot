@@ -27,7 +27,7 @@ import java.util.List;
 @RequiredArgsConstructor
 @FieldDefaults(makeFinal = true, level = lombok.AccessLevel.PRIVATE)
 @Slf4j
-@PreAuthorize("hasRole('MANAGER')")
+@PreAuthorize("hasRole('ADMIN')")
 public class SupplierController {
      SupplierService supplierService;
 
@@ -55,7 +55,7 @@ public class SupplierController {
         return form;
     }
 
-
+    @PreAuthorize("hasAuthority('admin:create')")
      @PostMapping("/add-new")
      ApiResponse<SupplierResponse> createSupplier(@RequestBody @Validated SupplierRequest request) {
          return ApiResponse.<SupplierResponse>builder()
@@ -63,7 +63,7 @@ public class SupplierController {
                  .build();
      }
 
-     @PreAuthorize("hasAuthority('manager:read')")
+     @PreAuthorize("hasAuthority('admin:read')")
     @GetMapping("/page")
     ApiResponse<PageResponse<SupplierResponse>> productPage(
             @RequestParam(value = "page", required = false, defaultValue = "1") int page,

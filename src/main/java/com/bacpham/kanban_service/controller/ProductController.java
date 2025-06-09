@@ -7,6 +7,7 @@ import com.bacpham.kanban_service.dto.response.ProductResponse;
 import com.bacpham.kanban_service.entity.User;
 import com.bacpham.kanban_service.service.ProductService;
 import com.bacpham.kanban_service.service.UserActivityService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
@@ -21,6 +22,7 @@ import java.util.List;
 @RequiredArgsConstructor
 @FieldDefaults(makeFinal = true, level = lombok.AccessLevel.PRIVATE)
 @Slf4j
+@SecurityRequirement(name = "bearerAuth")
 public class ProductController {
     ProductService productService;
     UserActivityService userActivityService;
@@ -58,20 +60,15 @@ public class ProductController {
     @GetMapping("/{id}")
     ApiResponse<ProductResponse> getProduct(
             @PathVariable String id,
-            @AuthenticationPrincipal User currentUser // <- 2. LẤY USER ĐANG ĐĂNG NHẬP
+            @AuthenticationPrincipal User currentUser
     ) {
-        // Lấy thông tin sản phẩm như bình thường
         ProductResponse productResponse = productService.getProductById(id);
 
-        // --- BẮT ĐẦU PHẦN THÊM MỚI ---
-        // 3. GHI LẠI HOẠT ĐỘNG NẾU USER ĐÃ ĐĂNG NHẬP
+
         if (currentUser != null) {
             userActivityService.recordViewProductActivity(currentUser, id);
-            log.info("Recorded view activity for user: {} on product: {}", currentUser.getEmail(), id);
         }
-        // --- KẾT THÚC PHẦN THÊM MỚI ---
 
-        // Trả về kết quả
         return ApiResponse.<ProductResponse>builder()
                 .result(productResponse)
                 .build();

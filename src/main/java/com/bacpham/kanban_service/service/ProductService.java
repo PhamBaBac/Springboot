@@ -39,6 +39,11 @@ public class ProductService {
 
     public ProductResponse createProduct(ProductCreationRequest request) {
         Product product = productMapper.toProduct(request);
+        //Gui xuong mot listId cac category
+        if (request.getCategories() != null && !request.getCategories().isEmpty()) {
+            Set<Category> categories = new HashSet<>(categoryRepository.findAllById(request.getCategories()));
+            product.setCategories(categories);
+        }
 
         Supplier supplier = supplierRepository.findById(request.getSupplierId())
                 .orElseThrow(() -> new AppException(ErrorCode.SUPPLIER_NOT_FOUND));
