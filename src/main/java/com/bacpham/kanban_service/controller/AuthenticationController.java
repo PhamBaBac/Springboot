@@ -1,16 +1,14 @@
 package com.bacpham.kanban_service.controller;
 
 import com.bacpham.kanban_service.configuration.JwtService;
-import com.bacpham.kanban_service.dto.request.ApiResponse;
-import com.bacpham.kanban_service.dto.request.AuthenticationRequest;
-import com.bacpham.kanban_service.dto.request.RegisterRequest;
-import com.bacpham.kanban_service.dto.request.VerificationRequest;
+import com.bacpham.kanban_service.dto.request.*;
 import com.bacpham.kanban_service.dto.response.AuthenticationResponse;
 import com.bacpham.kanban_service.dto.response.UserResponse;
 import com.bacpham.kanban_service.entity.User;
 import com.bacpham.kanban_service.enums.Role;
 import com.bacpham.kanban_service.mapper.UserMapper;
 import com.bacpham.kanban_service.service.AuthenticationService;
+import jakarta.mail.MessagingException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -49,6 +47,18 @@ public class AuthenticationController {
                     .build();
         }
     }
+
+    @PostMapping("/send-code-email")
+    public ApiResponse<?> sendCodeEmail(@RequestParam String email) throws MessagingException {
+        var code = service.sendCodeEmail(email);
+        return ApiResponse.builder()
+                .message("Verification code sent successfully")
+                .result(code)
+                .build();
+    }
+
+
+
     @PostMapping("/authenticate")
     public ResponseEntity<ApiResponse<?>> authenticate(
             @RequestBody AuthenticationRequest request,
@@ -110,12 +120,21 @@ public class AuthenticationController {
     }
 
     @PostMapping("/verify")
-    public ApiResponse<?> verifyToken(
+    public ApiResponse<?> sendCodeAuthenticator(
             @RequestBody VerificationRequest verificationRequest
     ){
         return ApiResponse.<AuthenticationResponse>builder()
                 .message("Your message here")
                 .result(service.verifyCode(verificationRequest))
+                .build();
+    }
+
+    @PutMapping("/secret-image")
+    public ApiResponse<?> getSecretImage(@RequestBody EmailRequest request) {
+        String secretImage = service.updateSecret(request.getEmail().trim());
+        return ApiResponse.<String>builder()
+                .message("Secret image retrieved successfully")
+                .result(secretImage)
                 .build();
     }
 

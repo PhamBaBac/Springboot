@@ -15,7 +15,9 @@ import com.bacpham.kanban_service.mapper.UserMapper;
 import com.bacpham.kanban_service.repository.TokenRepository;
 import com.bacpham.kanban_service.repository.UserRepository;
 import com.bacpham.kanban_service.tfa.TwoFactorAuthenticationService;
+import com.bacpham.kanban_service.utils.email.EmailService;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.mail.MessagingException;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -49,6 +51,7 @@ public class AuthenticationService {
     private final AuthenticationManager authenticationManager;
     private final UserMapper userMapper;
     private final TwoFactorAuthenticationService tfaService;
+    private final EmailService emailService;
 
 
     public AuthenticationResponse register(RegisterRequest request) {
@@ -212,6 +215,35 @@ public class AuthenticationService {
                 .mfaEnabled(user.isMfaEnabled())
                 .build();
 
+    }
+    public String sendCodeEmail(String email) throws MessagingException {
+        User user = repository.findByEmail(email)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        if(!user.isMfaEnabled()){
+           throw new AppException(ErrorCode.TFA_NOT_ENABLED);
+        }
+
+        var code = String.format("%06d", (int) (Math.random() * 1000000));
+
+        emailService.sendVerificationCodeEmail(email, code);
+
+        return code;
+    }
+    public String updateSecret(String email) {
+        log.info("email: {}", email);
+        User user = repository.findByEmail(email)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        if(!user.isMfaEnabled()){
+            throw new AppException(ErrorCode.TFA_NOT_ENABLED);
+        }
+
+        String newSecret = tfaService.generateNewSecret();
+        user.setSecret(newSecret);
+        repository.save(user);
+
+        return tfaService.generateQrCodeImageUri(newSecret);
     }
 }
 

@@ -51,4 +51,5 @@ public class TwoFactorAuthenticationService {
     public boolean isOtpNotValid(String secret, String code) {
         return !isOtpValid(secret, code);
     }
+
 }
