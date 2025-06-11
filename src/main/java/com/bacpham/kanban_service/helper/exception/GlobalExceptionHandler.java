@@ -2,10 +2,12 @@ package com.bacpham.kanban_service.helper.exception;
 
 import com.bacpham.kanban_service.dto.request.ApiResponse;
 import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 //import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -80,9 +82,26 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity.badRequest().body(apiResponse);
     }
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleConstraintViolation(ConstraintViolationException e) {
+        ApiResponse<Void> response = new ApiResponse<>();
+        response.setCode(ErrorCode.INVALID_KEY.getCode());
+        response.setMessage("Invalid input: " + e.getMessage());
+        return ResponseEntity.badRequest().body(response);
+    }
+    @ExceptionHandler(BadCredentialsException.class)
+    public ResponseEntity<ApiResponse<Void>> handleBadCredentials(BadCredentialsException ex) {
+        log.error("Bad credentials: ", ex);
+        ErrorCode errorCode = ErrorCode.INVALID_CREDENTIALS;
+        ApiResponse<Void> response = new ApiResponse<>();
+        response.setCode(errorCode.getCode());
+        response.setMessage(errorCode.getMessage());
+        return ResponseEntity.status(errorCode.getStatusCode()).body(response);
+    }
     private String mapAttribute(String message, Map<String, Object> attributes) {
         String minValue = String.valueOf(attributes.get(MIN_ATTRIBUTE));
 
         return message.replace("{" + MIN_ATTRIBUTE + "}", minValue);
     }
-    }
+
+}

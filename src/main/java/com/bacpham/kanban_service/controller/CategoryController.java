@@ -8,6 +8,10 @@ import com.bacpham.kanban_service.service.CategoryService;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.batch.core.Job;
+import org.springframework.batch.core.JobParameters;
+import org.springframework.batch.core.JobParametersBuilder;
+import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,7 +24,8 @@ import java.util.List;
 @Slf4j
 public class CategoryController {
     CategoryService categoryService;
-
+    private final JobLauncher jobLauncher;
+    private final Job categoryJob;
     @PostMapping
     public ApiResponse<CategoryResponse> createCategory(@RequestBody @Validated CategoryRequest request) {
 
@@ -59,6 +64,20 @@ public class CategoryController {
         return ApiResponse.<CategoryResponse>builder()
                 .result(categoryService.updateCategory(categoryId, request))
                 .build();
+    }
+
+
+
+    @PostMapping("/batch/categories")
+    public void runCategoryImportJob() {
+        try {
+            JobParameters jobParameters = new JobParametersBuilder()
+                    .addLong("startAt", System.currentTimeMillis())
+                    .toJobParameters();
+            jobLauncher.run(categoryJob, jobParameters);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
 }

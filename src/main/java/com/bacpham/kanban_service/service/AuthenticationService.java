@@ -168,21 +168,23 @@ public class AuthenticationService {
 
             var authResponse = AuthenticationResponse.builder()
                     .accessToken(accessToken)
-                    .refreshToken(newRefreshToken)
                     .mfaEnabled(false)
                     .build();
 
-            ResponseCookie cookie = ResponseCookie.from("refresh_token", newRefreshToken)
-                    .httpOnly(true)
-                    .secure(false)  // Set to true in production with HTTPS
-                    .path("/")
-                    .maxAge(Duration.ofDays(7))  // 7 days
-                    .sameSite("None")  // Required for cross-site requests
-                    .build();
+           if(jwtService.isTokenExpired(refreshToken)){
+                authResponse.setRefreshToken(newRefreshToken);
+                ResponseCookie refreshTokenCookie = ResponseCookie.from("refresh_token", newRefreshToken)
+                        .httpOnly(true)
+                        .secure(false)
+                        .path("/")
+                        .maxAge(Duration.ofDays(7)) // 7 days
+                        .sameSite("Lax")
+                        .build();
+                response.addHeader(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString());
+            } else {
+                authResponse.setRefreshToken(refreshToken);
+           }
 
-            response.setHeader(HttpHeaders.SET_COOKIE, cookie.toString());
-            
-            // Write response
             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
             new ObjectMapper().writeValue(response.getOutputStream(), authResponse);
         } else {

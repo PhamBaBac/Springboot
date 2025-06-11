@@ -19,11 +19,22 @@ spring:
     url: jdbc:mysql://localhost:3306/kanban
     username: root
     password: root
+
+#  data:
+#    redis:
+#      host: localhost
+#      port: 6379
   jpa:
     hibernate:
       ddl-auto: update
     generate-ddl: true
     show-sql: true
+
+  batch:
+    jdbc:
+      initialize-schema: ALWAYS
+    job:
+      enabled: false
 
   ai:
     openai:
@@ -38,6 +49,6 @@ application:
   security:
     jwt:
       secret-key: ${SECRET_KEY}
-      expiration: 8640000 # a day
+      expiration:  86400000
       refresh-token:
-        expiration: 604800000 # 7 days
+        expiration: 604800000

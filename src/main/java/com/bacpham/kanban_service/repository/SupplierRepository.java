@@ -10,6 +10,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface SupplierRepository  extends JpaRepository<Supplier, String> {
@@ -20,5 +21,5 @@ public interface SupplierRepository  extends JpaRepository<Supplier, String> {
             "WHERE (:start IS NULL OR s.createdAt >= :start) " +
             "AND (:end IS NULL OR s.createdAt <= :end)")
     List<Supplier> findByCreatedAtBetweenOptional(@Param("start") Date start, @Param("end") Date end);
-
+    Optional<Supplier> findByName(String name);
 }

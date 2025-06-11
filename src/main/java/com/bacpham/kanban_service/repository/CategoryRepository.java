@@ -9,10 +9,12 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 
 @Repository
 public interface CategoryRepository extends JpaRepository<Category, String> {
     Page<Category> findAllByDeletedFalse(Pageable pageable);
+    Set<Category> findByTitleIn(Collection<String> titles);
 }

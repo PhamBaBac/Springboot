@@ -25,7 +25,11 @@ public enum ErrorCode {
     SUB_PRODUCT_NOT_FOUND(1012, "Sub product not found", HttpStatus.NOT_FOUND),
     CATEGORY_NOT_FOUND(1013, "Category not found", HttpStatus.NOT_FOUND),
     SUPPLIER_NOT_FOUND(1014, "Supplier not found", HttpStatus.NOT_FOUND),
-    TFA_NOT_ENABLED(1005, "TFA is not enabled" , HttpStatus.BAD_REQUEST),;
+    TFA_NOT_ENABLED(1015, "TFA is not enabled" , HttpStatus.BAD_REQUEST),
+    WRONG_PASSWORD(1016, "Wrong password", HttpStatus.BAD_REQUEST),
+    PASSWORDS_NOT_MATCH(1017, "Passwords do not match", HttpStatus.BAD_REQUEST),
+
+    ;
 
     ErrorCode(int code, String message, HttpStatusCode statusCode) {
         this.code = code;

@@ -11,6 +11,10 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.batch.core.Job;
+import org.springframework.batch.core.JobParameters;
+import org.springframework.batch.core.JobParametersBuilder;
+import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -26,6 +30,11 @@ import java.util.List;
 public class ProductController {
     ProductService productService;
     UserActivityService userActivityService;
+    private final JobLauncher jobLauncher;
+    private final Job productJob;
+
+
+
     @PostMapping
     ApiResponse<ProductResponse> createProduct(@RequestBody @Validated ProductCreationRequest request) {
         return ApiResponse.<ProductResponse>builder()
@@ -93,5 +102,15 @@ public class ProductController {
 
     }
 
-
+    @PostMapping("/batch/products")
+    public void runProductImportJob() {
+        try {
+            JobParameters jobParameters = new JobParametersBuilder()
+                    .addLong("startAt", System.currentTimeMillis())
+                    .toJobParameters();
+            jobLauncher.run(productJob, jobParameters);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 }

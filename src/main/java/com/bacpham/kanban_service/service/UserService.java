@@ -2,6 +2,8 @@ package com.bacpham.kanban_service.service;
 
 import com.bacpham.kanban_service.dto.request.ChangePasswordRequest;
 import com.bacpham.kanban_service.entity.User;
+import com.bacpham.kanban_service.helper.exception.AppException;
+import com.bacpham.kanban_service.helper.exception.ErrorCode;
 import com.bacpham.kanban_service.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -20,19 +22,15 @@ public class UserService {
 
         var user = (User) ((UsernamePasswordAuthenticationToken) connectedUser).getPrincipal();
 
-        // check if the current password is correct
         if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
-            throw new IllegalStateException("Wrong password");
+            throw new AppException(ErrorCode.WRONG_PASSWORD);
         }
-        // check if the two new passwords are the same
         if (!request.getNewPassword().equals(request.getConfirmationPassword())) {
-            throw new IllegalStateException("Password are not the same");
+            throw new AppException(ErrorCode.PASSWORDS_NOT_MATCH);
         }
 
-        // update the password
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
 
-        // save the new password
         repository.save(user);
     }
 }

@@ -38,8 +38,8 @@ public class ProductService {
     SubProductRepository subProductRepository;
 
     public ProductResponse createProduct(ProductCreationRequest request) {
+        log.info("Creating product with request: {}", request.toString());
         Product product = productMapper.toProduct(request);
-        //Gui xuong mot listId cac category
         if (request.getCategories() != null && !request.getCategories().isEmpty()) {
             Set<Category> categories = new HashSet<>(categoryRepository.findAllById(request.getCategories()));
             product.setCategories(categories);
