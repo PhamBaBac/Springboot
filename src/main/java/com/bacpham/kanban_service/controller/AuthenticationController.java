@@ -1,27 +1,20 @@
 package com.bacpham.kanban_service.controller;
 
-import com.bacpham.kanban_service.configuration.JwtService;
 import com.bacpham.kanban_service.dto.request.*;
 import com.bacpham.kanban_service.dto.response.AuthenticationResponse;
 import com.bacpham.kanban_service.dto.response.UserResponse;
-import com.bacpham.kanban_service.entity.User;
-import com.bacpham.kanban_service.enums.Role;
-import com.bacpham.kanban_service.mapper.UserMapper;
 import com.bacpham.kanban_service.service.AuthenticationService;
 import jakarta.mail.MessagingException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.ResponseCookie;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
-import java.security.Principal;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -32,50 +25,37 @@ public class AuthenticationController {
 
     @PostMapping("/register")
     public ApiResponse<AuthenticationResponse> register(
-            @RequestBody RegisterRequest request
+            @RequestBody RegisterRequest request,
+            HttpServletResponse response
     ) {
-        var response = service.register(request);
-        if(response.isMfaEnabled()){
+        var result = service.register(request, response);
+        if(result.isMfaEnabled()){
             return ApiResponse.<AuthenticationResponse>builder()
                     .message("Registration successful, please complete 2FA setup")
-                    .result(response)
+                    .result(result)
                     .build();
         } else {
             return ApiResponse.<AuthenticationResponse>builder()
                     .message("Registration successful")
-                    .result(response)
+                    .result(result)
                     .build();
         }
     }
 
     @PostMapping("/send-code-email")
-    public ApiResponse<?> sendCodeEmail(@RequestParam String email) throws MessagingException {
-        var code = service.sendCodeEmail(email);
+    public ApiResponse<?> sendCodeEmail(@RequestBody SendCodeRequest request) throws MessagingException {
+        service.sendCodeEmail(request.getEmail());
         return ApiResponse.builder()
                 .message("Verification code sent successfully")
-                .result(code)
                 .build();
     }
-
-
 
     @PostMapping("/authenticate")
     public ResponseEntity<ApiResponse<?>> authenticate(
             @RequestBody AuthenticationRequest request,
             HttpServletResponse response
     ) {
-        AuthenticationResponse authResponse = service.authenticate(request);
-
-
-        ResponseCookie refreshTokenCookie = ResponseCookie.from("refresh_token", authResponse.getRefreshToken())
-                .httpOnly(true)
-                .secure(false)
-                .path("/")
-                .maxAge(60 * 60 * 24 * 7) // 7 ngày
-                .sameSite("Lax")
-                .build();
-
-        response.addHeader(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString());
+        AuthenticationResponse authResponse = service.authenticate(request, response); //
 
         return ResponseEntity.ok(
                 ApiResponse.builder()
@@ -96,10 +76,11 @@ public class AuthenticationController {
 
 
     @PostMapping("/logout")
-    public ApiResponse<?> logout() {
-        return ApiResponse.<Void>builder()
-                .message("Logout successful")
-                .build();
+    public void logout(
+            HttpServletRequest request,
+            HttpServletResponse response
+    ) throws IOException {
+        service.logout(request, response);
     }
 
 
@@ -121,13 +102,22 @@ public class AuthenticationController {
 
     @PostMapping("/verify")
     public ApiResponse<?> sendCodeAuthenticator(
-            @RequestBody VerificationRequest verificationRequest
+            @RequestBody VerificationRequest verificationRequest,
+            HttpServletResponse response
     ){
         return ApiResponse.<AuthenticationResponse>builder()
                 .message("Your message here")
-                .result(service.verifyCode(verificationRequest))
+                .result(service.verifyCode(verificationRequest, response))
                 .build();
     }
+    @PostMapping("/verify-code-email")
+    public ApiResponse<?> verifyCodeEmail(@RequestBody VerificationRequest request) {
+        service.verifyCodeEmail(request);
+        return ApiResponse.builder()
+                .message("Code is valid")
+                .build();
+    }
+
 
     @PutMapping("/secret-image")
     public ApiResponse<?> getSecretImage(@RequestBody EmailRequest request) {

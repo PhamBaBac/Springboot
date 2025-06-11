@@ -38,8 +38,6 @@ public class User extends BaseModel implements UserDetails {
     @Enumerated(EnumType.STRING)
     private Role role;
 
-    @OneToMany(mappedBy = "user")
-    private List<Token> tokens;
     @Enumerated(EnumType.STRING)
     private Provider provider;
 

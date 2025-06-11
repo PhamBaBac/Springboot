@@ -1,18 +1,15 @@
 package com.bacpham.kanban_service.configuration;
 
-import com.bacpham.kanban_service.repository.TokenRepository;
+import com.bacpham.kanban_service.configuration.redis.GenericRedisService;
+import com.bacpham.kanban_service.entity.User;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
-import java.beans.Transient;
 import java.io.IOException;
-import java.security.Security;
 
-import jakarta.transaction.TransactionScoped;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -28,8 +25,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
-    private final TokenRepository tokenRepository;
-
+    private final GenericRedisService<String, String, String> redisService;
     @Override
     protected void doFilterInternal(
             @NonNull HttpServletRequest request,
@@ -62,13 +58,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
 
-            // Kiểm tra token trong database và loại token
-            var isTokenValid = tokenRepository.findByToken(jwt)
-                    .map(t -> !t.isExpired() && !t.isRevoked())
-                    .orElse(false);
+//             Kiểm tra token trong database và loại token
+            String userId = ((User) userDetails).getId();
 
-            // Kiểm tra đây phải là access token
+            String redisKey = "accessToken:" + userId;
+            String storedToken = redisService.get(redisKey);
+            boolean isTokenValid = jwt.equals(storedToken);
+
             boolean isAccessToken = jwtService.extractTokenType(jwt).equals("access");
+
 
             if (isAccessToken && jwtService.isTokenValid(jwt, userDetails, "access") && isTokenValid) {
                 UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
