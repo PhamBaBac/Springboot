@@ -1,4 +1,4 @@
-package com.bacpham.kanban_service.service;
+package com.bacpham.kanban_service.service.impl;
 
 import com.bacpham.kanban_service.dto.request.CategoryRequest;
 import com.bacpham.kanban_service.dto.response.CategoryResponse;
@@ -8,6 +8,7 @@ import com.bacpham.kanban_service.helper.exception.AppException;
 import com.bacpham.kanban_service.helper.exception.ErrorCode;
 import com.bacpham.kanban_service.mapper.CategoryMapper;
 import com.bacpham.kanban_service.repository.CategoryRepository;
+import com.bacpham.kanban_service.service.ICategoryService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -25,7 +26,7 @@ import java.util.List;
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Slf4j
-public class CategoryService {
+public class CategoryServiceImpl implements ICategoryService {
 
     CategoryRepository categoryRepository;
     CategoryMapper categoryMapper;

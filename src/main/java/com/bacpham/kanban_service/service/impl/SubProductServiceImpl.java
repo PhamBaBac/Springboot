@@ -1,4 +1,4 @@
-package com.bacpham.kanban_service.service;
+package com.bacpham.kanban_service.service.impl;
 
 import com.bacpham.kanban_service.dto.request.SubProductCreationRequest;
 import com.bacpham.kanban_service.dto.response.FilterSubProductResponse;
@@ -10,6 +10,7 @@ import com.bacpham.kanban_service.helper.exception.ErrorCode;
 import com.bacpham.kanban_service.mapper.SubProductMapper;
 import com.bacpham.kanban_service.repository.ProductRepository;
 import com.bacpham.kanban_service.repository.SubProductRepository;
+import com.bacpham.kanban_service.service.ISubProductService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -23,7 +24,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Slf4j
-public class SubProductService {
+public class SubProductServiceImpl implements ISubProductService {
     SubProductRepository subProductRepository;
     ProductRepository productRepository;
     SubProductMapper subProductMapper;

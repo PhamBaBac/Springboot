@@ -1,12 +1,9 @@
 package com.bacpham.kanban_service.controller;
 
 import com.bacpham.kanban_service.dto.request.ApiResponse;
-import com.bacpham.kanban_service.dto.request.ProductCreationRequest;
 import com.bacpham.kanban_service.dto.request.SubProductCreationRequest;
-import com.bacpham.kanban_service.dto.response.FilterSubProductResponse;
-import com.bacpham.kanban_service.dto.response.ProductResponse;
 import com.bacpham.kanban_service.dto.response.SubProductResponse;
-import com.bacpham.kanban_service.service.SubProductService;
+import com.bacpham.kanban_service.service.impl.SubProductServiceImpl;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
@@ -22,7 +19,7 @@ import java.util.Map;
 @FieldDefaults(makeFinal = true, level = lombok.AccessLevel.PRIVATE)
 @Slf4j
 public class SubProductController {
-    SubProductService subProductService;
+    SubProductServiceImpl subProductService;
 
     @PostMapping("/create")
     ApiResponse<SubProductResponse> createProduct(@RequestBody @Validated SubProductCreationRequest request) {

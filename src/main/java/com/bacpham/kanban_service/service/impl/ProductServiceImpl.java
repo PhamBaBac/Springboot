@@ -1,4 +1,4 @@
-package com.bacpham.kanban_service.service;
+package com.bacpham.kanban_service.service.impl;
 
 import com.bacpham.kanban_service.dto.request.ProductCreationRequest;
 import com.bacpham.kanban_service.dto.response.PageResponse;
@@ -13,6 +13,7 @@ import com.bacpham.kanban_service.repository.CategoryRepository;
 import com.bacpham.kanban_service.repository.ProductRepository;
 import com.bacpham.kanban_service.repository.SubProductRepository;
 import com.bacpham.kanban_service.repository.SupplierRepository;
+import com.bacpham.kanban_service.service.IProductService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -30,7 +31,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Slf4j
-public class ProductService {
+public class ProductServiceImpl implements IProductService {
     ProductRepository productRepository;
     ProductMapper productMapper;
     CategoryRepository categoryRepository;

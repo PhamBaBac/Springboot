@@ -1,4 +1,4 @@
-package com.bacpham.kanban_service.service;
+package com.bacpham.kanban_service.service.impl;
 
 import com.bacpham.kanban_service.configuration.JwtService;
 import com.bacpham.kanban_service.configuration.redis.GenericRedisService;
@@ -13,6 +13,7 @@ import com.bacpham.kanban_service.helper.exception.AppException;
 import com.bacpham.kanban_service.helper.exception.ErrorCode;
 import com.bacpham.kanban_service.mapper.UserMapper;
 import com.bacpham.kanban_service.repository.UserRepository;
+import com.bacpham.kanban_service.service.IAuthenticationService;
 import com.bacpham.kanban_service.tfa.TwoFactorAuthenticationService;
 import com.bacpham.kanban_service.utils.email.EmailService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -44,7 +45,7 @@ import java.util.Optional;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class AuthenticationService {
+public class AuthenticationServiceImpl implements IAuthenticationService {
     private final UserRepository repository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;

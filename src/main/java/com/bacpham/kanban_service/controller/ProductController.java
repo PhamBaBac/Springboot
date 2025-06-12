@@ -5,7 +5,7 @@ import com.bacpham.kanban_service.dto.request.ProductCreationRequest;
 import com.bacpham.kanban_service.dto.response.PageResponse;
 import com.bacpham.kanban_service.dto.response.ProductResponse;
 import com.bacpham.kanban_service.entity.User;
-import com.bacpham.kanban_service.service.ProductService;
+import com.bacpham.kanban_service.service.impl.ProductServiceImpl;
 import com.bacpham.kanban_service.service.UserActivityService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import lombok.RequiredArgsConstructor;
@@ -28,7 +28,7 @@ import java.util.List;
 @Slf4j
 @SecurityRequirement(name = "bearerAuth")
 public class ProductController {
-    ProductService productService;
+    ProductServiceImpl productService;
     UserActivityService userActivityService;
     private final JobLauncher jobLauncher;
     private final Job productJob;

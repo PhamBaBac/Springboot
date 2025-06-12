@@ -1,4 +1,4 @@
-package com.bacpham.kanban_service.service;
+package com.bacpham.kanban_service.service.impl;
 
 import com.bacpham.kanban_service.dto.request.SupplierRequest;
 import com.bacpham.kanban_service.dto.response.PageResponse;
@@ -10,6 +10,7 @@ import com.bacpham.kanban_service.helper.exception.ErrorCode;
 import com.bacpham.kanban_service.mapper.SupplierMapper;
 import com.bacpham.kanban_service.repository.CategoryRepository;
 import com.bacpham.kanban_service.repository.SupplierRepository;
+import com.bacpham.kanban_service.service.ISupplierService;
 import jakarta.transaction.Transactional;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -19,9 +20,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.ArrayList;
 import java.util.Date;
@@ -33,7 +32,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Slf4j
-public class SupplierService {
+public class SupplierServiceImpl implements ISupplierService {
 
     SupplierRepository supplierRepository;
     CategoryRepository categoryRepository;

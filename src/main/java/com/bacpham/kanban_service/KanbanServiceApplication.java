@@ -2,7 +2,7 @@ package com.bacpham.kanban_service;
 
 import com.bacpham.kanban_service.dto.request.RegisterRequest;
 import com.bacpham.kanban_service.repository.UserRepository;
-import com.bacpham.kanban_service.service.AuthenticationService;
+import com.bacpham.kanban_service.service.impl.AuthenticationServiceImpl;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -21,7 +21,7 @@ public class KanbanServiceApplication {
 	}
 
 	@Bean
-	public CommandLineRunner commandLineRunner(AuthenticationService service, UserRepository userRepository) {
+	public CommandLineRunner commandLineRunner(AuthenticationServiceImpl service, UserRepository userRepository) {
 		return args -> {
 			if (userRepository.findByEmail("admin@mail.com").isEmpty()) {
 				var admin = RegisterRequest.builder()

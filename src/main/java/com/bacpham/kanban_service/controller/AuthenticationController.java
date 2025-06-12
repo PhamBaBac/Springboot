@@ -3,7 +3,7 @@ package com.bacpham.kanban_service.controller;
 import com.bacpham.kanban_service.dto.request.*;
 import com.bacpham.kanban_service.dto.response.AuthenticationResponse;
 import com.bacpham.kanban_service.dto.response.UserResponse;
-import com.bacpham.kanban_service.service.AuthenticationService;
+import com.bacpham.kanban_service.service.impl.AuthenticationServiceImpl;
 import jakarta.mail.MessagingException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -21,7 +21,7 @@ import java.io.IOException;
 @RequiredArgsConstructor
 public class AuthenticationController {
 
-    private final AuthenticationService service;
+    private final AuthenticationServiceImpl service;
 
     @PostMapping("/register")
     public ApiResponse<AuthenticationResponse> register(

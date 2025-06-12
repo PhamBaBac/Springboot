@@ -6,7 +6,7 @@ import com.bacpham.kanban_service.helper.exception.AppException;
 import com.bacpham.kanban_service.helper.exception.ErrorCode;
 import com.bacpham.kanban_service.mapper.PromotionMapper;
 import com.bacpham.kanban_service.repository.PromotionRepository;
-import com.bacpham.kanban_service.service.PromotionService;
+import com.bacpham.kanban_service.service.IPromotionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -16,7 +16,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-public class PromotionServiceImpl implements PromotionService {
+public class PromotionServiceImpl implements IPromotionService {
 
     private final PromotionRepository promotionRepository;
     private final PromotionMapper promotionMapper;

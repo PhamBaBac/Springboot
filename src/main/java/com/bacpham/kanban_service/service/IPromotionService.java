@@ -4,9 +4,8 @@ import com.bacpham.kanban_service.dto.request.PromotionRequest;
 import com.bacpham.kanban_service.dto.response.PromotionResponse;
 
 import java.util.List;
-import java.util.UUID;
 
-public interface PromotionService {
+public interface IPromotionService {
 
     PromotionResponse createPromotion(PromotionRequest request);
 

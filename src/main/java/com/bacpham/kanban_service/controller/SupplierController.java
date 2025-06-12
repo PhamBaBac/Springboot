@@ -6,7 +6,7 @@ import com.bacpham.kanban_service.dto.request.SupplierFormDTO;
 import com.bacpham.kanban_service.dto.request.SupplierRequest;
 import com.bacpham.kanban_service.dto.response.PageResponse;
 import com.bacpham.kanban_service.dto.response.SupplierResponse;
-import com.bacpham.kanban_service.service.SupplierService;
+import com.bacpham.kanban_service.service.impl.SupplierServiceImpl;
 import com.bacpham.kanban_service.utils.excel.BaseExport;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -29,7 +29,7 @@ import java.util.List;
 @Slf4j
 @PreAuthorize("hasRole('ADMIN')")
 public class SupplierController {
-     SupplierService supplierService;
+     SupplierServiceImpl supplierService;
 
     @GetMapping("/get-form")
     public SupplierFormDTO getSupplierForm() {
