@@ -8,6 +8,7 @@ import com.bacpham.kanban_service.dto.request.VerificationRequest;
 import com.bacpham.kanban_service.dto.response.AuthenticationResponse;
 import com.bacpham.kanban_service.dto.response.UserResponse;
 import com.bacpham.kanban_service.entity.User;
+import com.bacpham.kanban_service.enums.Role;
 import com.bacpham.kanban_service.helper.exception.AppException;
 import com.bacpham.kanban_service.helper.exception.ErrorCode;
 import com.bacpham.kanban_service.mapper.UserMapper;
@@ -56,8 +57,8 @@ public class AuthenticationService {
     public AuthenticationResponse register(RegisterRequest request , HttpServletResponse response) {
 
         var user = User.builder()
-                .firstname(request.getFirstname())
-                .lastname(request.getLastname())
+                .firstname(request.getFirstName())
+                .lastname(request.getLastName())
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .role(request.getRole())
@@ -84,6 +85,12 @@ public class AuthenticationService {
                 .build();
          response.setHeader(HttpHeaders.SET_COOKIE, cookie.toString());
         log.info("User registered: {}", savedUser.getEmail());
+        if (savedUser.getRole() == Role.USER) {
+            return AuthenticationResponse.builder()
+                    .accessToken(accessToken)
+                    .userId(savedUser.getId())
+                    .build();
+        }
         return AuthenticationResponse.builder()
                 .secretImageUri(tfaService.generateQrCodeImageUri(user.getSecret()))
                 .accessToken(accessToken)
@@ -133,6 +140,13 @@ public class AuthenticationService {
         } else {
             redisService.set("refreshToken:" + user.getId(), refreshTokenOld);
             redisService.setTimeToLive("refreshToken:" + user.getId(), 7, TimeUnit.DAYS);
+        }
+
+        if(user.getRole() == Role.USER) {
+            return AuthenticationResponse.builder()
+                    .accessToken(accessToken)
+                    .userId(user.getId())
+                    .build();
         }
 
         return AuthenticationResponse.builder()
@@ -255,10 +269,6 @@ public class AuthenticationService {
     public void sendCodeEmail(String email) throws MessagingException {
         User user = repository.findByEmail(email)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
-
-        if(!user.isMfaEnabled()){
-           throw new AppException(ErrorCode.TFA_NOT_ENABLED);
-        }
 
         var code = String.format("%06d", (int) (Math.random() * 1000000));
 

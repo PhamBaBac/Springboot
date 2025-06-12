@@ -34,7 +34,7 @@ public class CategoryController {
                 .build();
     }
 
-    @GetMapping
+    @GetMapping("/all")
     ApiResponse<List<CategoryResponse>> getCategory() {
         return ApiResponse.<List<CategoryResponse>>builder()
                 .result(categoryService.getCategories())

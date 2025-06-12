@@ -98,7 +98,6 @@ public class ProductService {
 
     }
 
-    //get product by id
     public ProductResponse getProductById(String id) {
         return productRepository.findById(id)
                 .map(productMapper::toProductResponse)

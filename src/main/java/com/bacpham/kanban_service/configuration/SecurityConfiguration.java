@@ -40,6 +40,7 @@ public class SecurityConfiguration {
 
     private static final String[] WHITE_LIST_URL = {
             "/api/v1/auth/**",
+            "/api/v1/categories/all",
             "/oauth2/**",
             "/login/oauth2/**",
             "/v2/api-docs",
@@ -80,7 +81,7 @@ public class SecurityConfiguration {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:5173")); // hoặc FE domain thực tế
+        configuration.setAllowedOrigins(List.of("http://localhost:5173","http://localhost:3004")); // hoặc FE domain thực tế
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);

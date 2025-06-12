@@ -25,8 +25,8 @@ public class KanbanServiceApplication {
 		return args -> {
 			if (userRepository.findByEmail("admin@mail.com").isEmpty()) {
 				var admin = RegisterRequest.builder()
-						.firstname("Admin")
-						.lastname("Admin")
+						.firstName("Admin")
+						.lastName("Admin")
 						.email("admin@mail.com")
 						.password("password")
 						.role(ADMIN)
@@ -35,8 +35,8 @@ public class KanbanServiceApplication {
 
 			if (userRepository.findByEmail("manager@mail.com").isEmpty()) {
 				var manager = RegisterRequest.builder()
-						.firstname("Manager")
-						.lastname("Manager")
+						.firstName("Manager")
+						.lastName("Manager")
 						.email("manager@mail.com")
 						.password("password")
 						.role(MANAGER)
