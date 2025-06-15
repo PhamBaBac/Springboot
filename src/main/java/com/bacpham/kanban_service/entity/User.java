@@ -3,13 +3,7 @@ package com.bacpham.kanban_service.entity;
 import com.bacpham.kanban_service.enums.Provider;
 import com.bacpham.kanban_service.enums.Role;
 import com.bacpham.kanban_service.helper.base.model.BaseModel;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.Id;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 
 import java.util.Collection;
 import java.util.List;
@@ -42,6 +36,9 @@ public class User extends BaseModel implements UserDetails {
     private Provider provider;
 
     private String providerId;
+    @OneToMany(mappedBy = "createdBy", cascade = CascadeType.ALL)
+    List<Cart> cartItems;
+
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {

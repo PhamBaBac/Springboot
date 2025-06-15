@@ -29,7 +29,10 @@ public enum ErrorCode {
     WRONG_PASSWORD(1016, "Wrong password", HttpStatus.BAD_REQUEST),
     PASSWORDS_NOT_MATCH(1017, "Passwords do not match", HttpStatus.BAD_REQUEST),
 
-    PROMOTION_NOT_FOUnD(1018, "Promotion not found" , HttpStatus.NOT_FOUND);
+    PROMOTION_NOT_FOUND(1018, "Promotion not found" , HttpStatus.NOT_FOUND),
+    PRODUCT_SLUG_NOT_MATCH(1019, "Product slug does not match", HttpStatus.BAD_REQUEST),
+    CART_NOT_FOUND(1020, "Cart not found", HttpStatus.NOT_FOUND),
+    INSUFFICIENT_STOCK(1021,"In sufficient stock" ,HttpStatus.BAD_REQUEST );
 
     ErrorCode(int code, String message, HttpStatusCode statusCode) {
         this.code = code;

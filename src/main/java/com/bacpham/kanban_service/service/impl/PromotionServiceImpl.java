@@ -34,17 +34,17 @@ public class PromotionServiceImpl implements IPromotionService {
     @Override
     public PromotionResponse updatePromotion(String id, PromotionRequest request) {
         Promotion promotion = promotionRepository.findById(id)
-                .orElseThrow(() -> new AppException(ErrorCode.PROMOTION_NOT_FOUnD));
+                .orElseThrow(() -> new AppException(ErrorCode.PROMOTION_NOT_FOUND));
 
-//        promotionMapper.updatePromotionFromRequest(request, promotion);
-//        promotion = promotionRepository.save(promotion);
+        promotionMapper.updatePromotionFromRequest(request, promotion);
+        promotion = promotionRepository.save(promotion);
         return promotionMapper.toResponse(promotion);
     }
 
     @Override
     public PromotionResponse getPromotionById(String id) {
         Promotion promotion = promotionRepository.findById(id)
-                .orElseThrow(() -> new AppException(ErrorCode.PROMOTION_NOT_FOUnD));
+                .orElseThrow(() -> new AppException(ErrorCode.PROMOTION_NOT_FOUND));
         return promotionMapper.toResponse(promotion);
     }
 
@@ -58,7 +58,7 @@ public class PromotionServiceImpl implements IPromotionService {
     @Override
     public void deletePromotion(String id) {
         if (!promotionRepository.existsById(id)) {
-            throw new AppException(ErrorCode.PROMOTION_NOT_FOUnD);
+            throw new AppException(ErrorCode.PROMOTION_NOT_FOUND);
         }
         promotionRepository.deleteById(id);
     }

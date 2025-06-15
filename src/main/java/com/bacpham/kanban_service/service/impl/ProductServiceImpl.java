@@ -99,10 +99,12 @@ public class ProductServiceImpl implements IProductService {
 
     }
 
-    public ProductResponse getProductById(String id) {
-        return productRepository.findById(id)
-                .map(productMapper::toProductResponse)
-                .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_FOUND));
+    public ProductResponse getProductById(String slug, String id) {
+log.info("Retrieving product with id: {}", id);
+        Product product = productRepository.findById(id).orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_FOUND));
+        return productMapper.toProductResponse(product);
+
+
     }
 
     public ProductResponse updateProduct(String id, ProductCreationRequest request) {

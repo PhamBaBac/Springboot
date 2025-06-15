@@ -43,9 +43,7 @@ public class GeminiService {
         return reply;
     }
 
-    /**
-     * Gửi một prompt dạng văn bản và hình ảnh đến Gemini.
-     */
+
     public String generateContent(String textPrompt, MultipartFile imageFile) throws IOException {
         log.info("Sending prompt '{}' and image '{}' to Gemini", textPrompt, imageFile.getOriginalFilename());
 
@@ -65,8 +63,6 @@ public class GeminiService {
         log.info("Gemini multimodal reply: {}", reply);
         return reply;
     }
-
-    // Phương thức private để tránh lặp code khi gọi API
     private ResponseEntity<GeminiResponse> sendRequestToGemini(String url, Object requestBody) {
         return restClient.post()
                 .uri(uriBuilder -> uriBuilder
@@ -79,7 +75,6 @@ public class GeminiService {
                 .toEntity(GeminiResponse.class);
     }
 
-    // Phương thức private để tránh lặp code khi xử lý response
     private String extractTextFromResponse(ResponseEntity<GeminiResponse> responseEntity) {
         return responseEntity.getBody() != null ?
                 responseEntity.getBody().getFirstCandidateText().orElse("No response text found.") :

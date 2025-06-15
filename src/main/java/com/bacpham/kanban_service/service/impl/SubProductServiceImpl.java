@@ -102,4 +102,8 @@ public class SubProductServiceImpl implements ISubProductService {
                 .map(subProductMapper::toSubProductResponse)
                 .collect(Collectors.toList());
     }
+    public SubProduct findById(String subProductId) {
+        return subProductRepository.findById(subProductId)
+                .orElseThrow(() -> new AppException(ErrorCode.SUB_PRODUCT_NOT_FOUND));
+    }
 }

@@ -4,6 +4,8 @@ import com.bacpham.kanban_service.dto.request.*;
 import com.bacpham.kanban_service.dto.response.AuthenticationResponse;
 import com.bacpham.kanban_service.dto.response.UserResponse;
 import com.bacpham.kanban_service.service.impl.AuthenticationServiceImpl;
+import com.bacpham.kanban_service.service.impl.CartServiceImpl;
+import com.bacpham.kanban_service.service.impl.RedisCartServiceImpl;
 import jakarta.mail.MessagingException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -22,6 +24,7 @@ import java.io.IOException;
 public class AuthenticationController {
 
     private final AuthenticationServiceImpl service;
+    private final RedisCartServiceImpl redisCartService;
 
     @PostMapping("/register")
     public ApiResponse<AuthenticationResponse> register(
@@ -53,10 +56,14 @@ public class AuthenticationController {
     @PostMapping("/authenticate")
     public ResponseEntity<ApiResponse<?>> authenticate(
             @RequestBody AuthenticationRequest request,
+            @RequestHeader(value = "X-Session-Id", required = false) String sessionId,
             HttpServletResponse response
     ) {
-        AuthenticationResponse authResponse = service.authenticate(request, response); //
 
+        AuthenticationResponse authResponse = service.authenticate(request, response); //
+        if (sessionId != null) {
+            redisCartService.syncToDatabase(sessionId, authResponse.getUserId());
+        }
         return ResponseEntity.ok(
                 ApiResponse.builder()
                         .message("Authentication successful")

@@ -16,7 +16,7 @@ public interface IProductService {
 
     void deleteProduct(String id);
 
-    ProductResponse getProductById(String id);
+    ProductResponse getProductById(String slug, String id);
 
     ProductResponse updateProduct(String id, ProductCreationRequest request);
 

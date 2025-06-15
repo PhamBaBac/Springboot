@@ -26,7 +26,6 @@ import java.util.List;
 @RequiredArgsConstructor
 @FieldDefaults(makeFinal = true, level = lombok.AccessLevel.PRIVATE)
 @Slf4j
-@SecurityRequirement(name = "bearerAuth")
 public class ProductController {
     ProductServiceImpl productService;
     UserActivityService userActivityService;
@@ -66,12 +65,13 @@ public class ProductController {
         return ApiResponse.<Void>builder().build();
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/{slug}/{id}")
     ApiResponse<ProductResponse> getProduct(
+            @PathVariable String slug,
             @PathVariable String id,
             @AuthenticationPrincipal User currentUser
     ) {
-        ProductResponse productResponse = productService.getProductById(id);
+        ProductResponse productResponse = productService.getProductById(slug, id);
 
 
         if (currentUser != null) {

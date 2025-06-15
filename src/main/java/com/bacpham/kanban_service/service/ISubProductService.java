@@ -2,6 +2,7 @@ package com.bacpham.kanban_service.service;
 
 import com.bacpham.kanban_service.dto.request.SubProductCreationRequest;
 import com.bacpham.kanban_service.dto.response.SubProductResponse;
+import com.bacpham.kanban_service.entity.SubProduct;
 
 import java.util.List;
 import java.util.Map;
@@ -12,4 +13,6 @@ public interface ISubProductService {
     void delete(String id);
     SubProductResponse updateSubProduct(SubProductCreationRequest request);
     List<SubProductResponse> getAllSubProduct(String id);
+
+    SubProduct findById(String subProductId);
 }
