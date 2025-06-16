@@ -3,6 +3,7 @@ package com.bacpham.kanban_service.configuration.redis;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.HashOperations;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -78,5 +79,8 @@ public class GenericRedisService<K, F, V> {
         for (F field : fields) {
             hashOperations.delete(key, field);
         }
+    }
+    public <R> R executeLuaScript(RedisScript<R> script, List<K> keys, List<?> args) {
+        return redisTemplate.execute(script, keys, args.toArray());
     }
 }

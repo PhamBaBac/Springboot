@@ -32,7 +32,11 @@ public enum ErrorCode {
     PROMOTION_NOT_FOUND(1018, "Promotion not found" , HttpStatus.NOT_FOUND),
     PRODUCT_SLUG_NOT_MATCH(1019, "Product slug does not match", HttpStatus.BAD_REQUEST),
     CART_NOT_FOUND(1020, "Cart not found", HttpStatus.NOT_FOUND),
-    INSUFFICIENT_STOCK(1021,"In sufficient stock" ,HttpStatus.BAD_REQUEST );
+    INSUFFICIENT_STOCK(1021,"In sufficient stock" ,HttpStatus.BAD_REQUEST ),
+    PROMOTION_ALREADY_USED(1022, "Promotion already used", HttpStatus.BAD_REQUEST),
+    PROMOTION_OUT_OF_STOCK(1023, "Promotion out of stock", HttpStatus.BAD_REQUEST),
+    PROMOTION_EXPIRED(1024, "Promotion expired", HttpStatus.BAD_REQUEST),
+    UNKNOWN(1024, "unknown", HttpStatus.INTERNAL_SERVER_ERROR );
 
     ErrorCode(int code, String message, HttpStatusCode statusCode) {
         this.code = code;

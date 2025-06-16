@@ -1,6 +1,7 @@
 package com.bacpham.kanban_service.controller;
 
 import com.bacpham.kanban_service.dto.request.ApiResponse;
+import com.bacpham.kanban_service.dto.request.ApplyPromotionRequest;
 import com.bacpham.kanban_service.dto.request.PromotionRequest;
 import com.bacpham.kanban_service.dto.response.PromotionResponse;
 import com.bacpham.kanban_service.service.impl.PromotionServiceImpl;
@@ -63,4 +64,26 @@ public class PromotionController {
         promotionService.deletePromotion(id);
         return ApiResponse.<Void>builder().message("Deleted successfully").build();
     }
+    @GetMapping("/validate")
+    public ApiResponse<Boolean> validatePromotion(@RequestParam String code) {
+        boolean isValid = promotionService.isPromotionValid(code);
+        return ApiResponse.<Boolean>builder()
+                .result(isValid)
+                .message(isValid ? "Valid promotion" : "Invalid or expired promotion")
+                .build();
+    }
+
+    @PostMapping("/apply")
+    public ApiResponse<Boolean> applyPromotion(
+            @RequestBody ApplyPromotionRequest request
+    ) {
+        String userId = request.getUserId();
+        String code = request.getCode();
+        boolean applied = promotionService.applyPromotionCode(userId, code);
+        return ApiResponse.<Boolean>builder()
+                .result(applied)
+                .message(applied ? "Promotion applied successfully" : "Promotion already used")
+                .build();
+    }
+
 }
