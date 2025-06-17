@@ -1,4 +1,4 @@
-package com.bacpham.kanban_service.configuration;
+package com.bacpham.kanban_service.configuration.security;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;

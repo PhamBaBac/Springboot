@@ -1,6 +1,6 @@
 package com.bacpham.kanban_service.service.impl;
 
-import com.bacpham.kanban_service.configuration.JwtService;
+import com.bacpham.kanban_service.configuration.security.JwtService;
 import com.bacpham.kanban_service.configuration.redis.GenericRedisService;
 import com.bacpham.kanban_service.dto.request.AuthenticationRequest;
 import com.bacpham.kanban_service.dto.request.RegisterRequest;

@@ -1,4 +1,4 @@
-package com.bacpham.kanban_service.configuration;
+package com.bacpham.kanban_service.configuration.security;
 
 import com.bacpham.kanban_service.configuration.redis.GenericRedisService;
 import com.bacpham.kanban_service.entity.User;
