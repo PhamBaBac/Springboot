@@ -14,9 +14,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
+import java.util.Collections;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -132,6 +135,18 @@ public class AuthenticationController {
         return ApiResponse.<String>builder()
                 .message("Secret image retrieved successfully")
                 .result(secretImage)
+                .build();
+    }
+
+    @GetMapping("/user")
+    public Map<String, Object> user(@AuthenticationPrincipal OAuth2User principal) {
+        return Collections.singletonMap("name", principal.getAttribute("name"));
+    }
+    @GetMapping("/failure")
+    public ApiResponse<?> fail() {
+        return ApiResponse.builder()
+                .code(400)
+                .message("Authentication failed")
                 .build();
     }
 

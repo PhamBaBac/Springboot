@@ -2,6 +2,19 @@ server:
   port: 8080
 
 spring:
+  security:
+    oauth2:
+      client:
+        registration:
+          github:
+            clientId: ${GITHUB_CLIENT_ID}
+            clientSecret: ${GITHUB_CLIENT_SECRET}
+            redirectUri: http://localhost:8080/login/oauth2/code/github
+          google:
+            client-id: ${GOOGLE_CLIENT_ID}
+            client-secret: ${GOOGLE_CLIENT_SECRET}
+            redirect-uri: http://localhost:8080/login/oauth2/code/google
+
   mail:
     host: smtp.gmail.com
     port: 587
@@ -46,6 +59,8 @@ spring:
           model: gemini-2.0-flash
 
 application:
+  oauth2:
+    authorized-redirect-uri: http://localhost:5173/oauth-callback
   security:
     jwt:
       secret-key: ${SECRET_KEY}
@@ -53,3 +68,6 @@ application:
 
       refresh-token:
         expiration: 604800000
+logging:
+  level:
+    org.springframework.security: DEBUG

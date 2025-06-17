@@ -108,7 +108,7 @@ public class AuthenticationServiceImpl implements IAuthenticationService {
                 )
         );
         var user = repository.findByEmail(request.getEmail())
-                .orElseThrow();
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
         if (user.isMfaEnabled()) {
             return AuthenticationResponse.builder()
                     .accessToken("")
@@ -313,7 +313,6 @@ public class AuthenticationServiceImpl implements IAuthenticationService {
             var user = repository.findByEmail(userEmail)
                     .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
-            // Xóa token khỏi Redis
             redisService.delete("accessToken:" + user.getId());
             redisService.delete("refreshToken:" + user.getId());
 
