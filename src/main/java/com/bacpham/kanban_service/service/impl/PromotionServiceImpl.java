@@ -61,6 +61,11 @@ public class PromotionServiceImpl implements IPromotionService {
 
         return promotionMapper.toResponse(saved);
     }
+    @Override public PromotionResponse getPromotionByNameCode(String code) {
+        Promotion promotion = promotionRepository.findByCode(code)
+                .orElseThrow(() -> new AppException(ErrorCode.PROMOTION_NOT_FOUND));
+        return promotionMapper.toResponse(promotion);
+    }
 
     @Override
     public PromotionResponse updatePromotion(String id, PromotionRequest request) {

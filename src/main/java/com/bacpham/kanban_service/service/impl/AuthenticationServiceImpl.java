@@ -25,6 +25,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -32,20 +33,19 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
 import java.time.Duration;
-import java.util.concurrent.TimeUnit;
-
-import org.springframework.http.MediaType;
 import java.util.Arrays;
 import java.util.Optional;
-
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuthenticationServiceImpl implements IAuthenticationService {
+
     private final UserRepository repository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
@@ -53,156 +53,110 @@ public class AuthenticationServiceImpl implements IAuthenticationService {
     private final UserMapper userMapper;
     private final TwoFactorAuthenticationService tfaService;
     private final EmailService emailService;
-  private final GenericRedisService<String, String, String> redisService;
+    private final GenericRedisService<String, String, String> redisService;
 
-    public AuthenticationResponse register(RegisterRequest request , HttpServletResponse response) {
-
-        var user = User.builder()
-                .firstname(request.getFirstName())
-                .lastname(request.getLastName())
-                .email(request.getEmail())
-                .password(passwordEncoder.encode(request.getPassword()))
-                .role(request.getRole())
-                .mfaEnabled(request.isMfaEnabled())
-                .build();
-        if(request.isMfaEnabled()) {
-            user.setSecret(tfaService.generateNewSecret());
+    @Override
+    public void register(RegisterRequest request) {
+        Optional<User> existingUser = repository.findByEmail(request.getEmail());
+        if (existingUser.isPresent()) {
+            throw new AppException(ErrorCode.USER_ALREADY_EXISTS);
         }
-        var savedUser = repository.save(user);
-        var accessToken = jwtService.generateAccessToken(user);
-        redisService.set("accessToken:" + savedUser.getId(), accessToken);
-        redisService.setTimeToLive("accessToken:" + savedUser.getId(),1, TimeUnit.DAYS);
 
-        var refreshToken = jwtService.generateRefreshToken(user);
-        redisService.set("refreshToken:" + savedUser.getId(), refreshToken);
-        redisService.setTimeToLive("refreshToken:" + savedUser.getId(),7, TimeUnit.DAYS);
+        try {
+            // Serialize request vào JSON và lưu vào Redis
+            String json = new ObjectMapper().writeValueAsString(request);
+            redisService.set("register:" + request.getEmail(), json);
+            redisService.setTimeToLive("register:" + request.getEmail(), 10, TimeUnit.MINUTES);
 
-        ResponseCookie cookie = ResponseCookie.from("refreshToken", refreshToken)
-                .httpOnly(true)
-                .secure(false)
-                .path("/")
-                .maxAge(Duration.ofDays(7)) // 7 days
-                .sameSite("Lax")
-                .build();
-         response.setHeader(HttpHeaders.SET_COOKIE, cookie.toString());
-        log.info("User registered: {}", savedUser.getEmail());
-        if (savedUser.getRole() == Role.USER) {
-            return AuthenticationResponse.builder()
-                    .accessToken(accessToken)
-                    .userId(savedUser.getId())
-                    .build();
+            // Gửi code xác thực đến email
+            String code = String.format("%06d", (int) (Math.random() * 1_000_000));
+            emailService.sendVerificationCodeEmail(request.getEmail(), code);
+            redisService.set("code:" + request.getEmail(), code);
+            redisService.setTimeToLive("code:" + request.getEmail(), 5, TimeUnit.MINUTES);
+        } catch (Exception e) {
+            throw new AppException(ErrorCode.UNCATEGORIZED);
         }
-        return AuthenticationResponse.builder()
-                .secretImageUri(tfaService.generateQrCodeImageUri(user.getSecret()))
-                .accessToken(accessToken)
-                .refreshToken(refreshToken)
-                .mfaEnabled(user.isMfaEnabled())
-                .build();
     }
 
+
+    @Override
     public AuthenticationResponse authenticate(AuthenticationRequest request, HttpServletResponse response) {
         authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        request.getEmail(),
-                        request.getPassword()
-                )
+                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
         );
-        var user = repository.findByEmail(request.getEmail())
+
+        User user = repository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
         if (user.isMfaEnabled()) {
             return AuthenticationResponse.builder()
-                    .accessToken("")
-                    .refreshToken("")
                     .mfaEnabled(true)
                     .build();
         }
 
-
-        String accessToken = jwtService.generateAccessToken(user);
-        redisService.set("accessToken:" + user.getId(), accessToken);
-        redisService.setTimeToLive("accessToken:" + user.getId(), 1, TimeUnit.DAYS);
-
-        String refreshTokenOld = redisService.get("refreshToken:" + user.getId());
-        if (refreshTokenOld == null) {
-            String refreshToken = jwtService.generateRefreshToken(user);
-            redisService.set("refreshToken:" + user.getId(), refreshToken);
-            redisService.setTimeToLive("refreshToken:" + user.getId(), 7, TimeUnit.DAYS);
-
-            ResponseCookie cookie = ResponseCookie.from("refreshToken", refreshToken)
-                    .httpOnly(true)
-                    .secure(false)
-                    .path("/")
-                    .maxAge(Duration.ofDays(7)) // 7 days
-                    .sameSite("Lax")
-                    .build();
-
-            response.setHeader(HttpHeaders.SET_COOKIE, cookie.toString());
-
-        } else {
-            redisService.set("refreshToken:" + user.getId(), refreshTokenOld);
-            redisService.setTimeToLive("refreshToken:" + user.getId(), 7, TimeUnit.DAYS);
-        }
-
-        if(user.getRole() == Role.USER) {
-            return AuthenticationResponse.builder()
-                    .accessToken(accessToken)
-                    .userId(user.getId())
-                    .build();
-        }
+        String accessToken = createAndStoreAccessToken(user);
+        createOrRenewRefreshToken(user, response);
 
         return AuthenticationResponse.builder()
                 .accessToken(accessToken)
+                .userId(user.getId())
                 .mfaEnabled(false)
                 .build();
     }
 
+    @Override
+    @Transactional
+    public AuthenticationResponse verifyCode(VerificationRequest request, HttpServletResponse response) {
+        log.info("Verification request: {}", request);
+        User user = repository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + request.getEmail()));
 
+        if (tfaService.isOtpNotValid(user.getSecret(), request.getCode())) {
+            throw new BadCredentialsException("Code is not valid");
+        }
+
+        if (!user.isMfaEnabled()) {
+            user.setMfaEnabled(true);
+            repository.save(user);
+        }
+
+        String accessToken = createAndStoreAccessToken(user);
+        createOrRenewRefreshToken(user, response);
+
+        return AuthenticationResponse.builder()
+                .accessToken(accessToken)
+                .userId(user.getId())
+                .mfaEnabled(true)
+                .build();
+    }
+
+    @Override
     public void refreshToken(HttpServletRequest request, HttpServletResponse response) throws IOException {
-        String userEmail = null;
-        String refreshToken = Arrays.stream(Optional.ofNullable(request.getCookies()).orElse(new Cookie[0]))
-                .filter(c -> c.getName().equals("refreshToken") || c.getName().equals("refresh_token"))
-                .findFirst()
-                .map(Cookie::getValue)
-                .orElse(null);
-
+        String refreshToken = extractRefreshTokenFromCookie(request);
         if (refreshToken == null) {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.getWriter().write("{\"error\": \"Missing refresh token\"}");
+            writeErrorResponse(response, "Missing refresh token", HttpServletResponse.SC_UNAUTHORIZED);
             return;
         }
 
         try {
-            userEmail = jwtService.extractUsername(refreshToken);
-            boolean isRefreshToken = jwtService.extractTokenType(refreshToken).equals("refresh");
+            String email = jwtService.extractUsername(refreshToken);
+            boolean isRefresh = "refresh".equals(jwtService.extractTokenType(refreshToken));
 
-            if (!isRefreshToken) {
-                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                response.getWriter().write("{\"error\": \"Invalid token type\"}");
+            if (!isRefresh || jwtService.isTokenExpired(refreshToken)) {
+                writeErrorResponse(response, "Invalid or expired refresh token", HttpServletResponse.SC_UNAUTHORIZED);
                 return;
             }
 
-            var user = repository.findByEmail(userEmail)
+            User user = repository.findByEmail(email)
                     .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
             if (!jwtService.isTokenValid(refreshToken, user, "refresh")) {
-                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                response.getWriter().write("{\"error\": \"Invalid refresh token\"}");
+                writeErrorResponse(response, "Invalid refresh token", HttpServletResponse.SC_UNAUTHORIZED);
                 return;
             }
 
-            // Nếu token đã hết hạn thì từ chối luôn
-            if (jwtService.isTokenExpired(refreshToken)) {
-                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                response.getWriter().write("{\"error\": \"Refresh token expired\"}");
-                return;
-            }
-
-            // Hợp lệ, tạo access token mới
-            var accessToken = jwtService.generateAccessToken(user);
-            redisService.set("accessToken:" + user.getId(), accessToken);
-            redisService.setTimeToLive("accessToken:" + user.getId(), 2, TimeUnit.MINUTES);
-
-            var authResponse = AuthenticationResponse.builder()
+            String accessToken = createAndStoreAccessToken(user);
+            AuthenticationResponse authResponse = AuthenticationResponse.builder()
                     .accessToken(accessToken)
                     .mfaEnabled(user.isMfaEnabled())
                     .build();
@@ -211,112 +165,28 @@ public class AuthenticationServiceImpl implements IAuthenticationService {
             new ObjectMapper().writeValue(response.getOutputStream(), authResponse);
 
         } catch (ExpiredJwtException e) {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.getWriter().write("{\"error\": \"Refresh token expired\"}");
+            writeErrorResponse(response, "Refresh token expired", HttpServletResponse.SC_UNAUTHORIZED);
         } catch (Exception e) {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.getWriter().write("{\"error\": \"" + e.getMessage() + "\"}");
+            writeErrorResponse(response, e.getMessage(), HttpServletResponse.SC_UNAUTHORIZED);
         }
     }
 
-
-    public UserResponse getUserByEmail(String email) {
-        return repository.findByEmail(email)
-                .map(userMapper::toUserResponse)
-                .orElse(null);
-    }
-
-    public AuthenticationResponse verifyCode(VerificationRequest verificationRequest, HttpServletResponse response) {
-        User user = repository.findByEmail(verificationRequest.getEmail())
-                .orElseThrow(() -> new UsernameNotFoundException(String.format("User %s not found", verificationRequest.getEmail())));
-
-        if(tfaService.isOtpNotValid(user.getSecret(), verificationRequest.getCode())) {
-            throw new BadCredentialsException("Code is not valid");
-        }
-
-        String accessToken = jwtService.generateAccessToken(user);
-        redisService.set("accessToken:" + user.getId(), accessToken);
-        redisService.setTimeToLive("accessToken:" + user.getId(), 1, TimeUnit.DAYS);
-
-        String refreshTokenOld = redisService.get("refreshToken:" + user.getId());
-        if (refreshTokenOld == null) {
-            String refreshToken = jwtService.generateRefreshToken(user);
-            redisService.set("refreshToken:" + user.getId(), refreshToken);
-            redisService.setTimeToLive("refreshToken:" + user.getId(), 7, TimeUnit.DAYS);
-
-            ResponseCookie cookie = ResponseCookie.from("refreshToken", refreshToken)
-                    .httpOnly(true)
-                    .secure(false)
-                    .path("/")
-                    .maxAge(Duration.ofDays(7)) // 7 days
-                    .sameSite("Lax")
-                    .build();
-
-            response.setHeader(HttpHeaders.SET_COOKIE, cookie.toString());
-
-        } else {
-            redisService.set("refreshToken:" + user.getId(), refreshTokenOld);
-            redisService.setTimeToLive("refreshToken:" + user.getId(), 7, TimeUnit.DAYS);
-        }
-
-
-
-        return AuthenticationResponse.builder()
-                .accessToken(accessToken)
-                .mfaEnabled(user.isMfaEnabled())
-                .build();
-
-    }
-    public void sendCodeEmail(String email) throws MessagingException {
-        User user = repository.findByEmail(email)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
-
-        var code = String.format("%06d", (int) (Math.random() * 1000000));
-
-        emailService.sendVerificationCodeEmail(email, code);
-
-        redisService.set("code" + user.getId(), code);
-        redisService.setTimeToLive("code" + user.getId(), 5, TimeUnit.MINUTES);
-
-    }
-    public String updateSecret(String email) {
-        log.info("email: {}", email);
-        User user = repository.findByEmail(email)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
-
-        if(!user.isMfaEnabled()){
-            throw new AppException(ErrorCode.TFA_NOT_ENABLED);
-        }
-
-        String newSecret = tfaService.generateNewSecret();
-        user.setSecret(newSecret);
-        repository.save(user);
-
-        return tfaService.generateQrCodeImageUri(newSecret);
-    }
-
-    public void logout(HttpServletRequest request, HttpServletResponse response)  throws IOException {
-        String userEmail = null;
-        String accessToken = request.getHeader("Authorization");
-        if (accessToken != null && accessToken.startsWith("Bearer ")) {
-            accessToken = accessToken.substring(7);
-        }
-
-
-        if (accessToken == null) {
+    @Override
+    public void logout(HttpServletRequest request, HttpServletResponse response) {
+        String token = extractTokenFromHeader(request);
+        if (token == null) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             return;
         }
 
         try {
-            userEmail = jwtService.extractUsername(accessToken);
-            var user = repository.findByEmail(userEmail)
+            String email = jwtService.extractUsername(token);
+            User user = repository.findByEmail(email)
                     .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
             redisService.delete("accessToken:" + user.getId());
             redisService.delete("refreshToken:" + user.getId());
 
-            // Xóa cookie
             Cookie cookie = new Cookie("refreshToken", null);
             cookie.setMaxAge(0);
             cookie.setPath("/");
@@ -327,16 +197,160 @@ public class AuthenticationServiceImpl implements IAuthenticationService {
         }
     }
 
-    public void verifyCodeEmail(VerificationRequest request) {
-        User user = repository.findByEmail(request.getEmail())
+    @Override
+    public void sendCodeEmail(String email) throws MessagingException {
+        String userDataJson = redisService.get("register:" + email);
+
+        User user = repository.findByEmail(email)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
-        String storedCode = redisService.get("code" + user.getId());
-        if (storedCode == null || !storedCode.equals(request.getCode())) {
-            throw new BadCredentialsException("Invalid verification code");
+
+        if (userDataJson == null && user.getEmail() == null) {
+            throw new AppException(ErrorCode.USER_NOT_FOUND); // hoặc ErrorCode.USER_NOT_REGISTERED
         }
 
-        // Xóa mã đã sử dụng
-        redisService.delete("code" + user.getId());
+        String code = String.format("%06d", (int) (Math.random() * 1_000_000));
+
+        emailService.sendVerificationCodeEmail(email, code);
+
+        redisService.set("code:" + email, code);
+        redisService.setTimeToLive("code:" + email, 5, TimeUnit.MINUTES);
+    }
+
+
+    @Override
+    @Transactional
+    public AuthenticationResponse verifyCodeEmail(VerificationRequest request, HttpServletResponse response) {
+        log.info("Verifying code for code: {}", request.getCode());
+
+        String redisCodeKey = "code:" + request.getEmail();
+        String redisRegisterKey = "register:" + request.getEmail();
+
+        String codeInRedis = redisService.get(redisCodeKey);
+        log.info("Verifying code from Redis: {}", codeInRedis);
+
+        // Bước 1: Xác minh mã OTP
+        if (codeInRedis == null || !codeInRedis.equals(request.getCode())) {
+            throw new  AppException(ErrorCode.INVALID_VERIFICATION_CODE);
+        }
+
+        // Bước 2: Tìm user trong DB
+        Optional<User> optionalUser = repository.findByEmail(request.getEmail());
+
+        // Trường hợp 1: User đã tồn tại, xác thực xong thì login luôn
+        if (optionalUser.isPresent()) {
+            User existingUser = optionalUser.get();
+
+            // Xóa mã trong Redis sau khi dùng
+            redisService.delete(redisCodeKey);
+
+            String accessToken = createAndStoreAccessToken(existingUser);
+            createOrRenewRefreshToken(existingUser, response);
+
+            return AuthenticationResponse.builder()
+                    .accessToken(accessToken)
+                    .userId(existingUser.getId())
+                    .mfaEnabled(existingUser.isMfaEnabled())
+                    .build();
+        }
+
+        // Trường hợp 2: User chưa tồn tại → kiểm tra register info từ Redis
+        String registerJson = redisService.get(redisRegisterKey);
+
+        if (registerJson == null) {
+            // Không có dữ liệu để đăng ký => lỗi
+            throw new AppException(ErrorCode.USER_NOT_FOUND);
+        }
+
+        try {
+            RegisterRequest registerRequest = new ObjectMapper().readValue(registerJson, RegisterRequest.class);
+
+            User newUser = buildUserFromRequest(registerRequest);
+
+            if (registerRequest.isMfaEnabled()) {
+                newUser.setSecret(tfaService.generateNewSecret());
+            }
+
+            User savedUser = repository.save(newUser);
+
+            // Dọn dẹp Redis sau khi tạo tài khoản thành công
+            redisService.delete(redisCodeKey);
+            redisService.delete(redisRegisterKey);
+
+            String accessToken = createAndStoreAccessToken(savedUser);
+            createOrRenewRefreshToken(savedUser, response);
+
+            return AuthenticationResponse.builder()
+                    .accessToken(accessToken)
+                    .userId(savedUser.getId())
+                    .mfaEnabled(savedUser.isMfaEnabled())
+                    .build();
+
+        } catch (IOException e) {
+            throw new AppException(ErrorCode.UNCATEGORIZED);
+        }
+    }
+
+
+    // =================== Helper Methods ===================
+
+    private User buildUserFromRequest(RegisterRequest request) {
+        return User.builder()
+                .firstname(request.getFirstName())
+                .lastname(request.getLastName())
+                .email(request.getEmail())
+                .password(passwordEncoder.encode(request.getPassword()))
+                .role(request.getRole())
+                .mfaEnabled(request.isMfaEnabled())
+                .build();
+    }
+
+    private String createAndStoreAccessToken(User user) {
+        String token = jwtService.generateAccessToken(user);
+        redisService.set("accessToken:" + user.getId(), token);
+        redisService.setTimeToLive("accessToken:" + user.getId(), 1, TimeUnit.DAYS);
+        return token;
+    }
+
+    private String createOrRenewRefreshToken(User user, HttpServletResponse response) {
+        String token = redisService.get("refreshToken:" + user.getId());
+
+        if (token == null) {
+            token = jwtService.generateRefreshToken(user);
+        }
+
+        redisService.set("refreshToken:" + user.getId(), token);
+        redisService.setTimeToLive("refreshToken:" + user.getId(), 7, TimeUnit.DAYS);
+
+        ResponseCookie cookie = ResponseCookie.from("refreshToken", token)
+                .httpOnly(true)
+                .secure(false)
+                .path("/")
+                .maxAge(Duration.ofDays(7))
+                .sameSite("Lax")
+                .build();
+        response.setHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+
+        return token;
+    }
+
+    private String extractRefreshTokenFromCookie(HttpServletRequest request) {
+        return Arrays.stream(Optional.ofNullable(request.getCookies()).orElse(new Cookie[0]))
+                .filter(c -> c.getName().equals("refreshToken") || c.getName().equals("refresh_token"))
+                .map(Cookie::getValue)
+                .findFirst()
+                .orElse(null);
+    }
+
+    private String extractTokenFromHeader(HttpServletRequest request) {
+        String authHeader = request.getHeader("Authorization");
+        return (authHeader != null && authHeader.startsWith("Bearer "))
+                ? authHeader.substring(7)
+                : null;
+    }
+
+    private void writeErrorResponse(HttpServletResponse response, String message, int statusCode) throws IOException {
+        response.setStatus(statusCode);
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        response.getWriter().write("{\"error\": \"" + message + "\"}");
     }
 }
-

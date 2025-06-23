@@ -36,7 +36,13 @@ public enum ErrorCode {
     PROMOTION_ALREADY_USED(1022, "Promotion already used", HttpStatus.BAD_REQUEST),
     PROMOTION_OUT_OF_STOCK(1023, "Promotion out of stock", HttpStatus.BAD_REQUEST),
     PROMOTION_EXPIRED(1024, "Promotion expired", HttpStatus.BAD_REQUEST),
-    UNKNOWN(1024, "unknown", HttpStatus.INTERNAL_SERVER_ERROR );
+    UNKNOWN(1025, "unknown", HttpStatus.INTERNAL_SERVER_ERROR ),
+    BILL_NOT_FOUND(1026,"Bill not found", HttpStatus.NOT_FOUND ),
+    INVALID_INPUT(1027,"Invalid input", HttpStatus.BAD_REQUEST),
+    MESSAGE_TOO_LONG(1028, "Message too long", HttpStatus.BAD_REQUEST),
+    CHAT_HISTORY_NOT_FOUND(1029, "Chat history not found", HttpStatus.NOT_FOUND),
+    INVALID_VERIFICATION_CODE(1030, "Invalid verification code", HttpStatus.BAD_REQUEST);
+
 
     ErrorCode(int code, String message, HttpStatusCode statusCode) {
         this.code = code;

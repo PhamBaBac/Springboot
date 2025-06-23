@@ -27,7 +27,7 @@ import java.util.List;
 @RequiredArgsConstructor
 @FieldDefaults(makeFinal = true, level = lombok.AccessLevel.PRIVATE)
 @Slf4j
-@PreAuthorize("hasRole('ADMIN')")
+//@PreAuthorize("hasRole('ADMIN')")
 public class SupplierController {
      SupplierServiceImpl supplierService;
 
@@ -55,7 +55,7 @@ public class SupplierController {
         return form;
     }
 
-    @PreAuthorize("hasAuthority('admin:create')")
+//    @PreAuthorize("hasAuthority('admin:create')")
      @PostMapping("/add-new")
      ApiResponse<SupplierResponse> createSupplier(@RequestBody @Validated SupplierRequest request) {
          return ApiResponse.<SupplierResponse>builder()
@@ -63,7 +63,7 @@ public class SupplierController {
                  .build();
      }
 
-     @PreAuthorize("hasAuthority('admin:read')")
+//     @PreAuthorize("hasAuthority('admin:read')")
     @GetMapping("/page")
     ApiResponse<PageResponse<SupplierResponse>> productPage(
             @RequestParam(value = "page", required = false, defaultValue = "1") int page,
@@ -116,5 +116,13 @@ public class SupplierController {
                         "categories", "price", "contact", "isTaking", "createdAt"
                 }, SupplierResponse.class)
                 .export(response);
+    }
+
+    @GetMapping("/{id}")
+    ApiResponse<SupplierResponse> getSupplierById(
+            @PathVariable String id) {
+        return ApiResponse.<SupplierResponse>builder()
+                .result(supplierService.getSupplierById(id))
+                .build();
     }
 }

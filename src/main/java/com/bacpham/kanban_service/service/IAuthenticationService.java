@@ -12,21 +12,18 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
 public interface IAuthenticationService {
-    AuthenticationResponse register(RegisterRequest request, HttpServletResponse response);
+    void register(RegisterRequest request);
 
     AuthenticationResponse authenticate(AuthenticationRequest request, HttpServletResponse response);
 
     void refreshToken(HttpServletRequest request, HttpServletResponse response) throws IOException;
 
-    UserResponse getUserByEmail(String email);
-
     AuthenticationResponse verifyCode(VerificationRequest verificationRequest, HttpServletResponse response);
 
     void sendCodeEmail(String email) throws MessagingException;
 
-    String updateSecret(String email);
 
     void logout(HttpServletRequest request, HttpServletResponse response) throws IOException;
 
-    void verifyCodeEmail(VerificationRequest request);
+    AuthenticationResponse verifyCodeEmail(VerificationRequest request , HttpServletResponse response) throws MessagingException;
 }

@@ -18,6 +18,7 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -36,7 +37,6 @@ public class ProductServiceImpl implements IProductService {
     ProductMapper productMapper;
     CategoryRepository categoryRepository;
     SupplierRepository supplierRepository;
-    SubProductRepository subProductRepository;
 
     public ProductResponse createProduct(ProductCreationRequest request) {
         log.info("Creating product with request: {}", request.toString());
@@ -62,8 +62,9 @@ public class ProductServiceImpl implements IProductService {
                 .map(productMapper::toProductResponse)
                 .collect(Collectors.toList());
     }
-
+//    @Cacheable(value = "productsPage", key = "'page_'+#page+'_'+#pageSize+'_'+#title", unless = "#result == null")
     public PageResponse<ProductResponse> getProductPage(int page, int pageSize, String title) {
+        log.info("Retrieving product page: page={}, pageSize={}, title={}", page, pageSize, title);
         Sort sort = Sort.by("createdAt").descending();
 
         if (title != null && !title.isEmpty()) {
@@ -122,25 +123,36 @@ log.info("Retrieving product with id: {}", id);
         return productMapper.toProductResponse(product);
     }
 
-    public List<ProductResponse> getFilteredProductsNoPaging(
-            String size,
-            List<String> colors,
+    public Page<ProductResponse> getFilteredProducts(
             List<String> categoryIds,
-            List<Double> priceRange
+            List<String> sizes,
+            List<String> colors,
+            List<Double> priceRange,
+            Pageable pageable
     ) {
+        if (categoryIds != null && categoryIds.isEmpty()) {
+            categoryIds = null;
+        }
+        if (sizes != null && sizes.isEmpty()) {
+            sizes = null;
+        }
+        if (colors != null && colors.isEmpty()) {
+            colors = null;
+        }
+
         Double minPrice = (priceRange != null && !priceRange.isEmpty()) ? priceRange.get(0) : null;
         Double maxPrice = (priceRange != null && priceRange.size() > 1) ? priceRange.get(1) : null;
 
-        List<Product> filteredProducts = productRepository.findFilteredProducts(
+        Page<Product> filteredProductsPage = productRepository.findFilteredProducts(
                 categoryIds,
-                size,
+                sizes,
                 colors,
                 minPrice,
-                maxPrice
+                maxPrice,
+                pageable
         );
+        log.info("Filtered products page: {}", filteredProductsPage);
 
-        return filteredProducts.stream()
-                .map(productMapper::toProductResponse)
-                .collect(Collectors.toList());
+        return filteredProductsPage.map(productMapper::toProductResponse);
     }
 }

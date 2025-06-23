@@ -3,24 +3,52 @@ package com.bacpham.kanban_service.controller;
 import com.bacpham.kanban_service.configuration.payment.ConfigVNPay;
 import com.bacpham.kanban_service.dto.request.ApiResponse;
 import com.bacpham.kanban_service.dto.response.PaymentResponse;
+import com.bacpham.kanban_service.entity.Bill;
+import com.bacpham.kanban_service.entity.User;
+import com.bacpham.kanban_service.enums.BillStatus;
+import com.bacpham.kanban_service.enums.PaymentStatus;
+import com.bacpham.kanban_service.enums.PaymentType;
+import com.bacpham.kanban_service.helper.exception.AppException;
+import com.bacpham.kanban_service.helper.exception.ErrorCode;
+import com.bacpham.kanban_service.repository.UserRepository;
+import com.bacpham.kanban_service.service.impl.BillServiceImpl;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.net.URLEncoder;
 
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
-@RestController
+@Controller
 @RequestMapping("/api/v1/payment")
 public class PaymentVNPayController {
+    private final UserRepository userRepository;
+    private final BillServiceImpl billService;
+
+    public PaymentVNPayController(UserRepository userRepository, BillServiceImpl billService) {
+        this.userRepository = userRepository;
+        this.billService = billService;
+    }
 
     @PostMapping("/create")
+    @ResponseBody
     public ApiResponse<PaymentResponse> createPayment(
             @RequestParam("amount") int amount,
-            HttpServletRequest request) {
+            HttpServletRequest request,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        User user = userRepository.findByEmail(userDetails.getUsername())
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        String userId = user.getId();
+
         String bankCode = "NCB";
         String language = "vn";
         String vnp_Version = "2.1.0";
@@ -42,8 +70,9 @@ public class PaymentVNPayController {
         vnp_Params.put("vnp_OrderInfo", "Thanh toan don hang:" + vnp_TxnRef);
         vnp_Params.put("vnp_OrderType", orderType);
         vnp_Params.put("vnp_Locale", language);
-        vnp_Params.put("vnp_ReturnUrl", ConfigVNPay.vnp_ReturnUrl); // Adjust if you have a different return URL
+        vnp_Params.put("vnp_ReturnUrl", ConfigVNPay.vnp_ReturnUrl + "?userId=" + userId); // Adjust if you have a different return URL
         vnp_Params.put("vnp_IpAddr", vnp_IpAddr);
+
 
 
         Calendar cld = Calendar.getInstance(TimeZone.getTimeZone("Etc/GMT+7"));
@@ -89,30 +118,27 @@ public class PaymentVNPayController {
                 .result(paymentResponse)
                 .build();
     }
+
     @GetMapping("/vnpay-return")
-    public ResponseEntity<ApiResponse<String>> vnpayReturn(
-            @RequestParam Map<String, String> params) {
+    public String vnpayReturn(
+            @RequestParam Map<String, String> params,
+            @RequestParam("userId") String userId,
+            Model model) {
+
         String vnp_ResponseCode = params.get("vnp_ResponseCode");
         String vnp_TxnRef = params.get("vnp_TxnRef");
         String vnp_TransactionNo = params.get("vnp_TransactionNo");
         String vnp_PayDate = params.get("vnp_PayDate");
-
+        String paymentType = "VNPAY";
 
         if ("00".equals(vnp_ResponseCode)) {
-            // Payment successful
-            return ResponseEntity.ok(ApiResponse.<String>builder()
-                    .code(200)
-                    .message("Payment successful for transaction: " + vnp_TxnRef + " at " + vnp_PayDate)
-                    .result("Transaction No: " + vnp_TransactionNo)
-                    .build());
+            billService.createBillFromCart(userId, paymentType);
+            model.addAttribute("message", "Payment successful for transaction: " + vnp_TxnRef + " at " + vnp_PayDate );
+            model.addAttribute("transactionNo", vnp_TransactionNo);
         } else {
-            return ResponseEntity.ok(ApiResponse.<String>builder()
-                    .code(400)
-                    .message("Payment failed for transaction: " + vnp_TxnRef)
-                    .result("Response Code: " + vnp_ResponseCode)
-                    .build());
+            model.addAttribute("message", "Payment failed for transaction: " + vnp_TxnRef);
+            model.addAttribute("responseCode", vnp_ResponseCode);
         }
+        return "payment-result.html";
     }
-
-
 }

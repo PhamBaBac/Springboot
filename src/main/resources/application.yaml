@@ -2,6 +2,8 @@ server:
   port: 8080
 
 spring:
+#  cache:
+#    type: simple
   security:
     oauth2:
       client:
@@ -60,7 +62,7 @@ spring:
 
 application:
   oauth2:
-    authorized-redirect-uri: http://localhost:5173/oauth-callback
+    authorized-redirect-uri: http://localhost:3004/auth/oauth-callback
   security:
     jwt:
       secret-key: ${SECRET_KEY}

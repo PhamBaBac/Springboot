@@ -3,6 +3,8 @@ package com.bacpham.kanban_service.service;
 import com.bacpham.kanban_service.dto.request.ProductCreationRequest;
 import com.bacpham.kanban_service.dto.response.PageResponse;
 import com.bacpham.kanban_service.dto.response.ProductResponse;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 
@@ -20,10 +22,12 @@ public interface IProductService {
 
     ProductResponse updateProduct(String id, ProductCreationRequest request);
 
-    List<ProductResponse> getFilteredProductsNoPaging(
-            String size,
-            List<String> colors,
+    Page<ProductResponse> getFilteredProducts(
             List<String> categoryIds,
-            List<Double> priceRange
+            List<String> sizes,
+            List<String> colors,
+            List<Double> priceRange,
+            Pageable pageable
     );
+
 }

@@ -32,6 +32,8 @@ public class SubProduct extends BaseModel {
     @JoinColumn(name = "product_id", nullable = false)
     Product product;
 
+    @OneToMany(mappedBy = "subProduct", cascade = CascadeType.ALL)
+    private List<BillItem> billItems;
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "JSON")

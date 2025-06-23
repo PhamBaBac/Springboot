@@ -82,6 +82,7 @@ public class RedisCartServiceImpl implements IRedisCartService {
     }
     @Override
     public void syncToDatabase(String sessionId, String userId) {
+        log.info("Syncing cart from Redis to DB for sessionId: {}, userId: {}", sessionId, userId);
         String key = buildKey(sessionId);
         Map<String, CartCreateRequest> redisCartMap = redisService.getField(key);
 

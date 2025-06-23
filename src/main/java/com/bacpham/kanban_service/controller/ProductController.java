@@ -15,6 +15,9 @@ import org.springframework.batch.core.Job;
 import org.springframework.batch.core.JobParameters;
 import org.springframework.batch.core.JobParametersBuilder;
 import org.springframework.batch.core.launch.JobLauncher;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -83,23 +86,42 @@ public class ProductController {
                 .build();
     }
 
-    @PutMapping("/{id}")
+    @PutMapping("/{slug}/{id}")
     ApiResponse<ProductResponse> updateProduct(@PathVariable String id, @RequestBody ProductCreationRequest request) {
         return ApiResponse.<ProductResponse>builder()
                 .result(productService.updateProduct(id, request))
                 .build();
     }
-    @GetMapping("/filter-products")
-    public ApiResponse<List<ProductResponse>> filterProducts(
-            @RequestParam(value = "categories", required = false) List<String> categories,
-            @RequestParam(value = "size", required = false) String size,
+    @GetMapping("/filter")
+    public ApiResponse<PageResponse<ProductResponse>> filterProducts(
+            @RequestParam(value = "catIds", required = false) List<String> catIds,
+            @RequestParam(value = "sizes", required = false) List<String> sizes,
             @RequestParam(value = "colors", required = false) List<String> colors,
-            @RequestParam(value = "price", required = false) List<Double> priceRange
+            @RequestParam(value = "price", required = false) List<Double> price,
+            @RequestParam(value = "page", defaultValue = "1") int page,
+            @RequestParam(value = "pageSize", defaultValue = "12") int pageSize
     ) {
-        return ApiResponse.<List<ProductResponse>>builder()
-                .result(productService.getFilteredProductsNoPaging(size, colors, categories, priceRange))
+        Pageable pageable = PageRequest.of(page - 1, pageSize);
+
+        Page<ProductResponse> result = productService.getFilteredProducts(
+                catIds,
+                sizes,
+                colors,
+                price,
+                pageable
+        );
+
+        PageResponse<ProductResponse> response = PageResponse.<ProductResponse>builder()
+                .currentPage(result.getNumber() + 1)
+                .totalPages(result.getTotalPages())
+                .pageSize(result.getSize())
+                .totalElements(result.getTotalElements())
+                .data(result.getContent())
                 .build();
 
+        return ApiResponse.<PageResponse<ProductResponse>>builder()
+                .result(response)
+                .build();
     }
 
     @PostMapping("/batch/products")

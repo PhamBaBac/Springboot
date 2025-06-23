@@ -32,7 +32,7 @@ public class SecurityConfiguration {
             "/api/v1/redisCarts/**",
             "/api/v1/categories/all",
             "/api/v1/payment/vnpay-return",
-            "/api/v1/payment/**",
+            "/api/v1/suppliers/**",
             "/api/v1/promotions/**",
             "/api/v1/products/**",
             "/api/v1/subProducts/**",
@@ -81,7 +81,7 @@ public class SecurityConfiguration {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(List.of("http://localhost:5173","http://localhost:3004")); // hoặc FE domain thực tế
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE","PATCH", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);
         configuration.setExposedHeaders(Arrays.asList("Set-Cookie")); // Cho phép gửi cookie hoặc Authorization header

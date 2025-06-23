@@ -78,5 +78,15 @@ public class RedisCartController {
                 .result(updatedCart)
                 .build();
     }
+    @PutMapping("/syncToDatabase")
+    public ApiResponse<?> syncToDatabase(
+            @RequestHeader(value = "X-Session-Id", required = false) String sessionId,
+            @RequestParam String userId
+    ) {
+        redisCartService.syncToDatabase(sessionId, userId);
+        return ApiResponse.builder()
+                .message("Cart synced to database successfully")
+                .build();
+    }
 }
 

@@ -13,6 +13,8 @@ public interface IPromotionService {
 
     PromotionResponse getPromotionById(String id);
 
+    PromotionResponse getPromotionByNameCode(String code);
+
     List<PromotionResponse> getAllPromotions();
 
     void deletePromotion(String id);

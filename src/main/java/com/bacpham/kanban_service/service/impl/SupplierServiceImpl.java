@@ -131,10 +131,11 @@ public class SupplierServiceImpl implements ISupplierService {
                 .map(supplierMapper::toSupplierResponse)
                 .collect(Collectors.toList());
     }
-
-
-
-
+    public SupplierResponse getSupplierById(String id) {
+        Supplier supplier = supplierRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.SUPPLIER_NOT_FOUND));
+        return supplierMapper.toSupplierResponse(supplier);
+    }
 
 
 }

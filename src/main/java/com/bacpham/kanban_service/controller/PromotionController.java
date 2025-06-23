@@ -58,12 +58,21 @@ public class PromotionController {
                 .result(promotionService.getAllPromotions())
                 .build();
     }
+    @GetMapping("/code/{code}")
+    public ApiResponse<PromotionResponse> getPromotionByCode(@PathVariable String code) {
+        log.info("getPromotionByCode:", code);
+        PromotionResponse response = promotionService.getPromotionByNameCode(code);
+        return ApiResponse.<PromotionResponse>builder()
+                .result(response)
+                .build();
+    }
 
     @DeleteMapping("/{id}")
     public ApiResponse<Void> deletePromotion(@PathVariable String id) {
         promotionService.deletePromotion(id);
         return ApiResponse.<Void>builder().message("Deleted successfully").build();
     }
+
     @GetMapping("/validate")
     public ApiResponse<Boolean> validatePromotion(@RequestParam String code) {
         boolean isValid = promotionService.isPromotionValid(code);

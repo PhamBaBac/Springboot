@@ -14,4 +14,6 @@ public interface ISupplierService {
     SupplierResponse updateSupplier(String id, SupplierRequest request);
     List<SupplierResponse> findAllSupplier();
     List<SupplierResponse> findSuppliersByDateRange(Date start, Date end);
+
+    SupplierResponse getSupplierById(String id);
 }

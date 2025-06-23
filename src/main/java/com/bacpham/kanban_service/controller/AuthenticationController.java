@@ -30,23 +30,16 @@ public class AuthenticationController {
     private final RedisCartServiceImpl redisCartService;
 
     @PostMapping("/register")
-    public ApiResponse<AuthenticationResponse> register(
-            @RequestBody RegisterRequest request,
-            HttpServletResponse response
+    public ApiResponse<?> register(
+            @RequestBody RegisterRequest request
     ) {
-        var result = service.register(request, response);
-        if(result.isMfaEnabled()){
-            return ApiResponse.<AuthenticationResponse>builder()
-                    .message("Registration successful, please complete 2FA setup")
-                    .result(result)
-                    .build();
-        } else {
-            return ApiResponse.<AuthenticationResponse>builder()
-                    .message("Registration successful")
-                    .result(result)
-                    .build();
-        }
+        service.register(request);
+        return ApiResponse.builder()
+                .message("Register info received. Please verify your email.")
+                .result(true)
+                .build();
     }
+
 
     @PostMapping("/send-code-email")
     public ApiResponse<?> sendCodeEmail(@RequestBody SendCodeRequest request) throws MessagingException {
@@ -94,21 +87,7 @@ public class AuthenticationController {
     }
 
 
-    @GetMapping("/me")
-    public ApiResponse<UserResponse> getMyInfo(@AuthenticationPrincipal UserDetails userDetails) {
-        if (userDetails == null) {
-            return ApiResponse.<UserResponse>builder()
-                    .message("User not authenticated")
-                    .result(null)
-                    .build();
-        }
 
-        UserResponse user = service.getUserByEmail(userDetails.getUsername()); // giả sử bạn có hàm này
-        return ApiResponse.<UserResponse>builder()
-                .result(user)
-                .message("Get user info successfully")
-                .build();
-    }
 
     @PostMapping("/verify")
     public ApiResponse<?> sendCodeAuthenticator(
@@ -121,22 +100,17 @@ public class AuthenticationController {
                 .build();
     }
     @PostMapping("/verify-code-email")
-    public ApiResponse<?> verifyCodeEmail(@RequestBody VerificationRequest request) {
-        service.verifyCodeEmail(request);
+    public ApiResponse<?> verifyCodeEmail(
+            @RequestBody VerificationRequest request,
+            HttpServletResponse response
+    ) {
+        AuthenticationResponse result = service.verifyCodeEmail(request, response);
         return ApiResponse.builder()
-                .message("Code is valid")
+                .message("Email verified and account activated")
+                .result(result)
                 .build();
     }
 
-
-    @PutMapping("/secret-image")
-    public ApiResponse<?> getSecretImage(@RequestBody EmailRequest request) {
-        String secretImage = service.updateSecret(request.getEmail().trim());
-        return ApiResponse.<String>builder()
-                .message("Secret image retrieved successfully")
-                .result(secretImage)
-                .build();
-    }
 
     @GetMapping("/user")
     public Map<String, Object> user(@AuthenticationPrincipal OAuth2User principal) {
