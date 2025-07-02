@@ -3,7 +3,9 @@ package com.bacpham.kanban_service.controller;
 import com.bacpham.kanban_service.dto.request.ApiResponse;
 import com.bacpham.kanban_service.dto.request.ChangePasswordRequest;
 import com.bacpham.kanban_service.dto.request.ResetPasswordRequest;
+import com.bacpham.kanban_service.dto.request.UserActiveRequest;
 import com.bacpham.kanban_service.dto.response.UserResponse;
+import com.bacpham.kanban_service.service.UserActivityService;
 import com.bacpham.kanban_service.service.UserService;
 import jakarta.mail.MessagingException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -23,6 +25,7 @@ import java.security.Principal;
 public class UserController {
 
     private final UserService service;
+    private final UserActivityService userActivityService;
 
 
     @PatchMapping("/changePassword")
@@ -75,6 +78,15 @@ public class UserController {
         service.resetPassword(request);
         return ApiResponse.builder()
                 .message("Forgot password request processed successfully")
+                .build();
+    }
+    @PostMapping("/userActivity")
+    public ApiResponse<?> userActivity(
+            @RequestBody UserActiveRequest userActiveRequest
+            ) {
+        userActivityService.recordViewProductActivity(userActiveRequest);
+        return ApiResponse.<Void>builder()
+                .message("User activity recorded successfully")
                 .build();
     }
 

@@ -33,7 +33,7 @@ public class SubProduct extends BaseModel {
     Product product;
 
     @OneToMany(mappedBy = "subProduct", cascade = CascadeType.ALL)
-    private List<BillItem> billItems;
+    private List<OrderItem> orderItems;
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "JSON")

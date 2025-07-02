@@ -1,5 +1,6 @@
 package com.bacpham.kanban_service.service.impl;
 
+import com.bacpham.kanban_service.configuration.redis.GenericRedisService;
 import com.bacpham.kanban_service.dto.request.ProductCreationRequest;
 import com.bacpham.kanban_service.dto.response.PageResponse;
 import com.bacpham.kanban_service.dto.response.ProductResponse;
@@ -9,10 +10,7 @@ import com.bacpham.kanban_service.entity.Supplier;
 import com.bacpham.kanban_service.helper.exception.AppException;
 import com.bacpham.kanban_service.helper.exception.ErrorCode;
 import com.bacpham.kanban_service.mapper.ProductMapper;
-import com.bacpham.kanban_service.repository.CategoryRepository;
-import com.bacpham.kanban_service.repository.ProductRepository;
-import com.bacpham.kanban_service.repository.SubProductRepository;
-import com.bacpham.kanban_service.repository.SupplierRepository;
+import com.bacpham.kanban_service.repository.*;
 import com.bacpham.kanban_service.service.IProductService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +24,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Service
@@ -37,7 +36,9 @@ public class ProductServiceImpl implements IProductService {
     ProductMapper productMapper;
     CategoryRepository categoryRepository;
     SupplierRepository supplierRepository;
-
+    OrderItemRepository orderItemRepository;
+    // Change the redisService declaration
+    GenericRedisService<String, String, PageResponse<ProductResponse>> redisService;
     public ProductResponse createProduct(ProductCreationRequest request) {
         log.info("Creating product with request: {}", request.toString());
         Product product = productMapper.toProduct(request);
@@ -52,6 +53,7 @@ public class ProductServiceImpl implements IProductService {
         product.setSupplier(supplier);
 
         product = productRepository.save(product);
+        redisService.deleteKeysMatching("product:page:*");
 
         return productMapper.toProductResponse(product);
     }
@@ -62,42 +64,61 @@ public class ProductServiceImpl implements IProductService {
                 .map(productMapper::toProductResponse)
                 .collect(Collectors.toList());
     }
-//    @Cacheable(value = "productsPage", key = "'page_'+#page+'_'+#pageSize+'_'+#title", unless = "#result == null")
     public PageResponse<ProductResponse> getProductPage(int page, int pageSize, String title) {
-        log.info("Retrieving product page: page={}, pageSize={}, title={}", page, pageSize, title);
-        Sort sort = Sort.by("createdAt").descending();
-
+        // Nếu có từ khóa tìm kiếm → không dùng cache
         if (title != null && !title.isEmpty()) {
-            page = 1;
+            Sort sort = Sort.by("createdAt").descending();
+            Pageable pageable = PageRequest.of(page - 1, pageSize, sort);
+            Page<Product> pageData = productRepository.findByTitleContainingIgnoreCase(title, pageable);
+
+            return PageResponse.<ProductResponse>builder()
+                    .currentPage(page)
+                    .pageSize(pageData.getSize())
+                    .totalPages(pageData.getTotalPages())
+                    .totalElements(pageData.getTotalElements())
+                    .data(pageData.getContent().stream().map(productMapper::toProductResponse).toList())
+                    .build();
         }
 
-        Pageable pageable = PageRequest.of(page - 1, pageSize, sort);
-        Page<Product> pageData;
+        String cacheKey = String.format("product:page:%d:%d", page, pageSize);
+        PageResponse<ProductResponse> cached = redisService.get(cacheKey);
 
-        if (title != null && !title.isEmpty()) {
-            pageData = productRepository.findByTitleContainingIgnoreCase(title, pageable);
-        } else {
-            pageData = productRepository.findAllByDeletedFalse(pageable);
+        if (cached != null) {
+            log.info("Returning cached product page for key");
+            return cached;
         }
+        log.info("Fetching product page from database for key");
+        Pageable pageable = PageRequest.of(page - 1, pageSize, Sort.by("createdAt").descending());
+        Page<Product> pageData = productRepository.findAllByDeletedFalse(pageable);
 
-        return PageResponse.<ProductResponse>builder()
+        List<ProductResponse> productResponses = pageData.getContent().stream()
+                .map(productMapper::toProductResponse)
+                .toList();
+
+        PageResponse<ProductResponse> response = PageResponse.<ProductResponse>builder()
                 .currentPage(page)
                 .pageSize(pageData.getSize())
                 .totalPages(pageData.getTotalPages())
                 .totalElements(pageData.getTotalElements())
-                .data(pageData.getContent().stream().map(productMapper::toProductResponse).toList())
+                .data(productResponses)
                 .build();
+
+        redisService.set(cacheKey, response);
+        redisService.setTimeToLive(cacheKey, 1, TimeUnit.HOURS);
+
+        return response;
     }
 
-    //delete product by id
+
     public void deleteProduct(String id) {
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_FOUND));
 
-      Product product =   productRepository.findById(id).orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_FOUND));
+        product.setDeleted(true);
+        productRepository.save(product);
 
-      product.setDeleted(true);
-
-      productRepository.save(product);
-
+        // Clear all product page caches
+        redisService.deleteKeysMatching("product:page:*");
     }
 
     public ProductResponse getProductById(String slug, String id) {
@@ -108,9 +129,10 @@ log.info("Retrieving product with id: {}", id);
 
     }
 
+
     public ProductResponse updateProduct(String id, ProductCreationRequest request) {
-        log.info("Updating product id: {}", id);
-        Product product = productRepository.findById(id).orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_FOUND));
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_FOUND));
         productMapper.updateProduct(product, request);
 
         if (request.getCategories() != null && !request.getCategories().isEmpty()) {
@@ -119,8 +141,11 @@ log.info("Retrieving product with id: {}", id);
         }
 
         product = productRepository.save(product);
+        ProductResponse response = productMapper.toProductResponse(product);
 
-        return productMapper.toProductResponse(product);
+        redisService.deleteKeysMatching("product:page:*");
+
+        return response;
     }
 
     public Page<ProductResponse> getFilteredProducts(
@@ -155,4 +180,25 @@ log.info("Retrieving product with id: {}", id);
 
         return filteredProductsPage.map(productMapper::toProductResponse);
     }
+    @Override
+    public List<ProductResponse> getListProductRecommendations(List<String> ids) {
+        List<Product> products = productRepository.findAllById(ids);
+        return products.stream()
+                .map(productMapper::toProductResponse)
+                .toList();
+    }
+    @Override
+    public List<ProductResponse> getBestSellers() {
+        List<Object[]> result = orderItemRepository.findBestSellerProductIds();
+        List<String> productIds = result.stream()
+                .map(r -> (String) r[0])
+                .collect(Collectors.toList());
+
+        List<Product> products = productRepository.findAllById(productIds);
+        return products.stream()
+                .map(productMapper::toProductResponse)
+                .collect(Collectors.toList());
+    }
+
+
 }

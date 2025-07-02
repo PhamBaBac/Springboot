@@ -18,9 +18,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
-import java.util.Collection;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -34,11 +32,12 @@ public class RecommendationService {
     private final RestClient restClient;
 
     @Value("${spring.ai.openai.api-key}")
-    private String GEMINI_API_KEY;
+    private String geminiApiKey;
+
+    private static final String MODEL_ENDPOINT = "/v1beta/models/gemini-1.5-flash-latest:generateContent";
 
     public RecommendationService(
             @Qualifier("geminiRestClient") RestClient restClient,
-
             UserActivityRepository userActivityRepository,
             ProductRepository productRepository
     ) {
@@ -53,40 +52,24 @@ public class RecommendationService {
             return "[]";
         }
 
-        String prompt = buildSmartPrompt(activities);
+        String prompt = buildPromptFromActivities(activities);
+        GeminiRequest request = GeminiRequest.fromText(prompt);
 
-        GeminiRequest requestBody = GeminiRequest.fromText(prompt);
-        String geminiEndpoint = "/v1beta/models/gemini-1.5-flash-latest:generateContent";
-
-        ResponseEntity<GeminiResponse> responseEntity = restClient.post()
-                .uri(uriBuilder -> uriBuilder.path(geminiEndpoint).queryParam("key", GEMINI_API_KEY).build())
+        ResponseEntity<GeminiResponse> response = restClient.post()
+                .uri(uriBuilder -> uriBuilder.path(MODEL_ENDPOINT).queryParam("key", geminiApiKey).build())
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(requestBody)
+                .body(request)
                 .retrieve()
                 .toEntity(GeminiResponse.class);
 
-        String rawResponse = responseEntity.getBody() != null ?
-                responseEntity.getBody().getFirstCandidateText().orElse("[]") :
-                "[]";
+        String raw = Optional.ofNullable(response.getBody())
+                .flatMap(GeminiResponse::getFirstCandidateText)
+                .orElse("[]");
 
-        String cleanedJson = extractJsonArrayString(rawResponse);
-
-        return cleanedJson;
-    }
-    private String extractJsonArrayString(String rawText) {
-
-        Pattern pattern = Pattern.compile("\\[.*\\]", Pattern.DOTALL);
-        Matcher matcher = pattern.matcher(rawText);
-
-        if (matcher.find()) {
-            return matcher.group(0);
-        }
-
-        return "[]";
+        return extractJsonArrayString(raw);
     }
 
-
-    private String buildSmartPrompt(List<UserActivity> activities) {
+    private String buildPromptFromActivities(List<UserActivity> activities) {
         StringBuilder prompt = new StringBuilder();
 
         prompt.append("""
@@ -95,7 +78,7 @@ public class RecommendationService {
         - Phân tích xu hướng từ các sản phẩm người dùng đã xem.
         - Ưu tiên gợi ý các sản phẩm cùng danh mục với những sản phẩm đã xem.
         - Chỉ được chọn sản phẩm trong danh sách ứng viên mà tôi cung cấp bên dưới.
-        - Trả về mảng JSON chứa các ID sản phẩm (dưới dạng chuỗi), tối đa 1 5 sản phẩm. Nếu không gợi ý được gì thì trả về: []
+        - Trả về mảng JSON chứa các ID sản phẩm (dưới dạng chuỗi), tối đa 15 sản phẩm. Nếu không gợi ý được gì thì trả về: []
 
         """);
 
@@ -111,29 +94,24 @@ public class RecommendationService {
             prompt.append("- Người dùng chưa xem sản phẩm nào cụ thể.\n");
         } else {
             List<Product> viewedProducts = productRepository.findAllById(viewedProductIds);
-            for (Product p : viewedProducts) {
-                prompt.append(String.format(
-                        "- Tên: \"%s\"\n  Danh mục: %s\n  Nhà cung cấp: %s\n\n",
-                        p.getTitle(),
-                        p.getCategories().stream().map(Category::getTitle).collect(Collectors.joining(", ")),
-                        p.getSupplier().getName()));
-            }
+            viewedProducts.forEach(p -> prompt.append(String.format(
+                    "- Tên: \"%s\"\n  Danh mục: %s\n  Nhà cung cấp: %s\n\n",
+                    p.getTitle(),
+                    p.getCategories().stream().map(Category::getTitle).collect(Collectors.joining(", ")),
+                    p.getSupplier().getName())));
         }
 
         prompt.append("### Danh sách sản phẩm có sẵn để bạn lựa chọn:\n");
 
-        List<Product> candidateProducts = findCandidateProducts(viewedProductIds);
-
-        if (candidateProducts.isEmpty()) {
+        List<Product> candidates = findCandidateProducts(viewedProductIds);
+        if (candidates.isEmpty()) {
             prompt.append("- Không có sản phẩm ứng viên cụ thể.\n");
         } else {
-            for (Product p : candidateProducts) {
-                prompt.append(String.format(
-                        "- ID: \"%s\"\n  Tên: \"%s\"\n  Danh mục: %s\n\n",
-                        p.getId(),
-                        p.getTitle(),
-                        p.getCategories().stream().map(Category::getTitle).collect(Collectors.joining(", "))));
-            }
+            candidates.forEach(p -> prompt.append(String.format(
+                    "- ID: \"%s\"\n  Tên: \"%s\"\n  Danh mục: %s\n\n",
+                    p.getId(),
+                    p.getTitle(),
+                    p.getCategories().stream().map(Category::getTitle).collect(Collectors.joining(", ")))));
         }
 
         prompt.append("""
@@ -148,32 +126,22 @@ public class RecommendationService {
         return prompt.toString();
     }
 
-
     private List<Product> findCandidateProducts(List<String> viewedProductIds) {
-        if (viewedProductIds == null || viewedProductIds.isEmpty()) {
-            return List.of(); // Trả về danh sách rỗng nếu không có sản phẩm đã xem
-        }
+        if (viewedProductIds == null || viewedProductIds.isEmpty()) return List.of();
 
-        // Lấy danh sách sản phẩm đã xem từ DB
         List<Product> viewedProducts = productRepository.findAllById(viewedProductIds);
-
-        // Lấy tập các category của sản phẩm đã xem
         Set<Category> categories = viewedProducts.stream()
                 .flatMap(p -> p.getCategories().stream())
                 .collect(Collectors.toSet());
 
-        if (categories.isEmpty()) {
-            return List.of(); // Nếu không có category, trả về rỗng
-        }
+        if (categories.isEmpty()) return List.of();
 
-        // Tạo pageable giới hạn số lượng kết quả (ví dụ 20)
-        Pageable pageable = Pageable.ofSize(20);
-
-        // Gọi repo tìm sản phẩm ứng viên
-        List<Product> candidates = productRepository.findCandidateProducts(categories, viewedProductIds, pageable);
-
-        return candidates;
+        Pageable limit = Pageable.ofSize(20);
+        return productRepository.findCandidateProducts(categories, viewedProductIds, limit);
     }
 
-
+    private String extractJsonArrayString(String rawText) {
+        Matcher matcher = Pattern.compile("\\[.*?\\]", Pattern.DOTALL).matcher(rawText);
+        return matcher.find() ? matcher.group(0) : "[]";
+    }
 }

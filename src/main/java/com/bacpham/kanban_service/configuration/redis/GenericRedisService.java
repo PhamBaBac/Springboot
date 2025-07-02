@@ -35,6 +35,11 @@ public class GenericRedisService<K, F, V> {
     public void hashSet(K key, F field, V value) {
         hashOperations.put(key, field, value);
     }
+    public void hashSetAll(K key, Map<F, V> map) {
+        if (map != null && !map.isEmpty()) {
+            hashOperations.putAll(key, map);
+        }
+    }
 
     public boolean hashExists(K key, F field) {
         return hashOperations.hasKey(key, field);
@@ -83,4 +88,12 @@ public class GenericRedisService<K, F, V> {
     public <R> R executeLuaScript(RedisScript<R> script, List<K> keys, List<?> args) {
         return redisTemplate.execute(script, keys, args.toArray());
     }
+    @SuppressWarnings("unchecked")
+    public void deleteKeysMatching(String pattern) {
+        Set<K> keys = (Set<K>) redisTemplate.keys((K) pattern);
+        if (keys != null && !keys.isEmpty()) {
+            redisTemplate.delete(keys);
+        }
+    }
+
 }

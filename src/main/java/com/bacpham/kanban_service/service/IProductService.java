@@ -30,4 +30,6 @@ public interface IProductService {
             Pageable pageable
     );
 
+    List<ProductResponse> getListProductRecommendations(List<String> ids);
+    List<ProductResponse> getBestSellers();
 }

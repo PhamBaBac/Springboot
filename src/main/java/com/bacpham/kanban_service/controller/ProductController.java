@@ -31,11 +31,8 @@ import java.util.List;
 @Slf4j
 public class ProductController {
     ProductServiceImpl productService;
-    UserActivityService userActivityService;
     private final JobLauncher jobLauncher;
     private final Job productJob;
-
-
 
     @PostMapping
     ApiResponse<ProductResponse> createProduct(@RequestBody @Validated ProductCreationRequest request) {
@@ -71,15 +68,9 @@ public class ProductController {
     @GetMapping("/{slug}/{id}")
     ApiResponse<ProductResponse> getProduct(
             @PathVariable String slug,
-            @PathVariable String id,
-            @AuthenticationPrincipal User currentUser
+            @PathVariable String id
     ) {
         ProductResponse productResponse = productService.getProductById(slug, id);
-
-
-        if (currentUser != null) {
-            userActivityService.recordViewProductActivity(currentUser, id);
-        }
 
         return ApiResponse.<ProductResponse>builder()
                 .result(productResponse)
@@ -135,4 +126,21 @@ public class ProductController {
             e.printStackTrace();
         }
     }
+
+    @PostMapping("/listProductRecommendations")
+    public ApiResponse<List<ProductResponse>> getProductsByIds(@RequestBody List<String> ids) {
+        log.info("Received request to get product recommendations for IDs: {}", ids);
+        List<ProductResponse> result = productService.getListProductRecommendations(ids);
+        return ApiResponse.<List<ProductResponse>>builder()
+                .result(result)
+                .message("success")
+                .build();
+    }
+    @GetMapping("/bestSellers")
+    public ApiResponse<List<ProductResponse>> getBestSellers() {
+        return ApiResponse.<List<ProductResponse>>builder()
+                .result(productService.getBestSellers())
+                .build();
+    }
+
 }

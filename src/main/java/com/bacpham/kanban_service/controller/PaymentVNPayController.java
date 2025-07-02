@@ -2,25 +2,20 @@ package com.bacpham.kanban_service.controller;
 
 import com.bacpham.kanban_service.configuration.payment.ConfigVNPay;
 import com.bacpham.kanban_service.dto.request.ApiResponse;
+import com.bacpham.kanban_service.dto.request.OrderCreateRequest;
 import com.bacpham.kanban_service.dto.response.PaymentResponse;
-import com.bacpham.kanban_service.entity.Bill;
 import com.bacpham.kanban_service.entity.User;
-import com.bacpham.kanban_service.enums.BillStatus;
-import com.bacpham.kanban_service.enums.PaymentStatus;
-import com.bacpham.kanban_service.enums.PaymentType;
 import com.bacpham.kanban_service.helper.exception.AppException;
 import com.bacpham.kanban_service.helper.exception.ErrorCode;
 import com.bacpham.kanban_service.repository.UserRepository;
-import com.bacpham.kanban_service.service.impl.BillServiceImpl;
+import com.bacpham.kanban_service.service.impl.OrderServiceImpl;
 import jakarta.servlet.http.HttpServletRequest;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
-import java.math.BigDecimal;
 import java.net.URLEncoder;
 
 import java.nio.charset.StandardCharsets;
@@ -31,32 +26,37 @@ import java.util.*;
 @RequestMapping("/api/v1/payment")
 public class PaymentVNPayController {
     private final UserRepository userRepository;
-    private final BillServiceImpl billService;
+    private final OrderServiceImpl orderService;
 
-    public PaymentVNPayController(UserRepository userRepository, BillServiceImpl billService) {
+    public PaymentVNPayController(UserRepository userRepository, OrderServiceImpl orderService) {
         this.userRepository = userRepository;
-        this.billService = billService;
+        this.orderService = orderService;
     }
 
     @PostMapping("/create")
     @ResponseBody
     public ApiResponse<PaymentResponse> createPayment(
-            @RequestParam("amount") int amount,
-            HttpServletRequest request,
+            @RequestBody OrderCreateRequest request,
+            HttpServletRequest httpRequest,
             @AuthenticationPrincipal UserDetails userDetails) {
 
         User user = userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
         String userId = user.getId();
 
+        // Calculate total amount from items
+        double totalAmount = request.getItems().stream()
+                .mapToDouble(item -> item.getPrice() * item.getCount())
+                .sum();
+
         String bankCode = "NCB";
         String language = "vn";
         String vnp_Version = "2.1.0";
         String vnp_Command = "pay";
         String orderType = "other";
-        long vnp_Amount = amount * 100L;
+        long vnp_Amount = (long) (totalAmount * 100L);
         String vnp_TxnRef = ConfigVNPay.getRandomNumber(8);
-        String vnp_IpAddr = ConfigVNPay.getIpAddress(request);
+        String vnp_IpAddr = ConfigVNPay.getIpAddress(httpRequest);
         String vnp_TmnCode = ConfigVNPay.vnp_TmnCode;
 
         Map<String, String> vnp_Params = new HashMap<>();
@@ -123,6 +123,7 @@ public class PaymentVNPayController {
     public String vnpayReturn(
             @RequestParam Map<String, String> params,
             @RequestParam("userId") String userId,
+            @RequestBody OrderCreateRequest request,
             Model model) {
 
         String vnp_ResponseCode = params.get("vnp_ResponseCode");
@@ -132,7 +133,7 @@ public class PaymentVNPayController {
         String paymentType = "VNPAY";
 
         if ("00".equals(vnp_ResponseCode)) {
-            billService.createBillFromCart(userId, paymentType);
+            orderService.createOrderFromSelectedItems(userId, paymentType, request);
             model.addAttribute("message", "Payment successful for transaction: " + vnp_TxnRef + " at " + vnp_PayDate );
             model.addAttribute("transactionNo", vnp_TransactionNo);
         } else {

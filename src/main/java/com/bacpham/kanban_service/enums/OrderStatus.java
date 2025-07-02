@@ -1,9 +1,9 @@
 package com.bacpham.kanban_service.enums;
 
-public enum BillStatus {
+public enum OrderStatus {
     PENDING,
-    PAID,
+    PROCESSING,
     COMPLETED,
     CANCELLED,
-    REFUNDED
+    REFUNDED;
 }

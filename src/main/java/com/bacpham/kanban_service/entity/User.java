@@ -10,6 +10,7 @@ import java.util.Collection;
 import java.util.List;
 
 import lombok.*;
+import lombok.experimental.FieldDefaults;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
@@ -21,34 +22,35 @@ import org.springframework.security.core.userdetails.UserDetails;
 @AllArgsConstructor
 @Entity
 @Table(name = "user")
+@FieldDefaults(level = AccessLevel.PRIVATE)
 public class User extends BaseModel implements UserDetails {
 
-    private String firstname;
-    private String lastname;
-    private String email;
-    private String password;
-    private boolean mfaEnabled;
-    private String secret;
+    String firstname;
+    String lastname;
+    String email;
+    String password;
+    boolean mfaEnabled;
+    String secret;
 
     @Enumerated(EnumType.STRING)
-    private Role role;
+    Role role;
 
     @Enumerated(EnumType.STRING)
-    private Provider provider;
+    Provider provider;
 
-    private String providerId;
+    String providerId;
     @OneToMany(mappedBy = "createdBy", cascade = CascadeType.ALL)
     List<Cart> cartItems;
 
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
-    private List<Bill> bills;
+    List<Order> orders;
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
-    private List<ChatHistory> chatHistories;
+    List<ChatHistory> chatHistories;
 
     @OneToMany(mappedBy = "createdBy", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Address> addresses;
+    List<Address> addresses;
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return role.getAuthorities();

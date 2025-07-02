@@ -41,7 +41,8 @@ public enum ErrorCode {
     INVALID_INPUT(1027,"Invalid input", HttpStatus.BAD_REQUEST),
     MESSAGE_TOO_LONG(1028, "Message too long", HttpStatus.BAD_REQUEST),
     CHAT_HISTORY_NOT_FOUND(1029, "Chat history not found", HttpStatus.NOT_FOUND),
-    INVALID_VERIFICATION_CODE(1030, "Invalid verification code", HttpStatus.BAD_REQUEST);
+    INVALID_VERIFICATION_CODE(1030, "Invalid verification code", HttpStatus.BAD_REQUEST),
+    ADDRESS_NOT_FOUND(1031, "Address not found", HttpStatus.NOT_FOUND),;
 
 
     ErrorCode(int code, String message, HttpStatusCode statusCode) {

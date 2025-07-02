@@ -1,5 +1,7 @@
 package com.bacpham.kanban_service.dto.response;
 
+import com.bacpham.kanban_service.enums.OrderStatus;
+import com.bacpham.kanban_service.enums.PaymentType;
 import lombok.*;
 
 @Getter
@@ -8,13 +10,13 @@ import lombok.*;
 @AllArgsConstructor
 @Builder
 @ToString
-public class BillResponse {
+public class OrderResponse {
+    private String orderId;
     private String image;
     private String title;
     private String size;
     private int qty;
     private double price;
     private double totalPrice;
-    private String status; // PENDING, PAID, COMPLETED, CANCELLED, REFUNDED
-
+    private OrderStatus orderStatus;
 }

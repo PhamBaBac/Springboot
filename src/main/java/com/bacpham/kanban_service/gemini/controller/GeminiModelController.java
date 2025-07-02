@@ -49,20 +49,28 @@ public class GeminiModelController {
     private final ChatHistoryService chatHistoryService;
     private final UserRepository userRepository;
     @GetMapping("/recommendations")
-    public Map<String, Object> getRecommendations(@AuthenticationPrincipal User currentUser) {
+    public ApiResponse<List<String>> getRecommendations(@AuthenticationPrincipal User currentUser) {
         if (currentUser == null) {
-            return Map.of("error", "User not logged in");
+            throw new AppException(ErrorCode.UNAUTHORIZED);
         }
-        String recommendationJsonString = recommendationService.getRecommendationsForUser(currentUser);
+
+        String json = recommendationService.getRecommendationsForUser(currentUser);
 
         try {
-            List<String> recommendationList = objectMapper.readValue(recommendationJsonString, new TypeReference<List<String>>() {
-            });
-            return Map.of("recommendations", recommendationList);
+            List<String> recommendationList = objectMapper.readValue(json, new TypeReference<>() {});
+            log.info("Received recommendations for user: {}", recommendationList);
+            return ApiResponse.<List<String>>builder()
+                    .result(recommendationList)
+                    .message("success")
+                    .build();
         } catch (JsonProcessingException e) {
-            return Map.of("recommendations", Collections.emptyList(), "error", "Failed to parse recommendations");
+            return ApiResponse.<List<String>>builder()
+                    .result(Collections.emptyList())
+                    .message("Failed to parse recommendations")
+                    .build();
         }
     }
+
 
     @PostMapping("/chat/support")
     public ApiResponse<String> chatSupport(
