@@ -37,6 +37,7 @@ public class OrderServiceImpl implements IOrderService {
     private final OrderMapper orderMapper;
     private final SubProductRepository subProductRepository;
     private final AddressRepository addressRepository;
+    private final ReviewProductRepository reviewRepository;
 
     @Override
     @Transactional
@@ -49,23 +50,18 @@ public class OrderServiceImpl implements IOrderService {
         List<OrderItem> orderItems = new ArrayList<>();
 
         for (OrderItemRequest dto : items) {
-            // Tìm SubProduct theo ID
             SubProduct subProduct = subProductRepository.findById(dto.getSubProductId())
                     .orElseThrow(() -> new AppException(ErrorCode.SUB_PRODUCT_NOT_FOUND));
 
-            // Kiểm tra số lượng còn lại
             if (subProduct.getQty() < dto.getCount()) {
                 throw new AppException(ErrorCode.INSUFFICIENT_STOCK);
             }
 
-            // Trừ tồn kho
             subProduct.setQty(subProduct.getQty() - dto.getCount());
 
-            // Tính tổng tiền cho sản phẩm
             double itemTotal = dto.getPrice() * dto.getCount();
             total += itemTotal;
 
-            // Tạo BillItem
             OrderItem orderItem = OrderItem.builder()
                     .subProduct(subProduct)
                     .quantity(dto.getCount())
@@ -82,45 +78,30 @@ public class OrderServiceImpl implements IOrderService {
             throw new AppException(ErrorCode.INVALID_CREDENTIALS);
         }
 
-//        OrderStatus  orderStatus;
-//        switch (paymentTypeEnum) {
-//            case COD -> {
-//                orderStatus = O.UNPAID;
-//            }
-//            case VNPAY, CREDIT_CARD -> {
-//                paymentStatus = PaymentStatus.PAID;
-//            }
-//            default -> throw new AppException(ErrorCode.INVALID_CREDENTIALS);
-//        }
         Address address = addressRepository.findById(request.getAddressId())
                 .orElseThrow(() -> new AppException(ErrorCode.ADDRESS_NOT_FOUND));
 
-        // Tạo Bill
         Order order = Order.builder()
                 .user(user)
                 .address(address)
                 .total(total)
                 .orderStatus(OrderStatus.PENDING)
                 .paymentType(paymentTypeEnum)
-                .items(new ArrayList<>()) // để tránh null khi set vào BillItem
+                .items(new ArrayList<>())
                 .build();
 
-        // Gắn từng BillItem vào Bill
         for (OrderItem item : orderItems) {
             item.setOrder(order);
         }
 
         order.setItems(orderItems);
 
-        // Lưu Bill + BillItems vào DB
         orderRepository.save(order);
 
-        // Sau khi billRepository.save(bill);
         List<String> subProductIds = items.stream()
                 .map(OrderItemRequest::getSubProductId)
                 .toList();
 
-// Xóa các sản phẩm trong giỏ hàng trùng với các subProductId đã thanh toán
         cartRepository.deleteByCreatedByAndSubProductIds(user, subProductIds);
 
         return order;
@@ -131,7 +112,7 @@ public class OrderServiceImpl implements IOrderService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
-        List<Order> orders = orderRepository.findByUser(user);
+        List<Order> orders = orderRepository.findByUserAndDeletedFalse(user);
 
         if (orders.isEmpty()) {
             throw new AppException(ErrorCode.BILL_NOT_FOUND);
@@ -142,16 +123,28 @@ public class OrderServiceImpl implements IOrderService {
         for (Order order : orders) {
             for (OrderItem item : order.getItems()) {
                 OrderResponse response = orderMapper.toOrderResponse(item);
+
+
+                boolean hasReviewed = reviewRepository.existsByCreatedByIdAndSubProductIdAndOrderId(
+                        userId,
+                        item.getSubProduct().getId(),
+                        order.getId()
+                );
+
+
+                response.setIsReviewed(hasReviewed);
+
                 responses.add(response);
             }
         }
 
         return responses;
     }
+
     @Override
     public PageResponse<OrderDetailResponse> getPagedAllOrders(int page, int pageSize) {
         Pageable pageable = PageRequest.of(page - 1, pageSize, Sort.by("createdAt").descending());
-        Page<Order> orderPage = orderRepository.findAll(pageable);
+        Page<Order> orderPage = orderRepository.findAllByDeletedFalse(pageable);
 
         if (orderPage.isEmpty()) {
             throw new AppException(ErrorCode.BILL_NOT_FOUND);
@@ -170,4 +163,61 @@ public class OrderServiceImpl implements IOrderService {
                 .build();
     }
 
+    @Override
+    @Transactional
+    public void cancelOrder(String userId, String orderId) {
+        userRepository.findById(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new AppException(ErrorCode.BILL_NOT_FOUND));
+
+        if (!order.getUser().getId().equals(userId)) {
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+        }
+
+        if (order.getOrderStatus() != OrderStatus.PENDING) {
+            throw new AppException(ErrorCode.CANNOT_CANCEL_ORDER);
+        }
+
+        order.setOrderStatus(OrderStatus.CANCELLED);
+
+        for (OrderItem item : order.getItems()) {
+            SubProduct subProduct = item.getSubProduct();
+            subProduct.setQty(subProduct.getQty() + item.getQuantity());
+        }
+
+        orderRepository.save(order);
+    }
+
+    @Override
+    public OrderDetailResponse getOrderById(String userId, String orderId) {
+        userRepository.findById(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new AppException(ErrorCode.BILL_NOT_FOUND));
+
+        if (!order.getUser().getId().equals(userId)) {
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+        }
+
+        return orderMapper.toOrderDetailResponse(order);
+    }
+    @Override
+
+    public void deleteOrder(String userId, String orderId) {
+         userRepository.findById(userId)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new AppException(ErrorCode.BILL_NOT_FOUND));
+
+        if (!order.getUser().getId().equals(userId)) {
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+        }
+        //update lai delete la true
+        order.setDeleted(true);
+        orderRepository.save(order);
+    }
 }

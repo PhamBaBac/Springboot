@@ -59,4 +59,51 @@ public class OrderController {
                 .message("All oders retrieved successfully")
                 .build();
     }
+
+    @PatchMapping("/{orderId}/cancel")
+    public ApiResponse<?> cancelOrder(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @PathVariable String orderId
+    ) {
+        User user = userRepository.findByEmail(userDetails.getUsername())
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        String userId = user.getId();
+
+        oderService.cancelOrder(userId, orderId);
+        return ApiResponse.builder()
+                .message("Order cancelled successfully")
+                .build();
+    }
+
+    @GetMapping("/{orderId}")
+    public ApiResponse<OrderDetailResponse> getOrderById(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @PathVariable String orderId
+    ) {
+        User user = userRepository.findByEmail(userDetails.getUsername())
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        String userId = user.getId();
+
+        OrderDetailResponse orderDetail = oderService.getOrderById(userId, orderId);
+        return ApiResponse.<OrderDetailResponse>builder()
+                .result(orderDetail)
+                .message("Order retrieved successfully")
+                .build();
+    }
+
+    @DeleteMapping("/{orderId}")
+    public ApiResponse<?> deleteOrder(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @PathVariable String orderId
+    ) {
+        User user = userRepository.findByEmail(userDetails.getUsername())
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        String userId = user.getId();
+
+        oderService.deleteOrder(userId, orderId);
+        return ApiResponse.builder()
+                .message("Order deleted successfully")
+                .build();
+    }
+
 }

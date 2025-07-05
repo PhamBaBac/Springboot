@@ -27,10 +27,12 @@ public class SubProduct extends BaseModel {
     Integer qty;
     Double cost;
     Double discount;
-
     @ManyToOne
     @JoinColumn(name = "product_id", nullable = false)
     Product product;
+
+    @OneToMany(mappedBy = "subProduct", cascade = CascadeType.ALL, orphanRemoval = true)
+    Set<Review> reviews;
 
     @OneToMany(mappedBy = "subProduct", cascade = CascadeType.ALL)
     private List<OrderItem> orderItems;
@@ -38,7 +40,6 @@ public class SubProduct extends BaseModel {
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "JSON")
     List<String> images;
-
 
 }
 

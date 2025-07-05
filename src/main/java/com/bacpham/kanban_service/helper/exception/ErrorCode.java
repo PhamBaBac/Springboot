@@ -42,7 +42,10 @@ public enum ErrorCode {
     MESSAGE_TOO_LONG(1028, "Message too long", HttpStatus.BAD_REQUEST),
     CHAT_HISTORY_NOT_FOUND(1029, "Chat history not found", HttpStatus.NOT_FOUND),
     INVALID_VERIFICATION_CODE(1030, "Invalid verification code", HttpStatus.BAD_REQUEST),
-    ADDRESS_NOT_FOUND(1031, "Address not found", HttpStatus.NOT_FOUND),;
+    ADDRESS_NOT_FOUND(1031, "Address not found", HttpStatus.NOT_FOUND),
+    CANNOT_CANCEL_ORDER(1032, "Cannot cancel order", HttpStatus.BAD_REQUEST),
+    NO_COMPLETED_ORDER_FOR_REVIEW(1033, "No completed order for review", HttpStatus.BAD_REQUEST),
+    REVIEW_ALREADY_EXISTS_FOR_ORDER(1034, "Review already exists for this order", HttpStatus.BAD_REQUEST),;
 
 
     ErrorCode(int code, String message, HttpStatusCode statusCode) {

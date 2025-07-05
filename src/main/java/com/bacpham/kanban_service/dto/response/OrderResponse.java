@@ -12,6 +12,7 @@ import lombok.*;
 @ToString
 public class OrderResponse {
     private String orderId;
+    private String subProductId;
     private String image;
     private String title;
     private String size;
@@ -19,4 +20,6 @@ public class OrderResponse {
     private double price;
     private double totalPrice;
     private OrderStatus orderStatus;
+    private Boolean isReviewed;
+
 }

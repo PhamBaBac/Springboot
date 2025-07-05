@@ -35,4 +35,7 @@ public class Order extends BaseModel {
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL)
     private List<OrderItem> items;
+
+    @OneToMany (mappedBy = "order", cascade = CascadeType.ALL)
+    private List<Review> reviews;
 }

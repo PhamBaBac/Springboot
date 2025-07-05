@@ -24,8 +24,8 @@ import java.util.List;
 @Slf4j
 public class CategoryController {
     CategoryServiceImpl categoryService;
-    private final JobLauncher jobLauncher;
-    private final Job categoryJob;
+    JobLauncher jobLauncher;
+    Job categoryJob;
     @PostMapping
     public ApiResponse<CategoryResponse> createCategory(@RequestBody @Validated CategoryRequest request) {
 

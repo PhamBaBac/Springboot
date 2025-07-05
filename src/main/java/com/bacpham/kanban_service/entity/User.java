@@ -29,8 +29,10 @@ public class User extends BaseModel implements UserDetails {
     String lastname;
     String email;
     String password;
+    String avatarUrl;
     boolean mfaEnabled;
     String secret;
+
 
     @Enumerated(EnumType.STRING)
     Role role;

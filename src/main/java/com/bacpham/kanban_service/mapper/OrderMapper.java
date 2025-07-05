@@ -26,6 +26,7 @@ public interface OrderMapper {
     OrderDetailResponse toOrderDetailResponse(Order order);
 
     @Mapping(source = "order.id", target = "orderId")
+    @Mapping(source = "subProduct.id", target = "subProductId")
     @Mapping(source = "subProduct.product.title", target = "title")
     @Mapping(source = "subProduct.size", target = "size")
     @Mapping(source = "quantity", target = "qty")

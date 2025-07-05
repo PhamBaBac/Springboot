@@ -56,7 +56,8 @@ public class UserController {
                     .build();
         }
 
-        UserResponse user = service.getUserByEmail(userDetails.getUsername()); // giả sử bạn có hàm này
+        UserResponse user = service.getUserByEmail(userDetails.getUsername());
+        log.info("Fetched user info for: {}", user.getAvatarUrl());
         return ApiResponse.<UserResponse>builder()
                 .result(user)
                 .message("Get user info successfully")

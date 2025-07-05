@@ -57,12 +57,14 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
         String providerId = "";
         String firstName = "";
         String lastName = "";
+        String avatarUrl = (String) attributes.get("avatar_url");
 
         switch (provider) {
             case GOOGLE -> {
                 providerId = (String) attributes.get("sub");
                 firstName = (String) attributes.get("given_name");
                 lastName = (String) attributes.get("family_name");
+                avatarUrl = (String) attributes.get("picture");
             }
             case GITHUB -> {
                 providerId = String.valueOf(attributes.get("id"));
@@ -87,6 +89,8 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
         final String finalLastName = lastName;
         final String finalProviderId = providerId;
         final Provider finalProvider = provider;
+        final String finalAvatarUrl = avatarUrl;
+
 
         User user = userRepository.findByEmail(finalEmail).orElseGet(() -> {
             User newUser = new User();
@@ -97,6 +101,7 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
             newUser.setMfaEnabled(false);
             newUser.setProvider(finalProvider);
             newUser.setProviderId(finalProviderId);
+            newUser.setAvatarUrl(finalAvatarUrl);
             return userRepository.save(newUser);
         });
 

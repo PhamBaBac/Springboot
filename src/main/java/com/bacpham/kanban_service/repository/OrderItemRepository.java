@@ -13,7 +13,7 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, String> {
         FROM OrderItem oi
         JOIN oi.order o
         JOIN oi.subProduct sp
-        WHERE o.paymentType = 'COMPLETED'
+        WHERE o.orderStatus = 'COMPLETED'
         GROUP BY sp.product.id
         ORDER BY totalSold DESC LIMIT 8
     """)
