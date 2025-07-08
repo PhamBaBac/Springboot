@@ -3,6 +3,7 @@ package com.bacpham.kanban_service.enums;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
+@Getter
 @RequiredArgsConstructor
 public enum Permission {
     ADMIN_READ("admin:read"),
@@ -17,6 +18,5 @@ public enum Permission {
     MANAGER_DELETE("manager:delete"),
     MANAGER_PATCH("manager:patch");
 
-    @Getter
     private final String permission;
 }
