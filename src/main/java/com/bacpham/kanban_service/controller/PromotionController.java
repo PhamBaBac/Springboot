@@ -82,6 +82,18 @@ public class PromotionController {
                 .build();
     }
 
+    @GetMapping("/check/{code}")
+    public ApiResponse<Boolean> checkPromotionCode(
+            @PathVariable String code
+    ) {
+        boolean isValid = promotionService.isPromotionValid(code);
+        return ApiResponse.<Boolean>builder()
+                .result(isValid)
+                .message(isValid ? "Promotion code is valid" : "Promotion code is invalid or expired")
+                .build();
+    }
+
+
     @PostMapping("/apply")
     public ApiResponse<Boolean> applyPromotion(
             @RequestBody ApplyPromotionRequest request

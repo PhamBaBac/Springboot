@@ -36,6 +36,7 @@ public interface OrderMapper {
     @Mapping(source = "order.orderStatus", target = "orderStatus")
     OrderResponse toOrderResponse(OrderItem item);
 
+
     @Named("mapFirstImage")
     default String mapFirstImage(SubProduct subProduct) {
         if (subProduct.getImages() != null && !subProduct.getImages().isEmpty()) {

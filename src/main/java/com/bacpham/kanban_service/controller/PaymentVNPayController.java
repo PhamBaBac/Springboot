@@ -3,6 +3,7 @@ package com.bacpham.kanban_service.controller;
 import com.bacpham.kanban_service.configuration.payment.ConfigVNPay;
 import com.bacpham.kanban_service.configuration.redis.GenericRedisService;
 import com.bacpham.kanban_service.dto.request.ApiResponse;
+import com.bacpham.kanban_service.dto.request.DiscountRequest;
 import com.bacpham.kanban_service.dto.request.OrderCreateRequest;
 import com.bacpham.kanban_service.dto.response.PaymentResponse;
 import com.bacpham.kanban_service.entity.User;
@@ -53,9 +54,26 @@ public class PaymentVNPayController {
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
         String userId = user.getId();
 
-        // Tính tổng tiền đơn hàng
+
         double totalAmount = request.getItems().stream()
-                .mapToDouble(item -> item.getPrice() * item.getCount())
+                .mapToDouble(item -> {
+                    double itemTotal = item.getPrice() * item.getCount();
+                    DiscountRequest discount = item.getDiscountValue();
+                    if (discount != null && discount.getValue() != null && discount.getType() != null) {
+                        try {
+                            double discountValue = Double.parseDouble(discount.getValue());
+                            switch (discount.getType()) {
+                                case DISCOUNT -> itemTotal -= discountValue;
+                                case PERCENT -> itemTotal *= (1 - discountValue / 100.0);
+                                default -> throw new AppException(ErrorCode.INVALID_PROMOTION_TYPE);
+                            }
+                        } catch (NumberFormatException e) {
+                            throw new AppException(ErrorCode.INVALID_PROMOTION_VALUE);
+                        }
+                    }
+                    if (itemTotal < 0) itemTotal = 0;
+                    return itemTotal;
+                })
                 .sum();
 
 //        String bankCode = "NCB";
@@ -63,7 +81,7 @@ public class PaymentVNPayController {
         String vnp_Version = "2.1.0";
         String vnp_Command = "pay";
         String orderType = "other";
-        long vnp_Amount = (long) (totalAmount * 100L); // nhân 100 theo chuẩn VNPay
+        long vnp_Amount =  (long) (totalAmount * 100); // VNPay expects amount in VND, so multiply by 100
         String vnp_TxnRef = ConfigVNPay.getRandomNumber(8);
         String vnp_IpAddr = ConfigVNPay.getIpAddress(httpRequest);
         String vnp_TmnCode = ConfigVNPay.vnp_TmnCode;
@@ -163,8 +181,9 @@ public class PaymentVNPayController {
             return "payment-result.html";
         }
 
+
         if ("00".equals(vnp_ResponseCode)) {
-            orderService.createOrderFromSelectedItems(userId, paymentType, request);
+            orderService.createOrderFromSelectedItems(userId, paymentType,  request );
             model.addAttribute("message", "Payment successful for transaction: " + vnp_TxnRef + " at " + vnp_PayDate);
             model.addAttribute("transactionNo", vnp_TransactionNo);
         } else {

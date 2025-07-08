@@ -37,14 +37,14 @@ public class CartServiceImpl implements ICartService {
 
     @Override
     public CartResponse addToCart(CartCreateRequest request) {
-        log.info("cart create request: {}", request.toString());
+        log.info("cart create request: {}", request);
 
         SubProduct subProduct = subProductService.findById(request.getSubProductId());
         if (subProduct == null) {
             throw new AppException(ErrorCode.SUB_PRODUCT_NOT_FOUND);
         }
 
-        int availableStock = subProduct.getQty();
+        int availableStock = subProduct.getStock(); // kiểm tra stock thay vì qty
         int requestedCount = request.getCount();
 
         if (requestedCount > availableStock) {
@@ -53,8 +53,14 @@ public class CartServiceImpl implements ICartService {
 
         Cart cart = cartMapper.toEntity(request);
         Cart saved = cartRepository.save(cart);
+
+//        // Trừ stock thực tế sau khi thêm vào giỏ
+//        subProduct.setStock(subProduct.getStock() - requestedCount);
+        subProductRepository.save(subProduct);
+
         return cartMapper.toResponse(saved);
     }
+
 
 
     @Override
@@ -62,7 +68,7 @@ public class CartServiceImpl implements ICartService {
         log.info("cart update request: {}", cartId);
         Cart cart = cartRepository.findById(cartId)
                 .orElseThrow(() -> new AppException(ErrorCode.CART_NOT_FOUND));
-        if(cart.getCount() > cart.getSubProduct().getQty()) {
+        if(cart.getCount() > cart.getSubProduct().getStock()) {
             throw new AppException(ErrorCode.INSUFFICIENT_STOCK);
         }
         cart.setCount(count);
@@ -118,8 +124,8 @@ public class CartServiceImpl implements ICartService {
 
 
         int adjustedCount = request.getCount();
-        if (request.getCount() > newSubProduct.getQty()) {
-            adjustedCount = newSubProduct.getQty();
+        if (request.getCount() > newSubProduct.getStock()) {
+            adjustedCount = newSubProduct.getStock();
             log.warn("Số lượng yêu cầu vượt quá tồn kho, đã điều chỉnh còn {}", adjustedCount);
         }
 
@@ -127,8 +133,8 @@ public class CartServiceImpl implements ICartService {
             Cart existingCart = existingCartOpt.get();
 
             int totalCount = existingCart.getCount() + adjustedCount;
-            if (totalCount > newSubProduct.getQty()) {
-                totalCount = newSubProduct.getQty();
+            if (totalCount > newSubProduct.getStock()) {
+                totalCount = newSubProduct.getStock();
             }
 
             existingCart.setCount(totalCount);

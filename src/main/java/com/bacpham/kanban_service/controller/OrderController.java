@@ -2,6 +2,7 @@ package com.bacpham.kanban_service.controller;
 
 import com.bacpham.kanban_service.dto.request.ApiResponse;
 import com.bacpham.kanban_service.dto.request.OrderCreateRequest;
+import com.bacpham.kanban_service.dto.request.UpdateStatusOrder;
 import com.bacpham.kanban_service.dto.response.*;
 import com.bacpham.kanban_service.entity.User;
 import com.bacpham.kanban_service.helper.exception.AppException;
@@ -9,6 +10,7 @@ import com.bacpham.kanban_service.helper.exception.ErrorCode;
 import com.bacpham.kanban_service.repository.UserRepository;
 import com.bacpham.kanban_service.service.impl.OrderServiceImpl;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
@@ -103,6 +105,17 @@ public class OrderController {
         oderService.deleteOrder(userId, orderId);
         return ApiResponse.builder()
                 .message("Order deleted successfully")
+                .build();
+    }
+
+    @PatchMapping("/{orderId}/status")
+    public ApiResponse<?> updateOrderStatus(
+            @PathVariable String orderId,
+            @RequestBody UpdateStatusOrder status
+    ) {
+        oderService.updateOrderStatus(orderId, status);
+        return ApiResponse.builder()
+                .message("Order status updated successfully")
                 .build();
     }
 

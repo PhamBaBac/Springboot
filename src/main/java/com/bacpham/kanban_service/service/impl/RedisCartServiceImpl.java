@@ -43,7 +43,7 @@ public class RedisCartServiceImpl implements IRedisCartService {
         SubProduct subProduct = subProductRepository.findById(request.getSubProductId())
                 .orElseThrow(() -> new RuntimeException("Sub-product not found"));
 
-        int stockQty = subProduct.getQty();
+        int stockQty = subProduct.getStock();
 
         // 2. Lấy toàn bộ giỏ hàng từ Redis
         Map<String, CartCreateRequest> currentCart = redisService.getField(key);
@@ -67,7 +67,6 @@ public class RedisCartServiceImpl implements IRedisCartService {
     @Override
     public List<CartResponse> getCart(String sessionId) {
         String key = buildKey(sessionId);
-        log.info("Fetching cart for sessionId: {}", sessionId);
 
         return redisService.getField(key).values().stream()
                 .map(request -> cartMapper.toResponse(cartMapper.toEntity(request)))
@@ -94,7 +93,7 @@ public class RedisCartServiceImpl implements IRedisCartService {
             // Lấy thông tin subProduct và tồn kho
             SubProduct subProduct = subProductRepository.findById(request.getSubProductId())
                     .orElseThrow(() -> new AppException(ErrorCode.SUB_PRODUCT_NOT_FOUND));
-            int stockQty = subProduct.getQty();
+            int stockQty = subProduct.getStock();
 
             // Lấy số lượng đã có trong DB cart
             Optional<Cart> dbCartOpt = cartService.findByUserIdAndSubProductId(userId, request.getSubProductId());
@@ -154,7 +153,7 @@ public class RedisCartServiceImpl implements IRedisCartService {
 
         SubProduct subProduct = subProductRepository.findById(request.getSubProductId())
                 .orElseThrow(() -> new AppException(ErrorCode.SUB_PRODUCT_NOT_FOUND));
-        int stockQty = subProduct.getQty();
+        int stockQty = subProduct.getStock();
 
         Map<String, CartCreateRequest> currentCart = redisService.getField(key);
         Optional<CartCreateRequest> existingOpt = Optional.ofNullable(currentCart.get(request.getSubProductId()));
@@ -180,7 +179,5 @@ public class RedisCartServiceImpl implements IRedisCartService {
             return cartMapper.toResponse(cartMapper.toEntity(request));
         }
     }
-
-
 
 }

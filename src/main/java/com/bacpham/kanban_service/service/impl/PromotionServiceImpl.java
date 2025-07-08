@@ -38,9 +38,6 @@ public class PromotionServiceImpl implements IPromotionService {
         return "promotion:expire:" + code;
     }
 
-    private String getUserKey(String userId) {
-        return "promotion:applied:" + userId;
-    }
 
     @Override
     public PromotionResponse createPromotion(PromotionRequest request) {
@@ -96,7 +93,8 @@ public class PromotionServiceImpl implements IPromotionService {
 
     @Override
     public List<PromotionResponse> getAllPromotions() {
-        return promotionRepository.findAll().stream()
+        return promotionRepository.findAllByDeletedFalse()
+                .stream()
                 .map(promotionMapper::toResponse)
                 .collect(Collectors.toList());
     }
@@ -121,7 +119,7 @@ public class PromotionServiceImpl implements IPromotionService {
         String stockKey = getStockKey(code);
         String expireKey = getExpireKey(code);
         long now = Instant.now().toEpochMilli();
-        return redisScriptService.checkStockAndNotExpired(stockKey, expireKey, now);
+        return redisScriptService.checkPromotionCode(stockKey, expireKey, now);
     }
     @Override
     public boolean applyPromotionCode(String userId, String code) {

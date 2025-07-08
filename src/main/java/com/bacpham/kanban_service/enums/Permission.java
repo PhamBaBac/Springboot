@@ -9,11 +9,13 @@ public enum Permission {
     ADMIN_UPDATE("admin:update"),
     ADMIN_CREATE("admin:create"),
     ADMIN_DELETE("admin:delete"),
+    ADMIN_PATCH("admin:patch"),
 
     MANAGER_READ("manager:read"),
     MANAGER_UPDATE("manager:update"),
     MANAGER_CREATE("manager:create"),
-    MANAGER_DELETE("manager:delete");
+    MANAGER_DELETE("manager:delete"),
+    MANAGER_PATCH("manager:patch");
 
     @Getter
     private final String permission;

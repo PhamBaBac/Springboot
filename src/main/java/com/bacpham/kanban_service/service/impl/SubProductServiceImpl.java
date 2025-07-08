@@ -37,6 +37,7 @@ public class SubProductServiceImpl implements ISubProductService {
                     .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_FOUND));
             subProduct.setProduct(product);
         }
+        subProduct.setStock(request.getQty());
 
         subProduct = subProductRepository.save(subProduct);
 

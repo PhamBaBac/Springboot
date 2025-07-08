@@ -22,10 +22,12 @@ public enum Role {
                     ADMIN_UPDATE,
                     ADMIN_DELETE,
                     ADMIN_CREATE,
+                    ADMIN_PATCH,
                     MANAGER_READ,
                     MANAGER_UPDATE,
                     MANAGER_DELETE,
-                    MANAGER_CREATE
+                    MANAGER_CREATE,
+                    MANAGER_PATCH
             )
     ),
     MANAGER(
@@ -33,7 +35,8 @@ public enum Role {
                     MANAGER_READ,
                     MANAGER_UPDATE,
                     MANAGER_DELETE,
-                    MANAGER_CREATE
+                    MANAGER_CREATE,
+                    MANAGER_PATCH
             )
     );
 

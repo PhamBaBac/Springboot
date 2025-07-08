@@ -131,7 +131,7 @@ public class GeminiService {
                             context.append("  - Size: ").append(sub.getSize())
                                     .append(", Màu: ").append(sub.getColor())
                                     .append(", Giá: ").append(formatPrice(sub.getPrice()))
-                                    .append(", Số lượng: ").append(sub.getQty())
+                                    .append(", Số lượng: ").append(sub.getSize())
                                     .append("\n");
                         }
                     }

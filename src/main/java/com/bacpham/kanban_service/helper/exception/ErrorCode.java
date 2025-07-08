@@ -45,7 +45,9 @@ public enum ErrorCode {
     ADDRESS_NOT_FOUND(1031, "Address not found", HttpStatus.NOT_FOUND),
     CANNOT_CANCEL_ORDER(1032, "Cannot cancel order", HttpStatus.BAD_REQUEST),
     NO_COMPLETED_ORDER_FOR_REVIEW(1033, "No completed order for review", HttpStatus.BAD_REQUEST),
-    REVIEW_ALREADY_EXISTS_FOR_ORDER(1034, "Review already exists for this order", HttpStatus.BAD_REQUEST),;
+    REVIEW_ALREADY_EXISTS_FOR_ORDER(1034, "Review already exists for this order", HttpStatus.BAD_REQUEST),
+    INVALID_PROMOTION_TYPE(1035, "Invalid promotion type", HttpStatus.BAD_REQUEST),
+    INVALID_PROMOTION_VALUE(1036, "Invalid promotion value", HttpStatus.BAD_REQUEST);
 
 
     ErrorCode(int code, String message, HttpStatusCode statusCode) {

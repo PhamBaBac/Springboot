@@ -17,6 +17,7 @@ public class SubProductResponse {
     String color;
     Double price;
     Double discount;
+    Integer stock;
     Integer qty;
     Double cost;
     Set<String> images;

@@ -1,6 +1,7 @@
 package com.bacpham.kanban_service.dto.request;
 
 import lombok.*;
+import org.springframework.web.bind.annotation.RequestBody;
 
 import java.util.List;
 
@@ -12,4 +13,5 @@ import java.util.List;
 public class OrderCreateRequest {
     private String addressId;
     private List<OrderItemRequest> items;
+    private String code;
 }

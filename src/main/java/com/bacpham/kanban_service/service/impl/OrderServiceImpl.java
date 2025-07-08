@@ -1,7 +1,9 @@
 package com.bacpham.kanban_service.service.impl;
 
+import com.bacpham.kanban_service.dto.request.DiscountRequest;
 import com.bacpham.kanban_service.dto.request.OrderCreateRequest;
 import com.bacpham.kanban_service.dto.request.OrderItemRequest;
+import com.bacpham.kanban_service.dto.request.UpdateStatusOrder;
 import com.bacpham.kanban_service.dto.response.OrderDetailResponse;
 import com.bacpham.kanban_service.dto.response.OrderResponse;
 import com.bacpham.kanban_service.dto.response.PageResponse;
@@ -38,6 +40,7 @@ public class OrderServiceImpl implements IOrderService {
     private final SubProductRepository subProductRepository;
     private final AddressRepository addressRepository;
     private final ReviewProductRepository reviewRepository;
+    private final PromotionServiceImpl promotionService;
 
     @Override
     @Transactional
@@ -49,23 +52,60 @@ public class OrderServiceImpl implements IOrderService {
         double total = 0.0;
         List<OrderItem> orderItems = new ArrayList<>();
 
+        // Nếu có mã khuyến mãi cho toàn bộ đơn, xử lý ở đây (nếu hệ thống có)
+        if (request.getCode() != null && !request.getCode().isBlank()) {
+            promotionService.applyPromotionCode(user.getId(), request.getCode());
+        }
+
         for (OrderItemRequest dto : items) {
             SubProduct subProduct = subProductRepository.findById(dto.getSubProductId())
                     .orElseThrow(() -> new AppException(ErrorCode.SUB_PRODUCT_NOT_FOUND));
 
-            if (subProduct.getQty() < dto.getCount()) {
+            if (subProduct.getStock() < dto.getCount()) {
                 throw new AppException(ErrorCode.INSUFFICIENT_STOCK);
             }
 
-            subProduct.setQty(subProduct.getQty() - dto.getCount());
+            // Cập nhật tồn kho
+            subProduct.setStock(subProduct.getStock() - dto.getCount());
 
             double itemTotal = dto.getPrice() * dto.getCount();
+            double unitPriceAfterDiscount = dto.getPrice();
+
+            DiscountRequest discount = dto.getDiscountValue();
+            if (discount != null && discount.getValue() != null && discount.getType() != null) {
+                try {
+                    double discountValue = Double.parseDouble(discount.getValue());
+
+                    switch (discount.getType()) {
+                        case DISCOUNT -> {
+                            double discountAmount = discountValue;
+                            itemTotal -= discountAmount;
+                            unitPriceAfterDiscount = itemTotal / dto.getCount();
+                        }
+                        case PERCENT -> {
+                            double percent = discountValue / 100.0;
+                            itemTotal *= (1 - percent);
+                            unitPriceAfterDiscount = itemTotal / dto.getCount();
+                        }
+                        default -> throw new AppException(ErrorCode.INVALID_PROMOTION_TYPE);
+                    }
+                } catch (NumberFormatException e) {
+                    throw new AppException(ErrorCode.INVALID_PROMOTION_VALUE);
+                }
+            }
+
+            // Đảm bảo không âm
+            if (itemTotal < 0) {
+                itemTotal = 0;
+                unitPriceAfterDiscount = 0;
+            }
+
             total += itemTotal;
 
             OrderItem orderItem = OrderItem.builder()
                     .subProduct(subProduct)
                     .quantity(dto.getCount())
-                    .priceAtOrderTime(dto.getPrice())
+                    .priceAtOrderTime(unitPriceAfterDiscount) // Lưu giá đã giảm cho mỗi đơn vị
                     .build();
 
             orderItems.add(orderItem);
@@ -98,6 +138,7 @@ public class OrderServiceImpl implements IOrderService {
 
         orderRepository.save(order);
 
+        // Xóa các sản phẩm trong giỏ hàng đã đặt mua
         List<String> subProductIds = items.stream()
                 .map(OrderItemRequest::getSubProductId)
                 .toList();
@@ -184,7 +225,7 @@ public class OrderServiceImpl implements IOrderService {
 
         for (OrderItem item : order.getItems()) {
             SubProduct subProduct = item.getSubProduct();
-            subProduct.setQty(subProduct.getQty() + item.getQuantity());
+            subProduct.setQty(subProduct.getStock() + item.getQuantity());
         }
 
         orderRepository.save(order);
@@ -218,6 +259,20 @@ public class OrderServiceImpl implements IOrderService {
         }
         //update lai delete la true
         order.setDeleted(true);
+        orderRepository.save(order);
+    }
+
+    @Override
+    public void updateOrderStatus(String orderId, UpdateStatusOrder status) {
+        log.info("Updating order status for order ", orderId, status);
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new AppException(ErrorCode.BILL_NOT_FOUND));
+
+        if (status == null || status.getOrderStatus() == null) {
+            throw new AppException(ErrorCode.INVALID_KEY);
+        }
+
+        order.setOrderStatus(status.getOrderStatus());
         orderRepository.save(order);
     }
 }

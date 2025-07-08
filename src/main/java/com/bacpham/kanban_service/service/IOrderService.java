@@ -1,6 +1,7 @@
 package com.bacpham.kanban_service.service;
 
 import com.bacpham.kanban_service.dto.request.OrderCreateRequest;
+import com.bacpham.kanban_service.dto.request.UpdateStatusOrder;
 import com.bacpham.kanban_service.dto.response.*;
 import com.bacpham.kanban_service.entity.Order;
 
@@ -13,4 +14,5 @@ public interface IOrderService {
     void cancelOrder(String userId, String orderId);
     OrderDetailResponse getOrderById(String userId, String orderId);
     void deleteOrder(String userId, String orderId);
+    void updateOrderStatus(String orderId, UpdateStatusOrder status);
 }

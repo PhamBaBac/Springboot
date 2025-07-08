@@ -12,5 +12,7 @@ public class OrderItemRequest {
     private String subProductId;
     private Integer count;
     private Double price;
-    private String addressId; // Address ID for shipping
+    private String addressId;
+    private DiscountRequest discountValue;
+
 }

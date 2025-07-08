@@ -27,13 +27,11 @@ import java.util.List;
 @RequiredArgsConstructor
 @FieldDefaults(makeFinal = true, level = lombok.AccessLevel.PRIVATE)
 @Slf4j
-//@PreAuthorize("hasRole('ADMIN')")
 public class SupplierController {
      SupplierServiceImpl supplierService;
 
     @GetMapping("/get-form")
     public SupplierFormDTO getSupplierForm() {
-        // Tạo các FormItemDTO cho form
         List<FormItem> formItems = Arrays.asList(
                 new FormItem("name", "name", "Supplier name", "Enter supplier name", "default", true, "Enter supplier name", "", 400, null),
                 new FormItem("email", "email", "Supplier Email", "Enter supplier Email", "default", false, "", "", 150, null),
@@ -55,7 +53,6 @@ public class SupplierController {
         return form;
     }
 
-//    @PreAuthorize("hasAuthority('admin:create')")
      @PostMapping("/add-new")
      ApiResponse<SupplierResponse> createSupplier(@RequestBody @Validated SupplierRequest request) {
          return ApiResponse.<SupplierResponse>builder()
@@ -63,7 +60,6 @@ public class SupplierController {
                  .build();
      }
 
-//     @PreAuthorize("hasAuthority('admin:read')")
     @GetMapping("/page")
     ApiResponse<PageResponse<SupplierResponse>> productPage(
             @RequestParam(value = "page", required = false, defaultValue = "1") int page,

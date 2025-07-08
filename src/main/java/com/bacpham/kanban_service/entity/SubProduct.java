@@ -25,6 +25,7 @@ public class SubProduct extends BaseModel {
     String color;
     Double price;
     Integer qty;
+    Integer stock;
     Double cost;
     Double discount;
     @ManyToOne

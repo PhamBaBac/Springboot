@@ -40,7 +40,6 @@ public class AuthenticationController {
                 .build();
     }
 
-
     @PostMapping("/send-code-email")
     public ApiResponse<?> sendCodeEmail(@RequestBody SendCodeRequest request) throws MessagingException {
         service.sendCodeEmail(request.getEmail());
@@ -86,9 +85,6 @@ public class AuthenticationController {
         service.logout(request, response);
     }
 
-
-
-
     @PostMapping("/verify")
     public ApiResponse<?> sendCodeAuthenticator(
             @RequestBody VerificationRequest verificationRequest,
@@ -112,10 +108,10 @@ public class AuthenticationController {
     }
 
 
-    @GetMapping("/user")
-    public Map<String, Object> user(@AuthenticationPrincipal OAuth2User principal) {
-        return Collections.singletonMap("name", principal.getAttribute("name"));
-    }
+//    @GetMapping("/user")
+//    public Map<String, Object> user(@AuthenticationPrincipal OAuth2User principal) {
+//        return Collections.singletonMap("name", principal.getAttribute("name"));
+//    }
     @GetMapping("/failure")
     public ApiResponse<?> fail() {
         return ApiResponse.builder()

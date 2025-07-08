@@ -46,7 +46,7 @@ public class RedisScriptService {
         redisService.executeLuaScript(rollbackStockScript, List.of(key), List.of());
     }
 
-    public boolean checkStockAndNotExpired(String stockKey, String expireKey, long nowMillis) {
+    public boolean checkPromotionCode(String stockKey, String expireKey, long nowMillis) {
         Long result = redisService.executeLuaScript(checkExpiredAndStockScript, List.of(stockKey, expireKey), List.of(nowMillis));
         return result != null && result == 1L;
     }
