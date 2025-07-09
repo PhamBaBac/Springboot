@@ -14,36 +14,55 @@ import lombok.experimental.FieldDefaults;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+@Entity
+@Table(name = "user", uniqueConstraints = {
+        @UniqueConstraint(columnNames = "email")
+})
 @Getter
 @Setter
 @ToString
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Entity
-@Table(name = "user")
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class User extends BaseModel implements UserDetails {
 
+    @Column(nullable = false, length = 50)
     String firstname;
+
+    @Column(nullable = false, length = 50)
     String lastname;
+
+    @Column(nullable = false, unique = true, length = 100)
     String email;
+
+    @Column(nullable = false)
+    @JsonIgnore
     String password;
+
+    @Column(length = 255)
     String avatarUrl;
-    boolean mfaEnabled;
+
+    @Column(nullable = false)
+    boolean mfaEnabled = false;
+
+    @Column(length = 100)
+    @JsonIgnore
     String secret;
 
-
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
     Role role;
 
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
     Provider provider;
 
+    @Column(length = 100)
     String providerId;
+
     @OneToMany(mappedBy = "createdBy", cascade = CascadeType.ALL)
     List<Cart> cartItems;
-
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
     List<Order> orders;
@@ -53,14 +72,12 @@ public class User extends BaseModel implements UserDetails {
 
     @OneToMany(mappedBy = "createdBy", cascade = CascadeType.ALL, orphanRemoval = true)
     List<Address> addresses;
+
+    // Spring Security
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return role.getAuthorities();
-    }
-
-    @Override
-    public String getPassword() {
-        return password;
     }
 
     @Override

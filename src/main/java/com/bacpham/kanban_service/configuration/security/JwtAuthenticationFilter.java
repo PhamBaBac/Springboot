@@ -60,7 +60,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
 
-//             Kiểm tra token trong database và loại token
             String userId = ((User) userDetails).getId();
 
             String redisKey = "accessToken:" + userId;

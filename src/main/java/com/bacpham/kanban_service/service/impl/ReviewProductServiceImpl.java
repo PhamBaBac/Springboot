@@ -4,6 +4,7 @@ import com.bacpham.kanban_service.dto.request.ReviewProductRequest;
 import com.bacpham.kanban_service.dto.response.ReviewProductResponse;
 import com.bacpham.kanban_service.entity.*;
 import com.bacpham.kanban_service.enums.OrderStatus;
+import com.bacpham.kanban_service.gemini.service.ReviewModerationService;
 import com.bacpham.kanban_service.helper.exception.AppException;
 import com.bacpham.kanban_service.helper.exception.ErrorCode;
 import com.bacpham.kanban_service.mapper.ReviewProductMapper;
@@ -28,9 +29,15 @@ public class ReviewProductServiceImpl implements IReviewProductService {
     private final UserRepository userRepository;
     private final ReviewProductMapper reviewProductMapper;
     private final OrderRepository orderRepository;
+    private final ReviewModerationService reviewModerationService;
 
     @Override
     public void createReview(ReviewProductRequest request) {
+        if (!reviewModerationService.isReviewApproved(request.getComment(), request.getImages())) {
+            throw new AppException(ErrorCode.REVIEW_REJECTED_BY_MODERATION);
+        }
+
+
         SubProduct subProduct = subProductRepository.findById(request.getSubProductId())
                 .orElseThrow(() -> new AppException(ErrorCode.SUB_PRODUCT_NOT_FOUND));
 
@@ -69,20 +76,6 @@ public class ReviewProductServiceImpl implements IReviewProductService {
         reviewRepository.save(review);
     }
 
-
-//    @Override
-//    public List<ReviewProductResponse> getReviewsBySubProductId(String subProductId) {
-//        SubProduct subProduct = subProductRepository.findById(subProductId)
-//                .orElseThrow(() -> new AppException(ErrorCode.SUB_PRODUCT_NOT_FOUND));
-//
-//        // Lấy các review của subProduct này
-//        List<Review> reviews = reviewRepository.findBySubProductId(subProduct.getId());
-//
-//        // Map sang response
-//        return reviews.stream()
-//                .map(reviewProductMapper::toResponse)
-//                .toList();
-//    }
 
     @Override
     public List<ReviewProductResponse> getReviewsBySubProductIds(List<String> subProductIds) {

@@ -36,10 +36,11 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
     private final GenericRedisService<String, String, String> redisService;
     private final ObjectMapper objectMapper;
 
-
     @Value("${application.oauth2.authorized-redirect-uri}")
     private String authorizedRedirectUri;
 
+    @Value("${application.cookie.secure:false}")
+    private boolean isCookieSecure;
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication)
@@ -50,9 +51,9 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
         String registrationId = oauthToken.getAuthorizedClientRegistrationId();
 
         Map<String, Object> attributes = oauth2User.getAttributes();
-
         Provider provider = Provider.valueOf(registrationId.toUpperCase());
 
+        // Extract user info from attributes
         String email = (String) attributes.get("email");
         String providerId = "";
         String firstName = "";
@@ -77,13 +78,12 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
                     lastName = "";
                 }
                 if (email == null || email.isBlank()) {
-                    email = "no-email-" + providerId + "@github.com";
+                    email = "no-email-" + providerId + "@github.local";
                 }
             }
             default -> throw new IllegalStateException("Unsupported provider: " + provider);
         }
 
-        // Make variables final for lambda
         final String finalEmail = email;
         final String finalFirstName = firstName;
         final String finalLastName = lastName;
@@ -91,8 +91,9 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
         final Provider finalProvider = provider;
         final String finalAvatarUrl = avatarUrl;
 
-
+        // Get or create user
         User user = userRepository.findByEmail(finalEmail).orElseGet(() -> {
+            log.info("Creating new user with email: {}", finalEmail);
             User newUser = new User();
             newUser.setEmail(finalEmail);
             newUser.setFirstname(finalFirstName);
@@ -105,28 +106,38 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
             return userRepository.save(newUser);
         });
 
+        // Access token
+        String accessToken = redisService.get("accessToken:" + user.getId());
+        if (accessToken == null || jwtService.isTokenExpired(accessToken)) {
+            accessToken = jwtService.generateAccessToken(user);
+            redisService.set("accessToken:" + user.getId(), accessToken);
+            redisService.setTimeToLive("accessToken:" + user.getId(), 2, TimeUnit.DAYS);
+            log.info("Generated new access token for user: {}", user.getEmail());
+        } else {
+            log.info("Using existing valid access token for user: {}", user.getEmail());
+        }
 
-        String accessToken = jwtService.generateAccessToken(user);
+        // Refresh token
         String refreshToken = jwtService.generateRefreshToken(user);
-
-        redisService.set("accessToken:" + user.getId(), accessToken);
-        redisService.setTimeToLive("accessToken:" + user.getId(), 2, TimeUnit.MINUTES);
         redisService.set("refreshToken:" + user.getId(), refreshToken);
         redisService.setTimeToLive("refreshToken:" + user.getId(), 7, TimeUnit.DAYS);
 
+        // Set cookie
         ResponseCookie cookie = ResponseCookie.from("refreshToken", refreshToken)
                 .httpOnly(true)
-                .secure(false)
+                .secure(isCookieSecure)
                 .path("/")
                 .maxAge(Duration.ofDays(7))
                 .sameSite("Lax")
                 .build();
         response.setHeader(HttpHeaders.SET_COOKIE, cookie.toString());
 
+        // Redirect to frontend with accessToken
         String redirectUrl = UriComponentsBuilder.fromUriString(authorizedRedirectUri)
                 .queryParam("accessToken", accessToken)
                 .build().toUriString();
 
+        log.info("Redirecting to frontend with token for user: {}", user.getEmail());
         getRedirectStrategy().sendRedirect(request, response, redirectUrl);
     }
 }

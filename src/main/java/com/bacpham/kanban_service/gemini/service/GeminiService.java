@@ -35,7 +35,7 @@ public class GeminiService {
 
     private final RestClient restClient;
     private final String geminiApiKey;
-    private static final String DEFAULT_MODEL = "gemini-1.5-flash-latest";
+    private static final String DEFAULT_MODEL = "gemini-2.0-flash";
     private final ProductServiceImpl productService;
     private final SubProductServiceImpl subProductService;
     private final SupplierServiceImpl supplierService;

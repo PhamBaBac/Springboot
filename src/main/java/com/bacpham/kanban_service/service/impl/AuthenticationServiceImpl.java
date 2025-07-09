@@ -307,7 +307,7 @@ public class AuthenticationServiceImpl implements IAuthenticationService {
     private String createAndStoreAccessToken(User user) {
         String token = jwtService.generateAccessToken(user);
         redisService.set("accessToken:" + user.getId(), token);
-        redisService.setTimeToLive("accessToken:" + user.getId(), 1, TimeUnit.DAYS);
+        redisService.setTimeToLive("accessToken:" + user.getId(), 2, TimeUnit.DAYS);
         return token;
     }
 
