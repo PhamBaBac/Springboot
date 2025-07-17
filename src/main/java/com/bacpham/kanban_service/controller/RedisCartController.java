@@ -34,7 +34,7 @@ public class RedisCartController {
         List<CartResponse> cart = redisCartService.getCart(sessionId);
         return ApiResponse.<List<CartResponse>>builder()
                 .message("Fetched cart from Redis")
-                .result(cart)
+                .data(cart)
                 .build();
     }
 
@@ -76,7 +76,7 @@ public class RedisCartController {
         CartResponse updatedCart = redisCartService.updateCartFull(sessionId, currentSubProductId, updatedRequest);
         return ApiResponse.<CartResponse>builder()
                 .message("Cart updated successfully")
-                .result(updatedCart)
+                .data(updatedCart)
                 .build();
     }
     @PutMapping("/syncToDatabase")

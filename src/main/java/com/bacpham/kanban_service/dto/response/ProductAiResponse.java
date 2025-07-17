@@ -1,7 +1,10 @@
 package com.bacpham.kanban_service.dto.response;
 
+import com.bacpham.kanban_service.dto.request.SubProductCreationRequest;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
+
+import java.util.Set;
 
 @Getter
 @Setter
@@ -9,11 +12,8 @@ import lombok.experimental.FieldDefaults;
 @AllArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-@ToString
-public class FilterSubProductResponse {
-    String size;
-    String color;
-    double price;
-    double discount;
-    Integer stock;
+public class ProductAiResponse {
+    String id;
+    String title;
+    Set<String> images;
 }

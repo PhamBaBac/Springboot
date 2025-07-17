@@ -147,7 +147,7 @@ public class PaymentVNPayController {
         return ApiResponse.<PaymentResponse>builder()
                 .code(200)
                 .message("Payment URL created successfully")
-                .result(PaymentResponse.builder().paymentUrl(paymentUrl).build())
+                .data(PaymentResponse.builder().paymentUrl(paymentUrl).build())
                 .build();
     }
 

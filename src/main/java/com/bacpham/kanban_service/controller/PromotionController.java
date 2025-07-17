@@ -29,7 +29,7 @@ public class PromotionController {
     ) {
         PromotionResponse created = promotionService.createPromotion(request);
         return ApiResponse.<PromotionResponse>builder()
-                .result(created)
+                .data(created)
                 .build();
     }
 
@@ -40,7 +40,7 @@ public class PromotionController {
     ) {
         PromotionResponse updated = promotionService.updatePromotion(id, request);
         return ApiResponse.<PromotionResponse>builder()
-                .result(updated)
+                .data(updated)
                 .build();
     }
 
@@ -48,14 +48,14 @@ public class PromotionController {
     public ApiResponse<PromotionResponse> getPromotionById(@PathVariable String id) {
         PromotionResponse response = promotionService.getPromotionById(id);
         return ApiResponse.<PromotionResponse>builder()
-                .result(response)
+                .data(response)
                 .build();
     }
 
     @GetMapping
     public ApiResponse<List<PromotionResponse>> getAllPromotions() {
         return ApiResponse.<List<PromotionResponse>>builder()
-                .result(promotionService.getAllPromotions())
+                .data(promotionService.getAllPromotions())
                 .build();
     }
     @GetMapping("/code/{code}")
@@ -63,7 +63,7 @@ public class PromotionController {
         log.info("getPromotionByCode:", code);
         PromotionResponse response = promotionService.getPromotionByNameCode(code);
         return ApiResponse.<PromotionResponse>builder()
-                .result(response)
+                .data(response)
                 .build();
     }
 
@@ -77,7 +77,7 @@ public class PromotionController {
     public ApiResponse<Boolean> validatePromotion(@RequestParam String code) {
         boolean isValid = promotionService.isPromotionValid(code);
         return ApiResponse.<Boolean>builder()
-                .result(isValid)
+                .data(isValid)
                 .message(isValid ? "Valid promotion" : "Invalid or expired promotion")
                 .build();
     }
@@ -88,7 +88,7 @@ public class PromotionController {
     ) {
         boolean isValid = promotionService.isPromotionValid(code);
         return ApiResponse.<Boolean>builder()
-                .result(isValid)
+                .data(isValid)
                 .message(isValid ? "Promotion code is valid" : "Promotion code is invalid or expired")
                 .build();
     }
@@ -102,7 +102,7 @@ public class PromotionController {
         String code = request.getCode();
         boolean applied = promotionService.applyPromotionCode(userId, code);
         return ApiResponse.<Boolean>builder()
-                .result(applied)
+                .data(applied)
                 .message(applied ? "Promotion applied successfully" : "Promotion already used")
                 .build();
     }

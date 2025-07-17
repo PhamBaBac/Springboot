@@ -40,7 +40,7 @@ public class ProductController {
     @PreAuthorize("hasAuthority('admin:create')")
     ApiResponse<ProductResponse> createProduct(@RequestBody @Validated ProductCreationRequest request) {
         return ApiResponse.<ProductResponse>builder()
-                .result(productService.createProduct(request))
+                .data(productService.createProduct(request))
                 .build();
     }
 
@@ -55,7 +55,7 @@ public class ProductController {
     @PreAuthorize("hasAuthority('admin:update')")
     ApiResponse<ProductResponse> updateProduct(@PathVariable String id, @RequestBody ProductCreationRequest request) {
         return ApiResponse.<ProductResponse>builder()
-                .result(productService.updateProduct(id, request))
+                .data(productService.updateProduct(id, request))
                 .build();
     }
 

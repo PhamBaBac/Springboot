@@ -30,7 +30,7 @@ public class StatisticsController {
     public ApiResponse<StatisticsResponse> getStatistics() {
         StatisticsResponse statistics = statisticsService.getStatistics();
         return ApiResponse.<StatisticsResponse>builder()
-                .result(statistics)
+                .data(statistics)
                 .message("Statistics retrieved successfully")
                 .build();
     }
@@ -89,7 +89,7 @@ public class StatisticsController {
 
 
         return ApiResponse.<List<Map<String, Object>>>builder()
-                .result(result)
+                .data(result)
                 .message("Order purchase statistics retrieved successfully")
                 .build();
     }
@@ -98,7 +98,7 @@ public class StatisticsController {
     @PreAuthorize("hasAuthority('admin:read')")
     public ApiResponse<?> getTopSellingAndLowQuantity() {
         return ApiResponse.<StatisticsTopSellingLowQuantityResponse>builder()
-                .result(statisticsService.getTopSellingAndLowQuantity())
+                .data(statisticsService.getTopSellingAndLowQuantity())
                 .message("Top selling and low quantity statistics retrieved successfully")
                 .build();
     }

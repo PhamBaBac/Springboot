@@ -30,7 +30,7 @@ public class ReviewProductController {
 //            @PathVariable String subProductId
 //    ) {
 //        return ApiResponse.builder()
-//                .result(reviewProductService.getReviewsBySubProductId(subProductId))
+//                .data(reviewProductService.getReviewsBySubProductId(subProductId))
 //                .message("Get reviews by sub product id successfully")
 //                .build();
 //    }
@@ -41,7 +41,7 @@ public class ReviewProductController {
     ) {
         List<ReviewProductResponse> responses = reviewProductService.getReviewsBySubProductIds(subProductIds);
         return ApiResponse.<List<ReviewProductResponse>>builder()
-                .result(   responses)
+                .data(responses)
                 .message("Get reviews by sub product ids successfully")
                 .build();
     }

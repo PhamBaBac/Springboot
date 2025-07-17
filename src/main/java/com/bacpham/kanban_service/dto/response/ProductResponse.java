@@ -11,7 +11,7 @@ import java.util.Set;
 @AllArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-
+@ToString
 public class ProductResponse {
     String id;
     String title;
@@ -20,6 +20,7 @@ public class ProductResponse {
     String content;
     Boolean isDeleted;
     Set<CategoryResponse> categories;
+    Set<FilterSubProductResponse> subProducts;
     String supplierId;
     Set<String> images;
 }

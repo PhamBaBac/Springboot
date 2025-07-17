@@ -5,14 +5,20 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
 public class SubProductSellingInfo {
-    private String name;           // Tên subProduct hoặc product
-    private int soldQuantity;      // Số lượng đã bán
-    private int remainingQuantity; // Số lượng còn lại (stock)
-    private double price;
+    private String title;
+    private String color;
+    private String size;
+    private Long soldQuantity;
+    private Integer stock;
+    private Double price;
+    private List<String> images;
 }
+
 

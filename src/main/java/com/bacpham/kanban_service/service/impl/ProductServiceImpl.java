@@ -131,6 +131,7 @@ log.info("Retrieving product with id: {}", id);
 
 
     public ProductResponse updateProduct(String id, ProductCreationRequest request) {
+        log.info("Updating product with id: {}, request: {}", id, request);
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_FOUND));
         productMapper.updateProduct(product, request);
@@ -138,6 +139,11 @@ log.info("Retrieving product with id: {}", id);
         if (request.getCategories() != null && !request.getCategories().isEmpty()) {
             Set<Category> categories = new HashSet<>(categoryRepository.findAllById(request.getCategories()));
             product.setCategories(categories);
+        }
+        if ( request.getSupplierId() != null) {
+            Supplier supplier = supplierRepository.findById(request.getSupplierId())
+                    .orElseThrow(() -> new AppException(ErrorCode.SUPPLIER_NOT_FOUND));
+            product.setSupplier(supplier);
         }
 
         product = productRepository.save(product);

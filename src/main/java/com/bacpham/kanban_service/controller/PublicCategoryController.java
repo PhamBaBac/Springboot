@@ -28,7 +28,7 @@ public class PublicCategoryController {
     @GetMapping("/all")
     ApiResponse<List<CategoryResponse>> getCategory() {
         return ApiResponse.<List<CategoryResponse>>builder()
-                .result(categoryService.getCategories())
+                .data(categoryService.getCategories())
                 .build();
     }
 
@@ -38,7 +38,7 @@ public class PublicCategoryController {
             @RequestParam(value = "pageSize", required = false, defaultValue = "10") int pageSize
     ) {
         return ApiResponse.<PageResponse<CategoryResponse>>builder()
-                .result(categoryService.getPageCategories(page, pageSize))
+                .data(categoryService.getPageCategories(page, pageSize))
                 .build();
     }
 

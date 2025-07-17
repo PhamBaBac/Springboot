@@ -1,5 +1,6 @@
 package com.bacpham.kanban_service.repository;
 
+import com.bacpham.kanban_service.dto.response.LowQuantityProductResponse;
 import com.bacpham.kanban_service.entity.Category;
 import com.bacpham.kanban_service.entity.Product;
 import org.springframework.data.domain.Page;
@@ -50,6 +51,23 @@ public interface ProductRepository extends JpaRepository<Product, String> {
             Pageable pageable
     );
 
+    @Query("""
+   SELECT DISTINCT p FROM Product p
+   LEFT JOIN p.subProducts sp
+   WHERE p.deleted = false AND (sp.stock > 0 OR sp.stock IS NULL)
+     AND (:name IS NULL OR LOWER(p.title) LIKE LOWER(CONCAT('%', :name, '%')))
+     AND (:sizes IS NULL OR sp.size IN :sizes)
+     AND (:minPrice IS NULL OR sp.price >= :minPrice)
+     AND (:maxPrice IS NULL OR sp.price <= :maxPrice)
+""")
+    List<Product> findByNameLike(
+            @Param("name") String name,
+            @Param("sizes") List<String> sizes,
+            @Param("minPrice") Double minPrice,
+            @Param("maxPrice") Double maxPrice
+    );
+
+
 
     @Query("""
         SELECT DISTINCT p FROM Product p
@@ -63,5 +81,22 @@ public interface ProductRepository extends JpaRepository<Product, String> {
             @Param("productIds") List<String> productIds,
             Pageable pageable
     );
+
+    @Query("""
+    SELECT new com.bacpham.kanban_service.dto.response.LowQuantityProductResponse(
+        p.title,
+        SUM(sp.stock),
+        p.images
+    )
+    FROM Product p
+    JOIN p.subProducts sp
+    WHERE p.deleted = false
+    GROUP BY p.id, p.title, p.images
+    HAVING SUM(sp.stock) < 30
+    ORDER BY SUM(sp.stock) ASC
+""")
+    List<LowQuantityProductResponse> findLowQuantityProducts();
+
+
 
 }

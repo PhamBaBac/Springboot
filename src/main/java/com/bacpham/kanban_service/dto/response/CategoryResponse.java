@@ -9,6 +9,7 @@ import java.util.Set;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@ToString
 public class CategoryResponse {
     private String id;
     private String title;

@@ -27,5 +27,4 @@ public class ReviewProductResponse {
     LocalDateTime createdAt;
     LocalDateTime updatedAt;
 
-
 }

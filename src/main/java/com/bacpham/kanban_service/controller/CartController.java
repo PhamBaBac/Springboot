@@ -23,7 +23,7 @@ public class CartController {
         CartResponse cart = cartService.addToCart(request);
         return ApiResponse.<CartResponse>builder()
                 .message("Added to cart successfully")
-                .result(cart)
+                .data(cart)
                 .build();
     }
 
@@ -35,7 +35,7 @@ public class CartController {
         CartResponse cart = cartService.updateCart(id, count);
         return ApiResponse.<CartResponse>builder()
                 .message("Cart updated successfully")
-                .result(cart)
+                .data(cart)
                 .build();
     }
 
@@ -53,7 +53,7 @@ public class CartController {
         List<CartResponse> cartItems = cartService.getUserCart(userName);
         return ApiResponse.<List<CartResponse>>builder()
                 .message("Fetched cart successfully")
-                .result(cartItems)
+                .data(cartItems)
                 .build();
     }
 
@@ -63,7 +63,7 @@ public class CartController {
         CartResponse updatedCart = cartService.updateCartFull(request, id);
         return ApiResponse.<CartResponse>builder()
                 .message("Cart updated successfully")
-                .result(updatedCart)
+                .data(updatedCart)
                 .build();
     }
 

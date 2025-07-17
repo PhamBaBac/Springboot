@@ -39,27 +39,30 @@ public class UserController {
                 .build();
     }
     @GetMapping("/secretImageUri")
-    public ResponseEntity<String> getSecretImageUri(
+    public ApiResponse<String> getSecretImageUri(
             @AuthenticationPrincipal UserDetails userDetails
     ) {
         String connectedUser = userDetails.getUsername();
         log.info("Fetching secret image URI for user: {}", connectedUser);
         String secretImageUri = service.getSecretImageUriByEmail(connectedUser);
-        return ResponseEntity.ok(secretImageUri);
+        return ApiResponse.<String>builder()
+                .data(secretImageUri)
+                .message("Fetched secret image URI successfully")
+                .build();
     }
     @GetMapping("/me")
     public ApiResponse<UserResponse> getMyInfo(@AuthenticationPrincipal UserDetails userDetails) {
         if (userDetails == null) {
             return ApiResponse.<UserResponse>builder()
                     .message("User not authenticated")
-                    .result(null)
+                    .data(null)
                     .build();
         }
 
         UserResponse user = service.getUserByEmail(userDetails.getUsername());
         log.info("Fetched user info for: {}", user.getAvatarUrl());
         return ApiResponse.<UserResponse>builder()
-                .result(user)
+                .data(user)
                 .message("Get user info successfully")
                 .build();
     }

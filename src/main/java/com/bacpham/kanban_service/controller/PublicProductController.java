@@ -34,7 +34,7 @@ public class PublicProductController {
     @GetMapping
     ApiResponse<List<ProductResponse>> getProducts() {
         return ApiResponse.<List<ProductResponse>>builder()
-                .result(productService.getProducts())
+                .data(productService.getProducts())
                 .build();
     }
 
@@ -45,7 +45,7 @@ public class PublicProductController {
             @RequestParam(value = "title", required = false) String title
     ) {
         return ApiResponse.<PageResponse<ProductResponse>>builder()
-                .result(productService.getProductPage(page, pageSize, title))
+                .data(productService.getProductPage(page, pageSize, title))
                 .build();
     }
 
@@ -58,12 +58,12 @@ public class PublicProductController {
         ProductResponse productResponse = productService.getProductById(slug, id);
 
         return ApiResponse.<ProductResponse>builder()
-                .result(productResponse)
+                .data(productResponse)
                 .build();
     }
 
 
-    @GetMapping("/filter")
+    @PostMapping("/filter")
     public ApiResponse<PageResponse<ProductResponse>> filterProducts(
             @RequestParam(value = "catIds", required = false) List<String> catIds,
             @RequestParam(value = "sizes", required = false) List<String> sizes,
@@ -91,7 +91,7 @@ public class PublicProductController {
                 .build();
 
         return ApiResponse.<PageResponse<ProductResponse>>builder()
-                .result(response)
+                .data(response)
                 .build();
     }
 
@@ -100,14 +100,14 @@ public class PublicProductController {
         log.info("Received request to get product recommendations for IDs: {}", ids);
         List<ProductResponse> result = productService.getListProductRecommendations(ids);
         return ApiResponse.<List<ProductResponse>>builder()
-                .result(result)
+                .data(result)
                 .message("success")
                 .build();
     }
     @GetMapping("/bestSellers")
     public ApiResponse<List<ProductResponse>> getBestSellers() {
         return ApiResponse.<List<ProductResponse>>builder()
-                .result(productService.getBestSellers())
+                .data(productService.getBestSellers())
                 .build();
     }
 

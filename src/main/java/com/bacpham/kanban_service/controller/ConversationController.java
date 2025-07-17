@@ -25,7 +25,7 @@ public class ConversationController {
     ) {
         ConversationResponse conversation = conversationService.createConversation(request);
         return ApiResponse.<ConversationResponse>builder()
-                .result(conversation)
+                .data(conversation)
                 .message("Conversation created or returned successfully")
                 .build();
     }
@@ -34,7 +34,7 @@ public class ConversationController {
     public ApiResponse<List<ConversationResponse>> getMyConversations() {
         List<ConversationResponse> conversations = conversationService.getMyConversations();
         return ApiResponse.<List<ConversationResponse>>builder()
-                .result(conversations)
+                .data(conversations)
                 .message("Fetched user conversations successfully")
                 .build();
     }

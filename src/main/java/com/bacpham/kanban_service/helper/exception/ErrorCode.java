@@ -77,8 +77,7 @@ public enum ErrorCode {
     // ==================================================
     // 7xxx - Address / Delivery
     // ==================================================
-    ADDRESS_NOT_FOUND(7001, "Address not found", HttpStatus.NOT_FOUND),
-   ;
+    ADDRESS_NOT_FOUND(7001, "Address not found", HttpStatus.NOT_FOUND),;
 
     private final int code;
     private final String message;

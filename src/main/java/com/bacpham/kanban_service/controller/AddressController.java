@@ -34,7 +34,7 @@ public class AddressController {
         String userId = user.getId();
         AddressResponse address = addressService.createAddress(request, userId);
         return  ApiResponse.<AddressResponse>builder()
-                .result(address)
+                .data(address)
                 .message("Address created successfully")
                 .build();
     }
@@ -47,7 +47,7 @@ public class AddressController {
         List<AddressResponse> addresses = addressService.getAddresses(userId);
         return ApiResponse.<List<AddressResponse>>builder()
                 .message("Fetched cart successfully")
-                .result(addresses)
+                .data(addresses)
                 .build();
     }
 }

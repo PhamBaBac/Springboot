@@ -10,6 +10,7 @@ import com.bacpham.kanban_service.mapper.ProductMapper;
 import com.bacpham.kanban_service.mapper.StatisticsMapper;
 import com.bacpham.kanban_service.repository.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 import java.util.Comparator;
@@ -61,53 +62,19 @@ public class StatisticsService {
     }
 
     public StatisticsTopSellingLowQuantityResponse getTopSellingAndLowQuantity() {
-        List<OrderItem> orderItems = orderItemRepository.findAll();
-        Map<String, SubProductSellingInfo> sellingMap = new HashMap<>();
+        // 1) Lấy top 5 sản phẩm con bán chạy nhất (đã gộp từ JPQL)
+        List<SubProductSellingInfo> topSelling =
+                orderItemRepository.findTopSellingSubProducts();
 
-        for (OrderItem item : orderItems) {
-            SubProduct sp = item.getSubProduct();
-            String subProductId = sp.getId();
-            String name = sp.getProduct().getTitle() + " - " + sp.getColor() + " - " + sp.getSize();
+        // 2) Lấy top 5 sản phẩm có tồn kho thấp nhất (đã gộp từ JPQL)
+        List<LowQuantityProductResponse> lowQuantity =
+                productRepository.findLowQuantityProducts();
 
-            sellingMap.compute(subProductId, (id, dto) -> {
-                if (dto == null) {
-                    return SubProductSellingInfo.builder()
-                            .name(name)
-                            .soldQuantity(item.getQuantity())
-                            .remainingQuantity(sp.getStock())
-                            .price(item.getPriceAtOrderTime())
-                            .build();
-                } else {
-                    dto.setSoldQuantity(dto.getSoldQuantity() + item.getQuantity());
-                    return dto;
-                }
-            });
-        }
-
-        List<SubProductSellingInfo> topSelling = sellingMap.values().stream()
-                .sorted(Comparator.comparingInt(SubProductSellingInfo::getSoldQuantity).reversed())
-                .limit(5)
-                .toList();
-
-        // 2) Low Quantity
-        List<Product> products = productRepository.findAll();
-        List<LowQuantityProductResponse> lowQuantity = products.stream()
-                .map(product -> {
-                    Integer totalStock = subProductRepository.sumStockByProductId(product.getId());
-                    return LowQuantityProductResponse.builder()
-                            .name(product.getTitle())
-                            .remainingQuantity(totalStock == null ? 0 : totalStock)
-                            .images(product.getImages())
-                            .build();
-                })
-                .filter(response -> response.getRemainingQuantity() < 30) // chỉ sp còn dưới 10 cái
-                .sorted(Comparator.comparingInt(LowQuantityProductResponse::getRemainingQuantity))
-                .limit(5)
-                .toList();
-
+        // Trả về kết quả tổng hợp
         return StatisticsTopSellingLowQuantityResponse.builder()
                 .topSelling(topSelling)
                 .lowQuantity(lowQuantity)
                 .build();
     }
+
 }

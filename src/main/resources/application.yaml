@@ -2,6 +2,8 @@ server:
   port: 8080
 
 spring:
+  config:
+    import: optional:file:.env[.properties]
   security:
     oauth2:
       client:
@@ -61,6 +63,12 @@ spring:
         options:
           model: gemini-2.0-flash
 
+    chat:
+      memory:
+        repository:
+          jdbc:
+            initialize-schema: always
+
 application:
   oauth2:
     authorized-redirect-uri: http://localhost:3004/auth/oauth-callback
@@ -68,7 +76,6 @@ application:
     jwt:
       secret-key: ${KEY_SECRET}
       expiration: 86400000
-
       refresh-token:
         expiration: 604800000
 logging:

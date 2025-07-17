@@ -37,7 +37,7 @@ public class AuthenticationController {
         service.register(request);
         return ApiResponse.builder()
                 .message("Register info received. Please verify your email.")
-                .result(true)
+                .data(true)
                 .build();
     }
 
@@ -63,7 +63,7 @@ public class AuthenticationController {
         return ResponseEntity.ok(
                 ApiResponse.builder()
                         .message("Authentication successful")
-                        .result(authResponse)
+                        .data(authResponse)
                         .build()
         );
     }
@@ -86,14 +86,14 @@ public class AuthenticationController {
         service.logout(request, response);
     }
 
-    @PostMapping("/verify")
+    @PostMapping("/enable-tfa")
     public ApiResponse<?> sendCodeAuthenticator(
             @RequestBody VerificationRequest verificationRequest,
             HttpServletResponse response
     ){
         return ApiResponse.<AuthenticationResponse>builder()
                 .message("Your message here")
-                .result(service.verifyCode(verificationRequest, response))
+                .data(service.verifyCode(verificationRequest, response))
                 .build();
     }
     @PostMapping("/verify-code-email")
@@ -104,7 +104,7 @@ public class AuthenticationController {
         AuthenticationResponse result = service.verifyCodeEmail(request, response);
         return ApiResponse.builder()
                 .message("Email verified and account activated")
-                .result(result)
+                .data(result)
                 .build();
     }
 

@@ -56,7 +56,7 @@ public class SupplierController {
      @PostMapping("/add-new")
      ApiResponse<SupplierResponse> createSupplier(@RequestBody @Validated SupplierRequest request) {
          return ApiResponse.<SupplierResponse>builder()
-                 .result(supplierService.createSupplier(request))
+                 .data(supplierService.createSupplier(request))
                  .build();
      }
 
@@ -66,7 +66,7 @@ public class SupplierController {
             @RequestParam(value = "pageSize", required = false, defaultValue = "10") int pageSize
     ) {
         return ApiResponse.<PageResponse<SupplierResponse>>builder()
-                .result(supplierService.getSupplierResponsePage(page, pageSize))
+                .data(supplierService.getSupplierResponsePage(page, pageSize))
                 .build();
     }
 
@@ -79,7 +79,7 @@ public class SupplierController {
     @PutMapping("/update/{id}")
     ApiResponse<SupplierResponse> updateSupplier(@PathVariable String id, @RequestBody SupplierRequest request) {
         return ApiResponse.<SupplierResponse>builder()
-                .result(supplierService.updateSupplier(id, request))
+                .data(supplierService.updateSupplier(id, request))
                 .build();
     }
     @GetMapping("/export")
@@ -118,7 +118,7 @@ public class SupplierController {
     ApiResponse<SupplierResponse> getSupplierById(
             @PathVariable String id) {
         return ApiResponse.<SupplierResponse>builder()
-                .result(supplierService.getSupplierById(id))
+                .data(supplierService.getSupplierById(id))
                 .build();
     }
 }

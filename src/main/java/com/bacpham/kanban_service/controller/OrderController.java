@@ -47,7 +47,7 @@ public class OrderController {
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
         String userId = user.getId();
         return ApiResponse.<List<OrderResponse>>builder()
-                .result(oderService.getOrdersByUserId(userId))
+                .data(oderService.getOrdersByUserId(userId))
                 .message("Bill retrieved successfully")
                 .build();
     }
@@ -57,7 +57,7 @@ public class OrderController {
             @RequestParam(defaultValue = "10") int pageSize
     ) {
         return ApiResponse.<PageResponse<OrderDetailResponse>>builder()
-                .result(oderService.getPagedAllOrders(page, pageSize))
+                .data(oderService.getPagedAllOrders(page, pageSize))
                 .message("All oders retrieved successfully")
                 .build();
     }
@@ -88,7 +88,7 @@ public class OrderController {
 
         OrderDetailResponse orderDetail = oderService.getOrderById(userId, orderId);
         return ApiResponse.<OrderDetailResponse>builder()
-                .result(orderDetail)
+                .data(orderDetail)
                 .message("Order retrieved successfully")
                 .build();
     }
