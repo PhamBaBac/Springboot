@@ -65,7 +65,6 @@ public class ProductServiceImpl implements IProductService {
                 .collect(Collectors.toList());
     }
     public PageResponse<ProductResponse> getProductPage(int page, int pageSize, String title) {
-        // Nếu có từ khóa tìm kiếm → không dùng cache
         if (title != null && !title.isEmpty()) {
             Sort sort = Sort.by("createdAt").descending();
             Pageable pageable = PageRequest.of(page - 1, pageSize, sort);

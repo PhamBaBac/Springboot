@@ -36,6 +36,7 @@ public class SecurityConfiguration {
             "/api/v1/promotions/**",
             "/api/v1/public/products/**",
             "/api/v1/subProducts/**",
+            "/api/v1/reviewProducts/**",
             "/oauth2/**",
             "/login/oauth2/**",
             "/v2/api-docs",

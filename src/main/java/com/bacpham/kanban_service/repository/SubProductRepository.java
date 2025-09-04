@@ -24,4 +24,14 @@ public interface SubProductRepository extends JpaRepository<SubProduct, String> 
 
     @Query(value = "SELECT COALESCE(SUM(price * qty), 0) FROM sub_products WHERE deleted = false", nativeQuery = true)
     double getTotalSubProductAmount();
+
+    @Query("SELECT DISTINCT UPPER(sp.size) FROM SubProduct sp")
+    List<String> findDistinctSizes();
+
+    @Query("SELECT DISTINCT UPPER(sp.color) FROM SubProduct sp")
+    List<String> findDistinctColors();
+
+    @Query("SELECT DISTINCT sp.price FROM SubProduct sp")
+    List<Double> findDistinctPrices();
+
 }

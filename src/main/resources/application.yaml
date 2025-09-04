@@ -39,9 +39,9 @@ spring:
     redis:
       host: localhost
       port: 6379
-    mongodb:
-      uri: mongodb+srv://bacpham:${PASSWORD_MONGODB}@cluster0.vlmwfvo.mongodb.net/chat?retryWrites=true&w=majority&appName=Cluster0
-      auto-index-creation: true
+#    mongodb:
+#      uri: mongodb+srv://bacpham:${PASSWORD_MONGODB}@cluster0.vlmwfvo.mongodb.net/chat?retryWrites=true&w=majority&appName=Cluster0
+#      auto-index-creation: true
   jpa:
     hibernate:
       ddl-auto: update

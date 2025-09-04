@@ -46,34 +46,13 @@ public class SubProductServiceImpl implements ISubProductService {
     }
 
     public Map<String, List<?>> getSubProducts() {
-        List<FilterSubProductResponse> subProducts = subProductRepository.findAll().stream()
-                .map(subProductMapper::toFilterSubProductResponse)
-                .toList();
-
-        List<String> sizes = subProducts.stream()
-                .map(FilterSubProductResponse::getSize)
-                .map(String::toUpperCase) // Chuyển về chữ thường
-                .distinct()
-                .collect(Collectors.toList());
-
-        List<String> colors = subProducts.stream()
-                .map(FilterSubProductResponse::getColor)
-                .map(String::toUpperCase) // Chuyển về chữ thường
-                .distinct()
-                .collect(Collectors.toList());
-
-        List<Double> prices = subProducts.stream()
-                .map(FilterSubProductResponse::getPrice)
-                .distinct()
-                .collect(Collectors.toList());
-
         Map<String, List<?>> result = new HashMap<>();
-        result.put("sizes", sizes);
-        result.put("colors", colors);
-        result.put("prices", prices);
-
+        result.put("sizes", subProductRepository.findDistinctSizes());
+        result.put("colors", subProductRepository.findDistinctColors());
+        result.put("prices", subProductRepository.findDistinctPrices());
         return result;
     }
+
 
     public void delete(String id) {
         SubProduct subProduct = subProductRepository.findById(id)
