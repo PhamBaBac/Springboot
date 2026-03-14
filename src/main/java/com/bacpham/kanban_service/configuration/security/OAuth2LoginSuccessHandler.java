@@ -6,6 +6,7 @@ import com.bacpham.kanban_service.enums.Provider;
 import com.bacpham.kanban_service.enums.Role;
 import com.bacpham.kanban_service.repository.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -106,18 +107,10 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
             return userRepository.save(newUser);
         });
 
-        // Access token
-        String accessToken = redisService.get("accessToken:" + user.getId());
-        if (accessToken == null || jwtService.isTokenExpired(accessToken)) {
-            accessToken = jwtService.generateAccessToken(user);
-            redisService.set("accessToken:" + user.getId(), accessToken);
-            redisService.setTimeToLive("accessToken:" + user.getId(), 2, TimeUnit.DAYS);
-            log.info("Generated new access token for user: {}", user.getEmail());
-        } else {
-            log.info("Using existing valid access token for user: {}", user.getEmail());
-        }
+        // FIX 1: Sử dụng method mới để lấy access token an toàn
+        String accessToken = getOrGenerateAccessToken(user);
 
-        // Refresh token
+        // FIX 2: Luôn generate refresh token mới khi login
         String refreshToken = jwtService.generateRefreshToken(user);
         redisService.set("refreshToken:" + user.getId(), refreshToken);
         redisService.setTimeToLive("refreshToken:" + user.getId(), 7, TimeUnit.DAYS);
@@ -139,5 +132,42 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
 
         log.info("Redirecting to frontend with token for user: {}", user.getEmail());
         getRedirectStrategy().sendRedirect(request, response, redirectUrl);
+    }
+
+    /**
+     * FIX QUAN TRỌNG: Lấy access token an toàn, xử lý exception đúng cách
+     */
+    private String getOrGenerateAccessToken(User user) {
+        String redisKey = "accessToken:" + user.getId();
+        String accessToken = redisService.get(redisKey);
+
+        // Kiểm tra token có tồn tại và hợp lệ không
+        if (accessToken != null) {
+            try {
+                if (jwtService.isTokenValid(accessToken)) {
+                    log.info("Using existing valid access token for user: {}", user.getEmail());
+                    return accessToken;
+                } else {
+                    log.info("Token exists but invalid/expired for user: {}", user.getEmail());
+                    // Xóa token cũ không hợp lệ
+                    redisService.delete(redisKey);
+                }
+            } catch (ExpiredJwtException e) {
+                log.warn("Token expired for user: {}, generating new one", user.getEmail());
+                redisService.delete(redisKey);
+            } catch (Exception e) {
+                log.warn("Error validating token for user: {}, generating new one. Error: {}",
+                        user.getEmail(), e.getMessage());
+                redisService.delete(redisKey);
+            }
+        }
+
+        // Generate token mới
+        log.info("Generating new access token for user: {}", user.getEmail());
+        accessToken = jwtService.generateAccessToken(user);
+        redisService.set(redisKey, accessToken);
+        redisService.setTimeToLive(redisKey, 2, TimeUnit.DAYS);
+
+        return accessToken;
     }
 }

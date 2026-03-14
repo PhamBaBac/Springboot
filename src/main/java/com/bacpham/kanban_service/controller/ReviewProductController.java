@@ -3,6 +3,7 @@ package com.bacpham.kanban_service.controller;
 import com.bacpham.kanban_service.dto.request.ApiResponse;
 import com.bacpham.kanban_service.dto.request.ReviewProductRequest;
 import com.bacpham.kanban_service.dto.response.ReviewProductResponse;
+import com.bacpham.kanban_service.service.IReviewProductService;
 import com.bacpham.kanban_service.service.impl.ReviewProductServiceImpl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -13,7 +14,7 @@ import java.util.List;
 @RequestMapping("/api/v1/reviewProducts")
 @RequiredArgsConstructor
 public class ReviewProductController {
-    private final ReviewProductServiceImpl reviewProductService;
+    private final IReviewProductService reviewProductService;
 
     @PostMapping
     public ApiResponse<?> createReviewProduct(

@@ -69,7 +69,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             boolean isAccessToken = jwtService.extractTokenType(jwt).equals("access");
 
 
-            if (isAccessToken && jwtService.isTokenValid(jwt, userDetails, "access") && isTokenValid) {
+            if (isAccessToken && jwtService.isTokenValidForUser(jwt, userDetails, "access") && isTokenValid) {
                 UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                         userDetails,
                         null,

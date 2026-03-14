@@ -3,6 +3,7 @@ package com.bacpham.kanban_service.controller;
 import com.bacpham.kanban_service.dto.request.*;
 import com.bacpham.kanban_service.dto.response.AuthenticationResponse;
 import com.bacpham.kanban_service.dto.response.UserResponse;
+import com.bacpham.kanban_service.service.IAuthenticationService;
 import com.bacpham.kanban_service.service.impl.AuthenticationServiceImpl;
 import com.bacpham.kanban_service.service.impl.CartServiceImpl;
 import com.bacpham.kanban_service.service.impl.RedisCartServiceImpl;
@@ -27,7 +28,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class AuthenticationController {
 
-    private final AuthenticationServiceImpl service;
+    private final IAuthenticationService service;
     private final RedisCartServiceImpl redisCartService;
 
     @PostMapping("/register")
@@ -100,7 +101,7 @@ public class AuthenticationController {
     public ApiResponse<?> verifyCodeEmail(
             @RequestBody VerificationRequest request,
             HttpServletResponse response
-    ) {
+    ) throws MessagingException {
         AuthenticationResponse result = service.verifyCodeEmail(request, response);
         return ApiResponse.builder()
                 .message("Email verified and account activated")

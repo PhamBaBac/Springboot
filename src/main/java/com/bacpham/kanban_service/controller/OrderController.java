@@ -8,8 +8,10 @@ import com.bacpham.kanban_service.entity.User;
 import com.bacpham.kanban_service.helper.exception.AppException;
 import com.bacpham.kanban_service.helper.exception.ErrorCode;
 import com.bacpham.kanban_service.repository.UserRepository;
+import com.bacpham.kanban_service.service.IOrderService;
 import com.bacpham.kanban_service.service.impl.OrderServiceImpl;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -20,8 +22,9 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/orders")
 @RequiredArgsConstructor
+@Slf4j
 public class OrderController {
-    private final OrderServiceImpl oderService;
+    private final IOrderService oderService;
     private final UserRepository userRepository;
 
     @PostMapping("/create")
@@ -113,6 +116,7 @@ public class OrderController {
             @PathVariable String orderId,
             @RequestBody UpdateStatusOrder status
     ) {
+        log.info("Updating order status for orderId: {} to status: {}", orderId, status);
         oderService.updateOrderStatus(orderId, status);
         return ApiResponse.builder()
                 .message("Order status updated successfully")

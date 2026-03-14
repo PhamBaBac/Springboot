@@ -6,6 +6,7 @@ import com.bacpham.kanban_service.dto.request.SupplierFormDTO;
 import com.bacpham.kanban_service.dto.request.SupplierRequest;
 import com.bacpham.kanban_service.dto.response.PageResponse;
 import com.bacpham.kanban_service.dto.response.SupplierResponse;
+import com.bacpham.kanban_service.service.ISupplierService;
 import com.bacpham.kanban_service.service.impl.SupplierServiceImpl;
 import com.bacpham.kanban_service.utils.excel.BaseExport;
 import jakarta.servlet.http.HttpServletResponse;
@@ -28,7 +29,7 @@ import java.util.List;
 @FieldDefaults(makeFinal = true, level = lombok.AccessLevel.PRIVATE)
 @Slf4j
 public class SupplierController {
-     SupplierServiceImpl supplierService;
+     ISupplierService supplierService;
 
     @GetMapping("/get-form")
     public SupplierFormDTO getSupplierForm() {

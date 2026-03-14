@@ -1,5 +1,6 @@
 package com.bacpham.kanban_service.service.impl;
 
+import com.bacpham.kanban_service.configuration.redis.GenericRedisService;
 import com.bacpham.kanban_service.dto.request.SupplierRequest;
 import com.bacpham.kanban_service.dto.response.PageResponse;
 import com.bacpham.kanban_service.dto.response.SupplierResponse;
@@ -37,10 +38,10 @@ public class SupplierServiceImpl implements ISupplierService {
     SupplierRepository supplierRepository;
     CategoryRepository categoryRepository;
     SupplierMapper supplierMapper;
+    GenericRedisService<String, String, SupplierResponse> redisService;
 
     @Transactional
     public SupplierResponse createSupplier(SupplierRequest request) {
-        log.info("Creating supplier with request: {}", request.toString());
         Supplier supplier = supplierMapper.toSupplier(request);
 
         if (request.getCategories() != null && !request.getCategories().isEmpty()) {
@@ -93,7 +94,6 @@ public class SupplierServiceImpl implements ISupplierService {
     }
 
     public SupplierResponse updateSupplier(String id, SupplierRequest request) {
-        log.info("all request: {}", request.toString());
         Supplier supplier = supplierRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.SUPPLIER_NOT_FOUND));
 
@@ -132,9 +132,18 @@ public class SupplierServiceImpl implements ISupplierService {
                 .collect(Collectors.toList());
     }
     public SupplierResponse getSupplierById(String id) {
+        String key = "suppliers";
+        SupplierResponse cached = redisService.hashGet(key, id);
+        if (cached != null) {
+            return cached;
+        }
+
         Supplier supplier = supplierRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.SUPPLIER_NOT_FOUND));
-        return supplierMapper.toSupplierResponse(supplier);
+        SupplierResponse response = supplierMapper.toSupplierResponse(supplier);
+
+        redisService.hashSet(key, id, response);
+        return response;
     }
 
 

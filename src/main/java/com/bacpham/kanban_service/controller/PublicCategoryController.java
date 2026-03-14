@@ -4,6 +4,7 @@ import com.bacpham.kanban_service.dto.request.ApiResponse;
 import com.bacpham.kanban_service.dto.request.CategoryRequest;
 import com.bacpham.kanban_service.dto.response.CategoryResponse;
 import com.bacpham.kanban_service.dto.response.PageResponse;
+import com.bacpham.kanban_service.service.ICategoryService;
 import com.bacpham.kanban_service.service.impl.CategoryServiceImpl;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -23,7 +24,7 @@ import java.util.List;
 @FieldDefaults(makeFinal = true, level = lombok.AccessLevel.PRIVATE)
 @Slf4j
 public class PublicCategoryController {
-    CategoryServiceImpl categoryService;
+    ICategoryService categoryService;
 
     @GetMapping("/all")
     ApiResponse<List<CategoryResponse>> getCategory() {

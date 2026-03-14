@@ -150,7 +150,7 @@ public class AuthenticationServiceImpl implements IAuthenticationService {
             User user = repository.findByEmail(email)
                     .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
-            if (!jwtService.isTokenValid(refreshToken, user, "refresh")) {
+            if (!jwtService.isTokenValidForUser(refreshToken, user, "refresh")) {
                 writeErrorResponse(response, "Invalid refresh token", HttpServletResponse.SC_UNAUTHORIZED);
                 return;
             }
@@ -321,14 +321,21 @@ public class AuthenticationServiceImpl implements IAuthenticationService {
         redisService.set("refreshToken:" + user.getId(), token);
         redisService.setTimeToLive("refreshToken:" + user.getId(), 7, TimeUnit.DAYS);
 
-        ResponseCookie cookie = ResponseCookie.from("refreshToken", token)
+        String cookieName = user.getRole() == Role.ADMIN
+                ? "refreshTokenAdmin"
+                : "refreshTokenUser";
+
+        ResponseCookie cookie = ResponseCookie.from(cookieName, token)
                 .httpOnly(true)
-                .secure(false)
+                .secure(false) // để true nếu dùng HTTPS
                 .path("/")
-                .maxAge(Duration.ofDays(7))
                 .sameSite("Lax")
+                .domain("localhost") // chỉ "localhost", KHÔNG kèm port
+                .maxAge(Duration.ofDays(7))
                 .build();
+
         response.setHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+
 
         return token;
     }

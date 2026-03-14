@@ -17,7 +17,7 @@ import static com.bacpham.kanban_service.enums.Role.MANAGER;
 @SpringBootApplication
 @EnableJpaAuditing(auditorAwareRef = "auditorAware")
 @EnableCaching
-public class KanbanServiceApplication {
+ public class KanbanServiceApplication {
 
 	public static void main(String[] args) {
 		SpringApplication.run(KanbanServiceApplication.class, args);

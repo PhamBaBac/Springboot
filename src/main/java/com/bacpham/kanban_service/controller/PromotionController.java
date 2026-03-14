@@ -4,6 +4,7 @@ import com.bacpham.kanban_service.dto.request.ApiResponse;
 import com.bacpham.kanban_service.dto.request.ApplyPromotionRequest;
 import com.bacpham.kanban_service.dto.request.PromotionRequest;
 import com.bacpham.kanban_service.dto.response.PromotionResponse;
+import com.bacpham.kanban_service.service.IPromotionService;
 import com.bacpham.kanban_service.service.impl.PromotionServiceImpl;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import lombok.RequiredArgsConstructor;
@@ -21,7 +22,7 @@ import java.util.List;
 @Slf4j
 public class PromotionController {
 
-    PromotionServiceImpl promotionService;
+    IPromotionService promotionService;
 
     @PostMapping("/addNew")
     public ApiResponse<PromotionResponse> createPromotion(
@@ -71,15 +72,6 @@ public class PromotionController {
     public ApiResponse<Void> deletePromotion(@PathVariable String id) {
         promotionService.deletePromotion(id);
         return ApiResponse.<Void>builder().message("Deleted successfully").build();
-    }
-
-    @GetMapping("/validate")
-    public ApiResponse<Boolean> validatePromotion(@RequestParam String code) {
-        boolean isValid = promotionService.isPromotionValid(code);
-        return ApiResponse.<Boolean>builder()
-                .data(isValid)
-                .message(isValid ? "Valid promotion" : "Invalid or expired promotion")
-                .build();
     }
 
     @GetMapping("/check/{code}")

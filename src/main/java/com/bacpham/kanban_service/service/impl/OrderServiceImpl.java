@@ -9,7 +9,6 @@ import com.bacpham.kanban_service.dto.response.OrderResponse;
 import com.bacpham.kanban_service.dto.response.PageResponse;
 import com.bacpham.kanban_service.entity.*;
 import com.bacpham.kanban_service.enums.OrderStatus;
-import com.bacpham.kanban_service.enums.PaymentStatus;
 import com.bacpham.kanban_service.enums.PaymentType;
 import com.bacpham.kanban_service.helper.exception.AppException;
 import com.bacpham.kanban_service.helper.exception.ErrorCode;
@@ -52,7 +51,6 @@ public class OrderServiceImpl implements IOrderService {
         double total = 0.0;
         List<OrderItem> orderItems = new ArrayList<>();
 
-        // Nếu có mã khuyến mãi cho toàn bộ đơn, xử lý ở đây (nếu hệ thống có)
         if (request.getCode() != null && !request.getCode().isBlank()) {
             promotionService.applyPromotionCode(user.getId(), request.getCode());
         }
@@ -265,12 +263,14 @@ public class OrderServiceImpl implements IOrderService {
     @Override
     public void updateOrderStatus(String orderId, UpdateStatusOrder status) {
         log.info("Updating order status for order ", orderId, status);
+
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new AppException(ErrorCode.BILL_NOT_FOUND));
 
         if (status == null || status.getOrderStatus() == null) {
             throw new AppException(ErrorCode.INVALID_KEY);
         }
+
 
         order.setOrderStatus(status.getOrderStatus());
         orderRepository.save(order);

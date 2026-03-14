@@ -8,6 +8,7 @@ import com.bacpham.kanban_service.entity.User;
 import com.bacpham.kanban_service.helper.exception.AppException;
 import com.bacpham.kanban_service.helper.exception.ErrorCode;
 import com.bacpham.kanban_service.repository.UserRepository;
+import com.bacpham.kanban_service.service.IAddressService;
 import com.bacpham.kanban_service.service.impl.AddressServiceImpl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -21,7 +22,7 @@ import java.util.List;
 @RequestMapping("/api/v1/addresses")
 @RequiredArgsConstructor
 public class AddressController {
-    private final AddressServiceImpl addressService;
+    private final IAddressService addressService;
     private final UserRepository userRepository;
     @PostMapping("/create")
     public ApiResponse<AddressResponse> createAddress(

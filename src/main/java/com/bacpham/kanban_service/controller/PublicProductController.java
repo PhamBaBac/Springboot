@@ -5,6 +5,7 @@ import com.bacpham.kanban_service.dto.request.ProductCreationRequest;
 import com.bacpham.kanban_service.dto.response.PageResponse;
 import com.bacpham.kanban_service.dto.response.ProductResponse;
 import com.bacpham.kanban_service.entity.User;
+import com.bacpham.kanban_service.service.IProductService;
 import com.bacpham.kanban_service.service.impl.ProductServiceImpl;
 import com.bacpham.kanban_service.service.UserActivityService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -30,7 +31,7 @@ import java.util.List;
 @FieldDefaults(makeFinal = true, level = lombok.AccessLevel.PRIVATE)
 @Slf4j
 public class PublicProductController {
-    ProductServiceImpl productService;
+    IProductService productService;
     @GetMapping
     ApiResponse<List<ProductResponse>> getProducts() {
         return ApiResponse.<List<ProductResponse>>builder()

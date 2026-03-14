@@ -52,6 +52,7 @@ public class UserController {
     }
     @GetMapping("/me")
     public ApiResponse<UserResponse> getMyInfo(@AuthenticationPrincipal UserDetails userDetails) {
+        log.info("Fetching my user info for user: {}", userDetails.getUsername());
         if (userDetails == null) {
             return ApiResponse.<UserResponse>builder()
                     .message("User not authenticated")
@@ -60,7 +61,7 @@ public class UserController {
         }
 
         UserResponse user = service.getUserByEmail(userDetails.getUsername());
-        log.info("Fetched user info for: {}", user.getAvatarUrl());
+        log.info("User not authenticated: {}", user.getAvatarUrl());
         return ApiResponse.<UserResponse>builder()
                 .data(user)
                 .message("Get user info successfully")

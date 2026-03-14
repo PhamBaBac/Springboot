@@ -3,6 +3,7 @@ package com.bacpham.kanban_service.controller;
 import com.bacpham.kanban_service.dto.request.ApiResponse;
 import com.bacpham.kanban_service.dto.request.CartCreateRequest;
 import com.bacpham.kanban_service.dto.response.CartResponse;
+import com.bacpham.kanban_service.service.IRedisCartService;
 import com.bacpham.kanban_service.service.impl.RedisCartServiceImpl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,7 +18,7 @@ import java.util.List;
 
 public class RedisCartController {
 
-    private final RedisCartServiceImpl redisCartService;
+    private final IRedisCartService redisCartService;
 
     @PostMapping
     public ApiResponse<?> addToCart(@RequestBody CartCreateRequest request) {
