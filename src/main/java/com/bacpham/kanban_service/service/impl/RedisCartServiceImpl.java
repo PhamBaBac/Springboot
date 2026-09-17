@@ -1,5 +1,12 @@
 package com.bacpham.kanban_service.service.impl;
 
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
+import org.springframework.stereotype.Service;
+
 import com.bacpham.kanban_service.configuration.redis.GenericRedisService;
 import com.bacpham.kanban_service.dto.request.CartCreateRequest;
 import com.bacpham.kanban_service.dto.response.CartResponse;
@@ -10,15 +17,9 @@ import com.bacpham.kanban_service.helper.exception.ErrorCode;
 import com.bacpham.kanban_service.mapper.CartMapper;
 import com.bacpham.kanban_service.repository.SubProductRepository;
 import com.bacpham.kanban_service.service.IRedisCartService;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -69,7 +70,24 @@ public class RedisCartServiceImpl implements IRedisCartService {
         String key = buildKey(sessionId);
 
         return redisService.getField(key).values().stream()
-                .map(request -> cartMapper.toResponse(cartMapper.toEntity(request)))
+                .map(request -> {
+                    Cart cart = cartMapper.toEntity(request);
+                    CartResponse response = cartMapper.toResponse(cart);
+                    Optional<SubProduct> spOpt = subProductRepository.findById(request.getSubProductId());
+                    boolean isDel = false;
+                    int currentStock = 0;
+                    if (spOpt.isEmpty() || Boolean.TRUE.equals(spOpt.get().getDeleted())
+                            || spOpt.get().getProduct() == null || Boolean.TRUE.equals(spOpt.get().getProduct().getDeleted())) {
+                        isDel = true;
+                        currentStock = 0;
+                    } else {
+                        currentStock = spOpt.get().getStock() != null ? spOpt.get().getStock() : 0;
+                    }
+                    response.setIsDeleted(isDel);
+                    response.setStock(currentStock);
+                    response.setQty(currentStock);
+                    return response;
+                })
                 .collect(Collectors.toList());
     }
 

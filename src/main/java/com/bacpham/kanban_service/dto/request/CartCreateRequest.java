@@ -1,7 +1,6 @@
 package com.bacpham.kanban_service.dto.request;
 
 import lombok.*;
-import java.util.UUID;
 
 @Getter
 @Setter

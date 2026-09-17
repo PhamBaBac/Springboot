@@ -39,6 +39,9 @@ public enum ErrorCode {
     INVALID_SIZE_FIRST_NAME(2015, "First name must be at most {max} characters", HttpStatus.BAD_REQUEST),
     INVALID_FIRST_NAME_PATTERN(2016, "First name must contain only letters and spaces", HttpStatus.BAD_REQUEST),
     INVALID_SIZE_LAST_NAME(2017, "Last name must be at most {max} characters", HttpStatus.BAD_REQUEST),
+    OTP_MAX_ATTEMPTS_EXCEEDED(2018, "Maximum verification attempts exceeded. Please request a new code.", HttpStatus.TOO_MANY_REQUESTS),
+    RESEND_CODE_COOLDOWN(2019, "Please wait 60 seconds before requesting a new code", HttpStatus.TOO_MANY_REQUESTS),
+    INVALID_EXCHANGE_CODE(2020, "Invalid or expired exchange code", HttpStatus.BAD_REQUEST),
     // ==================================================
     // 3xxx - Product / Category / Supplier
     // ==================================================
@@ -77,7 +80,7 @@ public enum ErrorCode {
     // ==================================================
     // 7xxx - Address / Delivery
     // ==================================================
-    ADDRESS_NOT_FOUND(7001, "Address not found", HttpStatus.NOT_FOUND),;
+    ADDRESS_NOT_FOUND(7001, "Address not found", HttpStatus.NOT_FOUND);
 
     private final int code;
     private final String message;

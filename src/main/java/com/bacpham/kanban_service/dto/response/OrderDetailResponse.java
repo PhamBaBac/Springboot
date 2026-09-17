@@ -1,7 +1,5 @@
 package com.bacpham.kanban_service.dto.response;
-import com.bacpham.kanban_service.enums.BillStatus;
 import com.bacpham.kanban_service.enums.OrderStatus;
-import com.bacpham.kanban_service.enums.PaymentStatus;
 import com.bacpham.kanban_service.enums.PaymentType;
 import lombok.*;
 

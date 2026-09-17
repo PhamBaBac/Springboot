@@ -1,7 +1,6 @@
 package com.bacpham.kanban_service.entity;
 
 import com.bacpham.kanban_service.helper.base.model.BaseModel;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -10,7 +9,6 @@ import org.hibernate.type.SqlTypes;
 
 import java.util.List;
 import java.util.Set;
-import java.util.Date;
 
 @Getter
 @Setter

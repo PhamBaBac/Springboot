@@ -1,6 +1,5 @@
 package com.bacpham.kanban_service.dto.response;
 
-import com.bacpham.kanban_service.dto.request.SubProductCreationRequest;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 

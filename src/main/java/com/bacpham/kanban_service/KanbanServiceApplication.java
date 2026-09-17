@@ -1,52 +1,58 @@
 package com.bacpham.kanban_service;
 
-import com.bacpham.kanban_service.dto.request.RegisterRequest;
-import com.bacpham.kanban_service.repository.UserRepository;
-import com.bacpham.kanban_service.service.impl.AuthenticationServiceImpl;
+import static com.bacpham.kanban_service.enums.Role.ADMIN;
+import static com.bacpham.kanban_service.enums.Role.MANAGER;
+import static com.bacpham.kanban_service.enums.Provider.LOCAL;
+
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
-import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
-import static com.bacpham.kanban_service.enums.Role.ADMIN;
-import static com.bacpham.kanban_service.enums.Role.MANAGER;
+import com.bacpham.kanban_service.entity.User;
+import com.bacpham.kanban_service.repository.UserRepository;
 
 @SpringBootApplication
 @EnableJpaAuditing(auditorAwareRef = "auditorAware")
 @EnableCaching
- public class KanbanServiceApplication {
+public class KanbanServiceApplication {
 
 	public static void main(String[] args) {
 		SpringApplication.run(KanbanServiceApplication.class, args);
 	}
 
 	@Bean
-	public CommandLineRunner commandLineRunner(AuthenticationServiceImpl service, UserRepository userRepository) {
+	public CommandLineRunner commandLineRunner(UserRepository userRepository, PasswordEncoder passwordEncoder) {
 		return args -> {
 			if (userRepository.findByEmail("admin@mail.com").isEmpty()) {
-				var admin = RegisterRequest.builder()
-						.firstName("Admin")
-						.lastName("Admin")
+				User admin = User.builder()
+						.firstname("Admin")
+						.lastname("Admin")
 						.email("admin@mail.com")
-						.password("password")
+						.password(passwordEncoder.encode("password"))
 						.role(ADMIN)
+						.provider(LOCAL)
+						.mfaEnabled(false)
 						.build();
+				userRepository.save(admin);
 			}
 
 			if (userRepository.findByEmail("manager@mail.com").isEmpty()) {
-				var manager = RegisterRequest.builder()
-						.firstName("Manager")
-						.lastName("Manager")
+				User manager = User.builder()
+						.firstname("Manager")
+						.lastname("Manager")
 						.email("manager@mail.com")
-						.password("password")
+						.password(passwordEncoder.encode("password"))
 						.role(MANAGER)
+						.provider(LOCAL)
+						.mfaEnabled(false)
 						.build();
+				userRepository.save(manager);
 			}
 		};
 	}
-
 
 }

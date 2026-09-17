@@ -1,22 +1,24 @@
 package com.bacpham.kanban_service.service;
 
-import com.bacpham.kanban_service.dto.response.*;
-import com.bacpham.kanban_service.entity.Order;
-import com.bacpham.kanban_service.entity.OrderItem;
-import com.bacpham.kanban_service.entity.Product;
-import com.bacpham.kanban_service.entity.SubProduct;
-import com.bacpham.kanban_service.mapper.OrderMapper;
-import com.bacpham.kanban_service.mapper.ProductMapper;
-import com.bacpham.kanban_service.mapper.StatisticsMapper;
-import com.bacpham.kanban_service.repository.*;
-import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.PageRequest;
+import java.util.List;
+
 import org.springframework.stereotype.Service;
 
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import com.bacpham.kanban_service.dto.response.LowQuantityProductResponse;
+import com.bacpham.kanban_service.dto.response.StatisticsOrderResponse;
+import com.bacpham.kanban_service.dto.response.StatisticsResponse;
+import com.bacpham.kanban_service.dto.response.StatisticsTopSellingLowQuantityResponse;
+import com.bacpham.kanban_service.dto.response.SubProductSellingInfo;
+import com.bacpham.kanban_service.entity.Order;
+import com.bacpham.kanban_service.entity.OrderItem;
+import com.bacpham.kanban_service.mapper.StatisticsMapper;
+import com.bacpham.kanban_service.repository.OrderItemRepository;
+import com.bacpham.kanban_service.repository.OrderRepository;
+import com.bacpham.kanban_service.repository.ProductRepository;
+import com.bacpham.kanban_service.repository.SubProductRepository;
+import com.bacpham.kanban_service.repository.SupplierRepository;
+
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor

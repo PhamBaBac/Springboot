@@ -1,8 +1,13 @@
 package com.bacpham.kanban_service.dto.response;
 
 import com.bacpham.kanban_service.enums.OrderStatus;
-import com.bacpham.kanban_service.enums.PaymentType;
-import lombok.*;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
 
 @Getter
 @Setter

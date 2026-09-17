@@ -2,10 +2,7 @@ package com.bacpham.kanban_service.controller;
 
 import com.bacpham.kanban_service.dto.request.*;
 import com.bacpham.kanban_service.dto.response.AuthenticationResponse;
-import com.bacpham.kanban_service.dto.response.UserResponse;
 import com.bacpham.kanban_service.service.IAuthenticationService;
-import com.bacpham.kanban_service.service.impl.AuthenticationServiceImpl;
-import com.bacpham.kanban_service.service.impl.CartServiceImpl;
 import com.bacpham.kanban_service.service.impl.RedisCartServiceImpl;
 import jakarta.mail.MessagingException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -14,14 +11,9 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
-import java.util.Collections;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -69,6 +61,22 @@ public class AuthenticationController {
         );
     }
 
+    @PostMapping("/exchange-token")
+    public ResponseEntity<ApiResponse<?>> exchangeToken(
+            @Valid @RequestBody ExchangeTokenRequest request,
+            @RequestHeader(value = "X-Session-Id", required = false) String sessionId
+    ) {
+        AuthenticationResponse authResponse = service.exchangeToken(request.getCode());
+        if (sessionId != null) {
+            redisCartService.syncToDatabase(sessionId, authResponse.getUserId());
+        }
+        return ResponseEntity.ok(
+                ApiResponse.builder()
+                        .message("Token exchange successful")
+                        .data(authResponse)
+                        .build()
+        );
+    }
 
     @PostMapping("/refresh-token")
     public void refreshToken(

@@ -1,29 +1,16 @@
 package com.bacpham.kanban_service.service.impl;
 
-import com.bacpham.kanban_service.configuration.security.JwtService;
-import com.bacpham.kanban_service.configuration.redis.GenericRedisService;
-import com.bacpham.kanban_service.dto.request.AuthenticationRequest;
-import com.bacpham.kanban_service.dto.request.RegisterRequest;
-import com.bacpham.kanban_service.dto.request.VerificationRequest;
-import com.bacpham.kanban_service.dto.response.AuthenticationResponse;
-import com.bacpham.kanban_service.dto.response.UserResponse;
-import com.bacpham.kanban_service.entity.User;
-import com.bacpham.kanban_service.enums.Role;
-import com.bacpham.kanban_service.helper.exception.AppException;
-import com.bacpham.kanban_service.helper.exception.ErrorCode;
-import com.bacpham.kanban_service.mapper.UserMapper;
-import com.bacpham.kanban_service.repository.UserRepository;
-import com.bacpham.kanban_service.service.IAuthenticationService;
-import com.bacpham.kanban_service.tfa.TwoFactorAuthenticationService;
-import com.bacpham.kanban_service.utils.email.EmailService;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import io.jsonwebtoken.ExpiredJwtException;
-import jakarta.mail.MessagingException;
-import jakarta.servlet.http.Cookie;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import java.io.IOException;
+import java.security.SecureRandom;
+import java.time.Duration;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.Optional;
+import java.util.concurrent.TimeUnit;
+
+import io.jsonwebtoken.Claims;
+
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseCookie;
@@ -35,25 +22,48 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.io.IOException;
-import java.time.Duration;
-import java.util.Arrays;
-import java.util.Optional;
-import java.util.concurrent.TimeUnit;
+import com.bacpham.kanban_service.configuration.redis.GenericRedisService;
+import com.bacpham.kanban_service.configuration.security.JwtService;
+import com.bacpham.kanban_service.dto.request.AuthenticationRequest;
+import com.bacpham.kanban_service.dto.request.RegisterRequest;
+import com.bacpham.kanban_service.dto.request.VerificationRequest;
+import com.bacpham.kanban_service.dto.response.AuthenticationResponse;
+import com.bacpham.kanban_service.entity.User;
+import com.bacpham.kanban_service.helper.exception.AppException;
+import com.bacpham.kanban_service.helper.exception.ErrorCode;
+import com.bacpham.kanban_service.repository.UserRepository;
+import com.bacpham.kanban_service.service.IAuthenticationService;
+import com.bacpham.kanban_service.tfa.TwoFactorAuthenticationService;
+import com.bacpham.kanban_service.utils.email.EmailService;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import io.jsonwebtoken.ExpiredJwtException;
+import jakarta.mail.MessagingException;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuthenticationServiceImpl implements IAuthenticationService {
 
+    public static final String REFRESH_TOKEN_COOKIE_NAME = "refreshToken";
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+    private static final int MAX_OTP_ATTEMPTS = 5;
+    private static final long OTP_COOLDOWN_SECONDS = 60;
+
     private final UserRepository repository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
-    private final UserMapper userMapper;
     private final TwoFactorAuthenticationService tfaService;
     private final EmailService emailService;
     private final GenericRedisService<String, String, String> redisService;
+    @Value("${application.cookie.secure:false}")
+    private boolean isCookieSecure;
 
     @Override
     public void register(RegisterRequest request) {
@@ -62,17 +72,31 @@ public class AuthenticationServiceImpl implements IAuthenticationService {
             throw new AppException(ErrorCode.USER_ALREADY_EXISTS);
         }
 
+        String cooldownKey = "cooldown:email:" + request.getEmail();
+        if (redisService.get(cooldownKey) != null) {
+            throw new AppException(ErrorCode.RESEND_CODE_COOLDOWN);
+        }
+
         try {
             // Serialize request vào JSON và lưu vào Redis
             String json = new ObjectMapper().writeValueAsString(request);
             redisService.set("register:" + request.getEmail(), json);
             redisService.setTimeToLive("register:" + request.getEmail(), 10, TimeUnit.MINUTES);
 
-            // Gửi code xác thực đến email
-            String code = String.format("%06d", (int) (Math.random() * 1_000_000));
+            // Gửi code xác thực đến email bằng SecureRandom
+            String code = String.format("%06d", SECURE_RANDOM.nextInt(1_000_000));
             emailService.sendVerificationCodeEmail(request.getEmail(), code);
             redisService.set("code:" + request.getEmail(), code);
             redisService.setTimeToLive("code:" + request.getEmail(), 5, TimeUnit.MINUTES);
+
+            // Set cooldown 60s
+            redisService.set(cooldownKey, "true");
+            redisService.setTimeToLive(cooldownKey, OTP_COOLDOWN_SECONDS, TimeUnit.SECONDS);
+
+            // Reset failed attempts count
+            redisService.delete("otp_attempts:" + request.getEmail());
+        } catch (AppException e) {
+            throw e;
         } catch (Exception e) {
             throw new AppException(ErrorCode.UNCATEGORIZED);
         }
@@ -175,73 +199,106 @@ public class AuthenticationServiceImpl implements IAuthenticationService {
     public void logout(HttpServletRequest request, HttpServletResponse response) {
         String token = extractTokenFromHeader(request);
         if (token == null) {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            return;
+            token = getJwtFromCookie(request);
         }
 
-        try {
-            String email = jwtService.extractUsername(token);
-            User user = repository.findByEmail(email)
-                    .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        if (token != null) {
+            try {
+                Date expiration = jwtService.extractClaim(token, Claims::getExpiration);
+                long remainingMillis = expiration.getTime() - System.currentTimeMillis();
 
-            redisService.delete("accessToken:" + user.getId());
-            redisService.delete("refreshToken:" + user.getId());
-
-            Cookie cookie = new Cookie("refreshToken", null);
-            cookie.setMaxAge(0);
-            cookie.setPath("/");
-            response.addCookie(cookie);
-
-        } catch (Exception e) {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                if (remainingMillis > 0) {
+                    redisService.set("blacklist:" + token, "revoked");
+                    redisService.setTimeToLive("blacklist:" + token, remainingMillis, TimeUnit.MILLISECONDS);
+                }
+            } catch (Exception e) {
+                log.warn("Error blacklisting token on logout: {}", e.getMessage());
+            }
         }
+
+        ResponseCookie cleanCookie = ResponseCookie.from(REFRESH_TOKEN_COOKIE_NAME, "")
+                .httpOnly(true)
+                .secure(isCookieSecure)
+                .path("/")
+                .maxAge(0)
+                .sameSite("Lax")
+                .build();
+        response.setHeader(HttpHeaders.SET_COOKIE, cleanCookie.toString());
     }
 
     @Override
     public void sendCodeEmail(String email) throws MessagingException {
-        String userDataJson = redisService.get("register:" + email);
-
-        User user = repository.findByEmail(email)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
-
-        if (userDataJson == null && user.getEmail() == null) {
-            throw new AppException(ErrorCode.USER_NOT_FOUND); // hoặc ErrorCode.USER_NOT_REGISTERED
+        String cooldownKey = "cooldown:email:" + email;
+        if (redisService.get(cooldownKey) != null) {
+            throw new AppException(ErrorCode.RESEND_CODE_COOLDOWN);
         }
 
-        String code = String.format("%06d", (int) (Math.random() * 1_000_000));
+        String userDataJson = redisService.get("register:" + email);
+        Optional<User> user = repository.findByEmail(email);
+
+        if (userDataJson == null && user.isEmpty()) {
+            throw new AppException(ErrorCode.USER_NOT_FOUND);
+        }
+
+        String code = String.format("%06d", SECURE_RANDOM.nextInt(1_000_000));
 
         emailService.sendVerificationCodeEmail(email, code);
 
         redisService.set("code:" + email, code);
         redisService.setTimeToLive("code:" + email, 5, TimeUnit.MINUTES);
+
+        // Set cooldown 60s
+        redisService.set(cooldownKey, "true");
+        redisService.setTimeToLive(cooldownKey, OTP_COOLDOWN_SECONDS, TimeUnit.SECONDS);
+
+        // Reset attempts count for new code
+        redisService.delete("otp_attempts:" + email);
     }
 
 
     @Override
     @Transactional
     public AuthenticationResponse verifyCodeEmail(VerificationRequest request, HttpServletResponse response) {
-        log.info("Verifying code for code: {}", request.getCode());
+        log.info("Verifying code for email: {}", request.getEmail());
 
-        String redisCodeKey = "code:" + request.getEmail();
-        String redisRegisterKey = "register:" + request.getEmail();
+        String email = request.getEmail();
+        String redisCodeKey = "code:" + email;
+        String redisRegisterKey = "register:" + email;
+        String redisAttemptsKey = "otp_attempts:" + email;
+
+        // 1. Kiểm tra số lần nhập sai trước đó
+        String attemptsStr = redisService.get(redisAttemptsKey);
+        int attempts = (attemptsStr != null) ? Integer.parseInt(attemptsStr) : 0;
+        if (attempts >= MAX_OTP_ATTEMPTS) {
+            redisService.delete(redisCodeKey);
+            throw new AppException(ErrorCode.OTP_MAX_ATTEMPTS_EXCEEDED);
+        }
 
         String codeInRedis = redisService.get(redisCodeKey);
         log.info("Verifying code from Redis: {}", codeInRedis);
 
-        // Bước 1: Xác minh mã OTP
+        // 2. Kiểm tra mã OTP
         if (codeInRedis == null || !codeInRedis.equals(request.getCode())) {
-            throw new  AppException(ErrorCode.INVALID_VERIFICATION_CODE);
+            attempts++;
+            redisService.set(redisAttemptsKey, String.valueOf(attempts));
+            redisService.setTimeToLive(redisAttemptsKey, 15, TimeUnit.MINUTES);
+
+            if (attempts >= MAX_OTP_ATTEMPTS) {
+                redisService.delete(redisCodeKey); // Khóa và vô hiệu hóa mã OTP
+                throw new AppException(ErrorCode.OTP_MAX_ATTEMPTS_EXCEEDED);
+            }
+            throw new AppException(ErrorCode.INVALID_VERIFICATION_CODE);
         }
 
-        // Bước 2: Tìm user trong DB
-        Optional<User> optionalUser = repository.findByEmail(request.getEmail());
+        // 3. Mã đúng -> Dọn sạch mã, số lần sai và cooldown
+        redisService.delete(redisCodeKey);
+        redisService.delete(redisAttemptsKey);
+        redisService.delete("cooldown:email:" + email);
 
-        // Trường hợp 1: User đã tồn tại, xác thực xong thì login luôn
+        Optional<User> optionalUser = repository.findByEmail(email);
+
         if (optionalUser.isPresent()) {
             User existingUser = optionalUser.get();
-
-            // Xóa mã trong Redis sau khi dùng
-            redisService.delete(redisCodeKey);
 
             String accessToken = createAndStoreAccessToken(existingUser);
             createOrRenewRefreshToken(existingUser, response);
@@ -253,11 +310,9 @@ public class AuthenticationServiceImpl implements IAuthenticationService {
                     .build();
         }
 
-        // Trường hợp 2: User chưa tồn tại → kiểm tra register info từ Redis
         String registerJson = redisService.get(redisRegisterKey);
 
         if (registerJson == null) {
-            // Không có dữ liệu để đăng ký => lỗi
             throw new AppException(ErrorCode.USER_NOT_FOUND);
         }
 
@@ -272,7 +327,6 @@ public class AuthenticationServiceImpl implements IAuthenticationService {
 
             User savedUser = repository.save(newUser);
 
-            // Dọn dẹp Redis sau khi tạo tài khoản thành công
             redisService.delete(redisCodeKey);
             redisService.delete(redisRegisterKey);
 
@@ -290,6 +344,24 @@ public class AuthenticationServiceImpl implements IAuthenticationService {
         }
     }
 
+    @Override
+    public AuthenticationResponse exchangeToken(String code) {
+        String key = "oauth2:code:" + code;
+        String authJson = redisService.get(key);
+
+        if (authJson == null) {
+            throw new AppException(ErrorCode.INVALID_EXCHANGE_CODE);
+        }
+
+        // Xóa ngay mã code sau 1 lần đổi (One-time use)
+        redisService.delete(key);
+
+        try {
+            return new ObjectMapper().readValue(authJson, AuthenticationResponse.class);
+        } catch (IOException e) {
+            throw new AppException(ErrorCode.UNCATEGORIZED);
+        }
+    }
 
     // =================== Helper Methods ===================
 
@@ -305,44 +377,42 @@ public class AuthenticationServiceImpl implements IAuthenticationService {
     }
 
     private String createAndStoreAccessToken(User user) {
-        String token = jwtService.generateAccessToken(user);
-        redisService.set("accessToken:" + user.getId(), token);
-        redisService.setTimeToLive("accessToken:" + user.getId(), 2, TimeUnit.DAYS);
-        return token;
+        return jwtService.generateAccessToken(user);
     }
 
     private String createOrRenewRefreshToken(User user, HttpServletResponse response) {
-        String token = redisService.get("refreshToken:" + user.getId());
+        String token = jwtService.generateRefreshToken(user);
 
-        if (token == null) {
-            token = jwtService.generateRefreshToken(user);
-        }
-
-        redisService.set("refreshToken:" + user.getId(), token);
-        redisService.setTimeToLive("refreshToken:" + user.getId(), 7, TimeUnit.DAYS);
-
-        String cookieName = user.getRole() == Role.ADMIN
-                ? "refreshTokenAdmin"
-                : "refreshTokenUser";
-
-        ResponseCookie cookie = ResponseCookie.from(cookieName, token)
+        ResponseCookie cookie = ResponseCookie.from(REFRESH_TOKEN_COOKIE_NAME, token)
                 .httpOnly(true)
-                .secure(false) // để true nếu dùng HTTPS
+                .secure(isCookieSecure)
                 .path("/")
                 .sameSite("Lax")
-                .domain("localhost") // chỉ "localhost", KHÔNG kèm port
                 .maxAge(Duration.ofDays(7))
                 .build();
 
         response.setHeader(HttpHeaders.SET_COOKIE, cookie.toString());
 
-
         return token;
+    }
+
+    private String getJwtFromCookie(HttpServletRequest request) {
+        if (request.getCookies() != null) {
+            for (Cookie cookie : request.getCookies()) {
+                if ("access_token".equals(cookie.getName())) {
+                    return cookie.getValue();
+                }
+            }
+        }
+        return null;
     }
 
     private String extractRefreshTokenFromCookie(HttpServletRequest request) {
         return Arrays.stream(Optional.ofNullable(request.getCookies()).orElse(new Cookie[0]))
-                .filter(c -> c.getName().equals("refreshToken") || c.getName().equals("refresh_token"))
+                .filter(c -> REFRESH_TOKEN_COOKIE_NAME.equals(c.getName())
+                        || "refresh_token".equalsIgnoreCase(c.getName())
+                        || "refreshTokenUser".equals(c.getName())
+                        || "refreshTokenAdmin".equals(c.getName()))
                 .map(Cookie::getValue)
                 .findFirst()
                 .orElse(null);

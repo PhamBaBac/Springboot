@@ -3,19 +3,16 @@ package com.bacpham.kanban_service.controller;
 import com.bacpham.kanban_service.dto.request.AddressCreateRequest;
 import com.bacpham.kanban_service.dto.request.ApiResponse;
 import com.bacpham.kanban_service.dto.response.AddressResponse;
-import com.bacpham.kanban_service.dto.response.CartResponse;
 import com.bacpham.kanban_service.entity.User;
 import com.bacpham.kanban_service.helper.exception.AppException;
 import com.bacpham.kanban_service.helper.exception.ErrorCode;
 import com.bacpham.kanban_service.repository.UserRepository;
 import com.bacpham.kanban_service.service.IAddressService;
-import com.bacpham.kanban_service.service.impl.AddressServiceImpl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
-import java.security.Principal;
 import java.util.List;
 
 @RestController

@@ -1,7 +1,6 @@
 package com.bacpham.kanban_service.repository;
 
-import com.bacpham.kanban_service.dto.response.SupportMessageResponse;
-import com.bacpham.kanban_service.model.SupportMessage;
+import com.bacpham.kanban_service.entity.SupportMessage;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;

@@ -5,7 +5,7 @@ import com.bacpham.kanban_service.dto.response.SupportMessageResponse;
 import com.bacpham.kanban_service.enums.MessageStatus;
 import com.bacpham.kanban_service.enums.Role;
 import com.bacpham.kanban_service.mapper.SupportMessageMapper;
-import com.bacpham.kanban_service.model.SupportMessage;
+import com.bacpham.kanban_service.entity.SupportMessage;
 import com.bacpham.kanban_service.repository.SupportMessageRepository;
 import com.bacpham.kanban_service.service.ISupportMessageService;
 import lombok.AccessLevel;
@@ -25,9 +25,9 @@ public class SupportMessageServiceImpl implements ISupportMessageService {
 
     SupportMessageRepository repository;
     SupportMessageMapper mapper;
+
     @Override
     public SupportMessage saveMessage(SupportMessageRequest request) {
-        // Tạo conversationId chung
         String conversationId = generateConversationId(request);
 
         SupportMessage message = SupportMessage.builder()
@@ -52,11 +52,6 @@ public class SupportMessageServiceImpl implements ISupportMessageService {
                 .toList();
     }
 
-    /**
-     * Tạo conversationId chung cho cả admin và user
-     * - User gửi: "user_{userId}"
-     * - Admin gửi: tìm conversationId từ tin nhắn trước đó hoặc "user_{receiverId}"
-     */
     private String generateConversationId(SupportMessageRequest request) {
         if (request.role() == Role.USER) {
             return "user_" + request.senderId();

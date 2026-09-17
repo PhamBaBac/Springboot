@@ -1,5 +1,11 @@
 package com.bacpham.kanban_service.service;
 
+import java.security.Principal;
+
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+
 import com.bacpham.kanban_service.dto.request.ChangePasswordRequest;
 import com.bacpham.kanban_service.dto.request.ResetPasswordRequest;
 import com.bacpham.kanban_service.dto.response.UserResponse;
@@ -10,15 +16,10 @@ import com.bacpham.kanban_service.mapper.UserMapper;
 import com.bacpham.kanban_service.repository.UserRepository;
 import com.bacpham.kanban_service.tfa.TwoFactorAuthenticationService;
 import com.bacpham.kanban_service.utils.email.EmailService;
-import jakarta.mail.MessagingException;
+
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
-
-import java.security.Principal;
 
 @Service
 @RequiredArgsConstructor

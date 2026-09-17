@@ -34,4 +34,81 @@ public interface SubProductRepository extends JpaRepository<SubProduct, String> 
     @Query("SELECT DISTINCT sp.price FROM SubProduct sp")
     List<Double> findDistinctPrices();
 
+    @Query("""
+        SELECT DISTINCT UPPER(sp.size) FROM SubProduct sp
+        JOIN sp.product p
+        JOIN p.categories c
+        WHERE sp.deleted = false AND p.deleted = false
+          AND (c.id IN :catIds OR c.parentId IN :catIds)
+          AND (:search IS NULL OR LOWER(p.title) LIKE LOWER(CONCAT('%', :search, '%')))
+          AND sp.size IS NOT NULL AND TRIM(sp.size) != ''
+    """)
+    List<String> findDistinctSizesByCatIds(
+            @Param("catIds") List<String> catIds,
+            @Param("search") String search
+    );
+
+    @Query("""
+        SELECT DISTINCT UPPER(sp.size) FROM SubProduct sp
+        JOIN sp.product p
+        WHERE sp.deleted = false AND p.deleted = false
+          AND (:search IS NULL OR LOWER(p.title) LIKE LOWER(CONCAT('%', :search, '%')))
+          AND sp.size IS NOT NULL AND TRIM(sp.size) != ''
+    """)
+    List<String> findDistinctSizesWithoutCatIds(
+            @Param("search") String search
+    );
+
+    @Query("""
+        SELECT DISTINCT UPPER(sp.color) FROM SubProduct sp
+        JOIN sp.product p
+        JOIN p.categories c
+        WHERE sp.deleted = false AND p.deleted = false
+          AND (c.id IN :catIds OR c.parentId IN :catIds)
+          AND (:search IS NULL OR LOWER(p.title) LIKE LOWER(CONCAT('%', :search, '%')))
+          AND sp.color IS NOT NULL AND TRIM(sp.color) != ''
+    """)
+    List<String> findDistinctColorsByCatIds(
+            @Param("catIds") List<String> catIds,
+            @Param("search") String search
+    );
+
+    @Query("""
+        SELECT DISTINCT UPPER(sp.color) FROM SubProduct sp
+        JOIN sp.product p
+        WHERE sp.deleted = false AND p.deleted = false
+          AND (:search IS NULL OR LOWER(p.title) LIKE LOWER(CONCAT('%', :search, '%')))
+          AND sp.color IS NOT NULL AND TRIM(sp.color) != ''
+    """)
+    List<String> findDistinctColorsWithoutCatIds(
+            @Param("search") String search
+    );
+
+    @Query("""
+        SELECT DISTINCT sp.price FROM SubProduct sp
+        JOIN sp.product p
+        JOIN p.categories c
+        WHERE sp.deleted = false AND p.deleted = false
+          AND (c.id IN :catIds OR c.parentId IN :catIds)
+          AND (:search IS NULL OR LOWER(p.title) LIKE LOWER(CONCAT('%', :search, '%')))
+          AND sp.price IS NOT NULL
+        ORDER BY sp.price ASC
+    """)
+    List<Double> findDistinctPricesByCatIds(
+            @Param("catIds") List<String> catIds,
+            @Param("search") String search
+    );
+
+    @Query("""
+        SELECT DISTINCT sp.price FROM SubProduct sp
+        JOIN sp.product p
+        WHERE sp.deleted = false AND p.deleted = false
+          AND (:search IS NULL OR LOWER(p.title) LIKE LOWER(CONCAT('%', :search, '%')))
+          AND sp.price IS NOT NULL
+        ORDER BY sp.price ASC
+    """)
+    List<Double> findDistinctPricesWithoutCatIds(
+            @Param("search") String search
+    );
+
 }

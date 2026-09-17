@@ -1,12 +1,13 @@
 package com.bacpham.kanban_service.configuration.security;
 
 import com.bacpham.kanban_service.configuration.redis.GenericRedisService;
+import com.bacpham.kanban_service.dto.response.AuthenticationResponse;
 import com.bacpham.kanban_service.entity.User;
 import com.bacpham.kanban_service.enums.Provider;
 import com.bacpham.kanban_service.enums.Role;
 import com.bacpham.kanban_service.repository.UserRepository;
+import com.bacpham.kanban_service.service.impl.AuthenticationServiceImpl;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -16,6 +17,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
@@ -25,6 +27,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 @Component
@@ -36,6 +39,7 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
     private final UserRepository userRepository;
     private final GenericRedisService<String, String, String> redisService;
     private final ObjectMapper objectMapper;
+    private final PasswordEncoder passwordEncoder;
 
     @Value("${application.oauth2.authorized-redirect-uri}")
     private String authorizedRedirectUri;
@@ -104,19 +108,17 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
             newUser.setProvider(finalProvider);
             newUser.setProviderId(finalProviderId);
             newUser.setAvatarUrl(finalAvatarUrl);
+            // OAuth2 users don't have a password — set an encoded random placeholder
+            newUser.setPassword(passwordEncoder.encode(UUID.randomUUID().toString()));
             return userRepository.save(newUser);
         });
 
-        // FIX 1: Sử dụng method mới để lấy access token an toàn
-        String accessToken = getOrGenerateAccessToken(user);
-
-        // FIX 2: Luôn generate refresh token mới khi login
+        // Sinh access token và refresh token độc lập cho phiên đăng nhập này
+        String accessToken = jwtService.generateAccessToken(user);
         String refreshToken = jwtService.generateRefreshToken(user);
-        redisService.set("refreshToken:" + user.getId(), refreshToken);
-        redisService.setTimeToLive("refreshToken:" + user.getId(), 7, TimeUnit.DAYS);
 
         // Set cookie
-        ResponseCookie cookie = ResponseCookie.from("refreshToken", refreshToken)
+        ResponseCookie cookie = ResponseCookie.from(AuthenticationServiceImpl.REFRESH_TOKEN_COOKIE_NAME, refreshToken)
                 .httpOnly(true)
                 .secure(isCookieSecure)
                 .path("/")
@@ -125,49 +127,23 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
                 .build();
         response.setHeader(HttpHeaders.SET_COOKIE, cookie.toString());
 
-        // Redirect to frontend with accessToken
+        // Sinh exchange code dùng 1 lần (TTL 60s trong Redis)
+        String exchangeCode = UUID.randomUUID().toString();
+        AuthenticationResponse authResponse = AuthenticationResponse.builder()
+                .accessToken(accessToken)
+                .userId(user.getId())
+                .mfaEnabled(user.isMfaEnabled())
+                .build();
+
+        redisService.set("oauth2:code:" + exchangeCode, objectMapper.writeValueAsString(authResponse));
+        redisService.setTimeToLive("oauth2:code:" + exchangeCode, 60, TimeUnit.SECONDS);
+
+        // Redirect to frontend with code instead of exposing accessToken in URL
         String redirectUrl = UriComponentsBuilder.fromUriString(authorizedRedirectUri)
-                .queryParam("accessToken", accessToken)
+                .queryParam("code", exchangeCode)
                 .build().toUriString();
 
-        log.info("Redirecting to frontend with token for user: {}", user.getEmail());
+        log.info("Redirecting to frontend with exchange code for user: {}", user.getEmail());
         getRedirectStrategy().sendRedirect(request, response, redirectUrl);
-    }
-
-    /**
-     * FIX QUAN TRỌNG: Lấy access token an toàn, xử lý exception đúng cách
-     */
-    private String getOrGenerateAccessToken(User user) {
-        String redisKey = "accessToken:" + user.getId();
-        String accessToken = redisService.get(redisKey);
-
-        // Kiểm tra token có tồn tại và hợp lệ không
-        if (accessToken != null) {
-            try {
-                if (jwtService.isTokenValid(accessToken)) {
-                    log.info("Using existing valid access token for user: {}", user.getEmail());
-                    return accessToken;
-                } else {
-                    log.info("Token exists but invalid/expired for user: {}", user.getEmail());
-                    // Xóa token cũ không hợp lệ
-                    redisService.delete(redisKey);
-                }
-            } catch (ExpiredJwtException e) {
-                log.warn("Token expired for user: {}, generating new one", user.getEmail());
-                redisService.delete(redisKey);
-            } catch (Exception e) {
-                log.warn("Error validating token for user: {}, generating new one. Error: {}",
-                        user.getEmail(), e.getMessage());
-                redisService.delete(redisKey);
-            }
-        }
-
-        // Generate token mới
-        log.info("Generating new access token for user: {}", user.getEmail());
-        accessToken = jwtService.generateAccessToken(user);
-        redisService.set(redisKey, accessToken);
-        redisService.setTimeToLive(redisKey, 2, TimeUnit.DAYS);
-
-        return accessToken;
     }
 }

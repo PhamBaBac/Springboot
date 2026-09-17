@@ -21,7 +21,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import com.bacpham.kanban_service.repository.specification.ProductSpecification;
 
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -45,6 +47,10 @@ public class ProductServiceImpl implements IProductService {
         if (request.getCategories() != null && !request.getCategories().isEmpty()) {
             Set<Category> categories = new HashSet<>(categoryRepository.findAllById(request.getCategories()));
             product.setCategories(categories);
+        }
+
+        if (request.getSupplierId() == null || request.getSupplierId().trim().isEmpty()) {
+            throw new AppException(ErrorCode.SUPPLIER_NOT_FOUND);
         }
 
         Supplier supplier = supplierRepository.findById(request.getSupplierId())
@@ -153,6 +159,7 @@ log.info("Retrieving product with id: {}", id);
         return response;
     }
 
+    @Override
     public Page<ProductResponse> getFilteredProducts(
             List<String> categoryIds,
             List<String> sizes,
@@ -160,8 +167,23 @@ log.info("Retrieving product with id: {}", id);
             List<Double> priceRange,
             Pageable pageable
     ) {
+        return getFilteredProducts(categoryIds, null, sizes, colors, priceRange, pageable);
+    }
+
+    @Override
+    public Page<ProductResponse> getFilteredProducts(
+            List<String> categoryIds,
+            String search,
+            List<String> sizes,
+            List<String> colors,
+            List<Double> priceRange,
+            Pageable pageable
+    ) {
         if (categoryIds != null && categoryIds.isEmpty()) {
             categoryIds = null;
+        }
+        if (search != null && search.trim().isEmpty()) {
+            search = null;
         }
         if (sizes != null && sizes.isEmpty()) {
             sizes = null;
@@ -173,14 +195,16 @@ log.info("Retrieving product with id: {}", id);
         Double minPrice = (priceRange != null && !priceRange.isEmpty()) ? priceRange.get(0) : null;
         Double maxPrice = (priceRange != null && priceRange.size() > 1) ? priceRange.get(1) : null;
 
-        Page<Product> filteredProductsPage = productRepository.findFilteredProducts(
+        Specification<Product> spec = ProductSpecification.filter(
                 categoryIds,
+                search,
                 sizes,
                 colors,
                 minPrice,
-                maxPrice,
-                pageable
+                maxPrice
         );
+
+        Page<Product> filteredProductsPage = productRepository.findAll(spec, pageable);
         log.info("Filtered products page: {}", filteredProductsPage);
 
         return filteredProductsPage.map(productMapper::toProductResponse);

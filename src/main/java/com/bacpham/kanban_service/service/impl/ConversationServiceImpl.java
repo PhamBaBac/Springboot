@@ -1,5 +1,15 @@
 package com.bacpham.kanban_service.service.impl;
 
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+
+import org.apache.commons.codec.digest.DigestUtils;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Service;
+
 import com.bacpham.kanban_service.dto.request.ConversationRequest;
 import com.bacpham.kanban_service.dto.response.ConversationResponse;
 import com.bacpham.kanban_service.entity.Conversation;
@@ -11,20 +21,11 @@ import com.bacpham.kanban_service.mapper.ConversationMapper;
 import com.bacpham.kanban_service.repository.ConversationRepository;
 import com.bacpham.kanban_service.repository.UserRepository;
 import com.bacpham.kanban_service.service.IConversationService;
-import com.bacpham.kanban_service.service.UserService;
+
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.codec.digest.DigestUtils;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.stereotype.Service;
-
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor

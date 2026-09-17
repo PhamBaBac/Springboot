@@ -4,7 +4,6 @@ import com.bacpham.kanban_service.dto.request.ProductCreationRequest;
 import com.bacpham.kanban_service.dto.request.ProductCreationRequestCSV;
 import com.bacpham.kanban_service.dto.response.ProductAiResponse;
 import com.bacpham.kanban_service.dto.response.ProductResponse;
-import com.bacpham.kanban_service.dto.response.SupplierResponse;
 import com.bacpham.kanban_service.entity.Category;
 import com.bacpham.kanban_service.entity.Product;
 import com.bacpham.kanban_service.entity.Supplier;

@@ -61,15 +61,19 @@ public class User extends BaseModel implements UserDetails {
     @Column(length = 100)
     String providerId;
 
+    @ToString.Exclude
     @OneToMany(mappedBy = "createdBy", cascade = CascadeType.ALL)
     List<Cart> cartItems;
 
+    @ToString.Exclude
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
     List<Order> orders;
 
+    @ToString.Exclude
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
     List<ChatHistory> chatHistories;
 
+    @ToString.Exclude
     @OneToMany(mappedBy = "createdBy", cascade = CascadeType.ALL, orphanRemoval = true)
     List<Address> addresses;
 

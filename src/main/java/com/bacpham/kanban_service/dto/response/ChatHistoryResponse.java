@@ -2,7 +2,6 @@ package com.bacpham.kanban_service.dto.response;
 
 import lombok.*;
 
-import java.time.LocalDateTime;
 import java.util.Date;
 
 @Getter

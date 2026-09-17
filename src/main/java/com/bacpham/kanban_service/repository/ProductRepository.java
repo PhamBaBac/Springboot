@@ -6,6 +6,7 @@ import com.bacpham.kanban_service.entity.Product;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -14,7 +15,7 @@ import java.util.List;
 import java.util.Set;
 
 @Repository
-public interface ProductRepository extends JpaRepository<Product, String> {
+public interface ProductRepository extends JpaRepository<Product, String>, JpaSpecificationExecutor<Product> {
 
     Page<Product> findByTitleContainingIgnoreCase(String title, Pageable pageable);
 
@@ -25,7 +26,8 @@ public interface ProductRepository extends JpaRepository<Product, String> {
    JOIN p.categories c
    LEFT JOIN p.subProducts sp
    WHERE p.deleted = false
-     AND (:categoryIds IS NULL OR c.id IN :categoryIds)
+     AND (:categoryIds IS NULL OR c.id IN :categoryIds OR c.parentId IN :categoryIds)
+     AND (:search IS NULL OR LOWER(p.title) LIKE LOWER(CONCAT('%', :search, '%')))
      AND (:sizes IS NULL OR sp.size IN :sizes)
      AND (:colors IS NULL OR sp.color IN :colors)
      AND (:minPrice IS NULL OR sp.price >= :minPrice)
@@ -36,7 +38,8 @@ public interface ProductRepository extends JpaRepository<Product, String> {
    JOIN p.categories c
    LEFT JOIN p.subProducts sp
    WHERE p.deleted = false
-     AND (:categoryIds IS NULL OR c.id IN :categoryIds)
+     AND (:categoryIds IS NULL OR c.id IN :categoryIds OR c.parentId IN :categoryIds)
+     AND (:search IS NULL OR LOWER(p.title) LIKE LOWER(CONCAT('%', :search, '%')))
      AND (:sizes IS NULL OR sp.size IN :sizes)
      AND (:colors IS NULL OR sp.color IN :colors)
      AND (:minPrice IS NULL OR sp.price >= :minPrice)
@@ -44,6 +47,7 @@ public interface ProductRepository extends JpaRepository<Product, String> {
 """)
     Page<Product> findFilteredProducts(
             @Param("categoryIds") List<String> categoryIds,
+            @Param("search") String search,
             @Param("sizes") List<String> sizes,
             @Param("colors") List<String> colors,
             @Param("minPrice") Double minPrice,
@@ -79,6 +83,19 @@ public interface ProductRepository extends JpaRepository<Product, String> {
     List<Product> findCandidateProducts(
             @Param("categories") Set<Category> categories,
             @Param("productIds") List<String> productIds,
+            Pageable pageable
+    );
+
+    @Query("""
+        SELECT DISTINCT p FROM Product p
+        JOIN p.categories c
+        WHERE p.deleted = false
+          AND p.id <> :productId
+          AND c.id IN :categoryIds
+        """)
+    List<Product> findRelatedCandidates(
+            @Param("categoryIds") java.util.Collection<String> categoryIds,
+            @Param("productId") String productId,
             Pageable pageable
     );
 

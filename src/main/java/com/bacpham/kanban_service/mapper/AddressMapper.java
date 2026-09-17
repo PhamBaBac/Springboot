@@ -2,9 +2,7 @@ package com.bacpham.kanban_service.mapper;
 
 import com.bacpham.kanban_service.dto.request.AddressCreateRequest;
 import com.bacpham.kanban_service.dto.response.AddressResponse;
-import com.bacpham.kanban_service.dto.response.CartResponse;
 import com.bacpham.kanban_service.entity.Address;
-import com.bacpham.kanban_service.entity.Cart;
 import com.bacpham.kanban_service.entity.User;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;

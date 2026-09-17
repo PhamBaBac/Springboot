@@ -2,8 +2,6 @@ package com.bacpham.kanban_service.dto.response;
 
 import lombok.*;
 
-import java.util.UUID;
-
 @Getter
 @Setter
 @NoArgsConstructor
@@ -22,4 +20,6 @@ public class CartResponse {
     private Integer count;
     private String productId;
     private String image;
+    private Integer stock;
+    private Boolean isDeleted;
 }

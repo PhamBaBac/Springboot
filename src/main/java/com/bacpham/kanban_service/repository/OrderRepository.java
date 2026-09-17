@@ -1,6 +1,5 @@
 package com.bacpham.kanban_service.repository;
 
-import com.bacpham.kanban_service.dto.response.SubProductSellingInfo;
 import com.bacpham.kanban_service.entity.Order;
 import com.bacpham.kanban_service.entity.User;
 import com.bacpham.kanban_service.enums.OrderStatus;
@@ -12,7 +11,6 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
-import java.util.Optional;
 
 @Repository
 public interface OrderRepository extends JpaRepository<Order, String> {

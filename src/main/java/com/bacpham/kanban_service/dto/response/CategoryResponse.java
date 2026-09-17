@@ -1,8 +1,6 @@
 package com.bacpham.kanban_service.dto.response;
 
 import lombok.*;
-import java.util.List;
-import java.util.Set;
 
 @Getter
 @Setter

@@ -7,9 +7,8 @@ import lombok.experimental.FieldDefaults;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
-import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Entity
@@ -28,6 +27,11 @@ public class SubProduct extends BaseModel {
     Integer stock;
     Double cost;
     Double discount;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "JSON")
+    Map<String, String> attributes;
+
     @ManyToOne
     @JoinColumn(name = "product_id", nullable = false)
     Product product;

@@ -1,15 +1,14 @@
 package com.bacpham.kanban_service.dto.request;
 
+import jakarta.validation.constraints.NotBlank;
 import lombok.*;
-import java.util.List;
 
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class OrderCreateRequest {
-    private String addressId;
-    private List<OrderItemRequest> items;
+public class ExchangeTokenRequest {
+    @NotBlank(message = "Exchange code must not be blank")
     private String code;
 }

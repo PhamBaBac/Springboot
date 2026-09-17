@@ -3,6 +3,7 @@ package com.bacpham.kanban_service.dto.response;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
+import java.util.Map;
 import java.util.Set;
 
 @Getter
@@ -20,5 +21,6 @@ public class SubProductResponse {
     Integer stock;
     Integer qty;
     Double cost;
+    Map<String, String> attributes;
     Set<String> images;
 }

@@ -1,13 +1,12 @@
 package com.bacpham.kanban_service.service;
 
+import java.util.List;
+import java.util.Optional;
+
 import com.bacpham.kanban_service.dto.request.CartCreateRequest;
 import com.bacpham.kanban_service.dto.request.CartUpdateRequest;
 import com.bacpham.kanban_service.dto.response.CartResponse;
 import com.bacpham.kanban_service.entity.Cart;
-
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
 
 public interface ICartService {
 

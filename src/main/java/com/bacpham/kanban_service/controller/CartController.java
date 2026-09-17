@@ -39,6 +39,14 @@ public class CartController {
                 .build();
     }
 
+    @DeleteMapping("/{id}")
+    public ApiResponse<?> deleteCartById(@PathVariable String id) {
+        cartService.deleteCart(id);
+        return ApiResponse.builder()
+                .message("Deleted cart item successfully")
+                .build();
+    }
+
     @DeleteMapping("/remove")
     public ApiResponse<?> deleteCart(@RequestParam String id) {
         cartService.deleteCart(id);

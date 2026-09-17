@@ -1,11 +1,10 @@
-package com.bacpham.kanban_service.model;
+package com.bacpham.kanban_service.entity;
 
 import com.bacpham.kanban_service.enums.MessageStatus;
 import com.bacpham.kanban_service.enums.Role;
 import com.bacpham.kanban_service.helper.base.model.BaseModel;
 import jakarta.persistence.*;
 import lombok.*;
-import java.time.Instant;
 
 @Entity
 @Table(name = "support_messages")

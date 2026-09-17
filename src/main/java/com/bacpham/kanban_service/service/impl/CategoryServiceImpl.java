@@ -42,31 +42,28 @@ public class CategoryServiceImpl implements ICategoryService {
         category = categoryRepository.save(category);
 
         CategoryResponse response = categoryMapper.toCategoryResponse(category);
-        redisService.hashSet("categories", category.getId(), response); // lưu theo id
+        redisService.delete("categories");
 
         return response;
     }
 
     public List<CategoryResponse> getCategories() {
         String key = "categories";
-        Map<String, CategoryResponse> cached = redisService.getField(key);
-        if (cached != null && !cached.isEmpty()) {
-            return new ArrayList<>(cached.values());
-        }
-
-        List<Category> categoriesFromDb = categoryRepository.findAll();
+        List<Category> categoriesFromDb = categoryRepository.findAllByDeletedFalse();
         List<CategoryResponse> responses = categoriesFromDb.stream()
                 .map(categoryMapper::toCategoryResponse)
                 .toList();
 
-        Map<String, CategoryResponse> toCache = responses.stream()
-                .collect(Collectors.toMap(
-                        c -> c.getId(), // field
-                        c -> c
-                ));
-
-        redisService.hashSetAll(key, toCache);
-        redisService.setTimeToLive(key, 1, TimeUnit.HOURS);
+        redisService.delete(key);
+        if (!responses.isEmpty()) {
+            Map<String, CategoryResponse> toCache = responses.stream()
+                    .collect(Collectors.toMap(
+                            c -> c.getId(),
+                            c -> c
+                    ));
+            redisService.hashSetAll(key, toCache);
+            redisService.setTimeToLive(key, 1, TimeUnit.HOURS);
+        }
         return responses;
     }
 
@@ -93,7 +90,7 @@ public class CategoryServiceImpl implements ICategoryService {
         categoryRepository.save(category);
         
         // Remove from cache
-        redisService.delete("categories", categoryId);
+        redisService.delete("categories");
     }
 
     public CategoryResponse updateCategory(String categoryId, CategoryRequest request) {
@@ -105,8 +102,8 @@ public class CategoryServiceImpl implements ICategoryService {
         
         CategoryResponse response = categoryMapper.toCategoryResponse(category);
         
-        // Update cache
-        redisService.hashSet("categories", categoryId, response);
+        // Invalidate cache
+        redisService.delete("categories");
         
         return response;
     }

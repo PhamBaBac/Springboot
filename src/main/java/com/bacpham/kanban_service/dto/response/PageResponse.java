@@ -3,7 +3,6 @@ package com.bacpham.kanban_service.dto.response;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 

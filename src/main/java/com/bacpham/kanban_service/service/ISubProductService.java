@@ -10,6 +10,7 @@ import java.util.Map;
 public interface ISubProductService {
     SubProductResponse createSubProduct(SubProductCreationRequest request);
     Map<String, List<?>> getSubProducts();
+    Map<String, List<?>> getSubProducts(List<String> catIds, String search);
     void delete(String id);
     SubProductResponse updateSubProduct(SubProductCreationRequest request);
     List<SubProductResponse> getAllSubProduct(String id);

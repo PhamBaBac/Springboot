@@ -7,15 +7,39 @@ import javax.crypto.spec.SecretKeySpec;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
 
+@Component
 public class ConfigVNPay {
     public static String vnp_PayUrl = "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html";
-    public static final String vnp_ReturnUrl = "http://localhost:8080/api/v1/payment/vnpay-return";
-    public static String vnp_TmnCode = "CXAJXEO0";
-    public static String vnp_HashSecret = "HLHH5H7WDUQNY5CUIXMSBEH7U8YZVFNJ";
+    public static String vnp_ReturnUrl = "http://localhost:8080/api/v1/payment/vnpay-return";
+    public static String vnp_TmnCode = "GE2X44LJ";
+    public static String vnp_HashSecret = "QNDE0P4SB43MO84431YBL17BXAZB5VIB";
     public static String vnp_ApiUrl = "https://sandbox.vnpayment.vn/merchant_webapi/api/transaction";
+
+    @Value("${application.vnpay.pay-url:https://sandbox.vnpayment.vn/paymentv2/vpcpay.html}")
+    public void setPayUrl(String payUrl) {
+        vnp_PayUrl = payUrl;
+    }
+
+    @Value("${application.vnpay.return-url:http://localhost:8080/api/v1/payment/vnpay-return}")
+    public void setReturnUrl(String returnUrl) {
+        vnp_ReturnUrl = returnUrl;
+    }
+
+    @Value("${application.vnpay.tmn-code:GE2X44LJ}")
+    public void setTmnCode(String tmnCode) {
+        vnp_TmnCode = tmnCode;
+    }
+
+    @Value("${application.vnpay.hash-secret:QNDE0P4SB43MO84431YBL17BXAZB5VIB}")
+    public void setHashSecret(String hashSecret) {
+        vnp_HashSecret = hashSecret;
+    }
 
     public static String md5(String message) {
         String digest = null;

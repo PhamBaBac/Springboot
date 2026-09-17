@@ -7,8 +7,6 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
 
-import java.util.List;
-import java.util.Set;
 @Mapper(componentModel = "spring")
 public interface CategoryMapper {
     Category toCategory(CategoryRequest request);

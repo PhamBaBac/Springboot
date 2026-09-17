@@ -1,5 +1,5 @@
 server:
-  port: 8080
+  port: ${SERVER_PORT:8080}
 
 spring:
   config:
@@ -9,19 +9,19 @@ spring:
       client:
         registration:
           github:
-            clientId: ${GITHUB_CLIENT_ID}
-            clientSecret: ${GITHUB_CLIENT_SECRET}
-            redirectUri: http://localhost:8080/login/oauth2/code/github
+            clientId: ${GITHUB_CLIENT_ID:}
+            clientSecret: ${GITHUB_CLIENT_SECRET:}
+            redirectUri: ${GITHUB_REDIRECT_URI:http://localhost:8080/login/oauth2/code/github}
           google:
-            client-id: ${GOOGLE_CLIENT_ID}
-            client-secret: ${GOOGLE_CLIENT_SECRET}
-            redirect-uri: http://localhost:8080/login/oauth2/code/google
+            client-id: ${GOOGLE_CLIENT_ID:}
+            client-secret: ${GOOGLE_CLIENT_SECRET:}
+            redirect-uri: ${GOOGLE_REDIRECT_URI:http://localhost:8080/login/oauth2/code/google}
 
   mail:
-    host: smtp.gmail.com
-    port: 587
-    username: ${EMAIL}
-    password: ${PASS_EMAIL}
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${EMAIL:}
+    password: ${PASS_EMAIL:}
     properties:
       mail:
         smtp:
@@ -31,22 +31,23 @@ spring:
 
   datasource:
     driverClassName: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/kanban
-    username: root
-    password: root
+    url: ${DB_URL:jdbc:mysql://localhost:3306/kanban}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:root}
 
   data:
     redis:
-      host: localhost
-      port: 6379
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
     mongodb:
-      uri: mongodb+srv://bacpham:${PASSWORD_MONGODB}@cluster0.vlmwfvo.mongodb.net/chat?retryWrites=true&w=majority&appName=Cluster0
+      uri: ${MONGODB_URI:mongodb+srv://phambac:${PASSWORD_MONGODB:}@cluster0.2rznse7.mongodb.net/chat?retryWrites=true&w=majority&appName=Cluster0}
+      database: ${MONGODB_DATABASE:chat}
       auto-index-creation: true
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: ${JPA_DDL_AUTO:update}
     generate-ddl: true
-    show-sql: true
+    show-sql: ${SHOW_SQL:true}
 
   batch:
     jdbc:
@@ -56,12 +57,12 @@ spring:
 
   ai:
     openai:
-      api-key: ${OPEN_AI_API_KEY}
+      api-key: ${OPEN_AI_API_KEY:}
       chat:
         completions-path: /v1beta/openai/chat/completions
         base-url: https://generativelanguage.googleapis.com
         options:
-          model: gemini-2.0-flash
+          model: ${AI_MODEL:gemini-2.5-flash}
 
     chat:
       memory:
@@ -70,14 +71,24 @@ spring:
             initialize-schema: always
 
 application:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:3000,http://localhost:3004}
+  cookie:
+    secure: ${COOKIE_SECURE:false}
   oauth2:
-    authorized-redirect-uri: http://localhost:3004/auth/oauth-callback
+    authorized-redirect-uri: ${OAUTH2_AUTHORIZED_REDIRECT_URI:http://localhost:3004/auth/oauth-callback}
   security:
     jwt:
-      secret-key: ${KEY_SECRET}
-      expiration: 86400000
+      secret-key: ${KEY_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+      expiration: ${JWT_EXPIRATION:86400000}
       refresh-token:
-        expiration: 604800000
+        expiration: ${JWT_REFRESH_EXPIRATION:604800000}
+  vnpay:
+    pay-url: ${VNPAY_PAY_URL:https://sandbox.vnpayment.vn/paymentv2/vpcpay.html}
+    return-url: ${VNPAY_RETURN_URL:http://localhost:8080/api/v1/payment/vnpay-return}
+    tmn-code: ${VNPAY_TMN_CODE:GE2X44LJ}
+    hash-secret: ${VNPAY_HASH_SECRET:QNDE0P4SB43MO84431YBL17BXAZB5VIB}
+
 logging:
   level:
-    org.springframework.security: DEBUG
+    org.springframework.security: ${LOG_LEVEL_SECURITY:INFO}

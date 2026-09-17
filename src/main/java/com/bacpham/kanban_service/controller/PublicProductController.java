@@ -1,26 +1,16 @@
 package com.bacpham.kanban_service.controller;
 
 import com.bacpham.kanban_service.dto.request.ApiResponse;
-import com.bacpham.kanban_service.dto.request.ProductCreationRequest;
 import com.bacpham.kanban_service.dto.response.PageResponse;
 import com.bacpham.kanban_service.dto.response.ProductResponse;
-import com.bacpham.kanban_service.entity.User;
+import com.bacpham.kanban_service.gemini.service.RecommendationService;
 import com.bacpham.kanban_service.service.IProductService;
-import com.bacpham.kanban_service.service.impl.ProductServiceImpl;
-import com.bacpham.kanban_service.service.UserActivityService;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.batch.core.Job;
-import org.springframework.batch.core.JobParameters;
-import org.springframework.batch.core.JobParametersBuilder;
-import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -32,6 +22,7 @@ import java.util.List;
 @Slf4j
 public class PublicProductController {
     IProductService productService;
+    RecommendationService recommendationService;
     @GetMapping
     ApiResponse<List<ProductResponse>> getProducts() {
         return ApiResponse.<List<ProductResponse>>builder()
@@ -67,6 +58,7 @@ public class PublicProductController {
     @PostMapping("/filter")
     public ApiResponse<PageResponse<ProductResponse>> filterProducts(
             @RequestParam(value = "catIds", required = false) List<String> catIds,
+            @RequestParam(value = "search", required = false) String search,
             @RequestParam(value = "sizes", required = false) List<String> sizes,
             @RequestParam(value = "colors", required = false) List<String> colors,
             @RequestParam(value = "price", required = false) List<Double> price,
@@ -77,6 +69,7 @@ public class PublicProductController {
 
         Page<ProductResponse> result = productService.getFilteredProducts(
                 catIds,
+                search,
                 sizes,
                 colors,
                 price,
@@ -105,6 +98,39 @@ public class PublicProductController {
                 .message("success")
                 .build();
     }
+    @GetMapping({"/related/{id}", "/ai-related/{id}"})
+    public ApiResponse<List<ProductResponse>> getRelatedProducts(
+            @PathVariable String id,
+            @RequestParam(value = "limit", required = false, defaultValue = "4") int limit
+    ) {
+        int safeLimit = Math.min(Math.max(limit, 1), 4);
+        List<ProductResponse> related = recommendationService.getRelatedProductsByAi(id, safeLimit);
+        return ApiResponse.<List<ProductResponse>>builder()
+                .data(related)
+                .message("success")
+                .build();
+    }
+
+    @GetMapping("/category/{categoryId}")
+    public ApiResponse<List<ProductResponse>> getProductsByCategory(
+            @PathVariable String categoryId,
+            @RequestParam(value = "limit", required = false, defaultValue = "8") int limit
+    ) {
+        Pageable pageable = PageRequest.of(0, Math.max(1, limit));
+        Page<ProductResponse> filtered = productService.getFilteredProducts(
+                List.of(categoryId),
+                null,
+                null,
+                null,
+                null,
+                pageable
+        );
+        return ApiResponse.<List<ProductResponse>>builder()
+                .data(filtered.getContent())
+                .message("success")
+                .build();
+    }
+
     @GetMapping("/bestSellers")
     public ApiResponse<List<ProductResponse>> getBestSellers() {
         return ApiResponse.<List<ProductResponse>>builder()

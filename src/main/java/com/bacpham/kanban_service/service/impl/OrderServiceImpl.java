@@ -59,6 +59,12 @@ public class OrderServiceImpl implements IOrderService {
             SubProduct subProduct = subProductRepository.findById(dto.getSubProductId())
                     .orElseThrow(() -> new AppException(ErrorCode.SUB_PRODUCT_NOT_FOUND));
 
+            if (Boolean.TRUE.equals(subProduct.getDeleted())
+                    || subProduct.getProduct() == null
+                    || Boolean.TRUE.equals(subProduct.getProduct().getDeleted())) {
+                throw new AppException(ErrorCode.SUB_PRODUCT_NOT_FOUND);
+            }
+
             if (subProduct.getStock() < dto.getCount()) {
                 throw new AppException(ErrorCode.INSUFFICIENT_STOCK);
             }

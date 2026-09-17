@@ -20,7 +20,6 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -87,7 +86,23 @@ public class CartServiceImpl implements ICartService {
         User user = userRepository.findByEmail(userName)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
         return cartRepository.findByCreatedBy(user).stream()
-                .map(cartMapper::toResponse)
+                .map(cart -> {
+                    CartResponse response = cartMapper.toResponse(cart);
+                    SubProduct subProduct = cart.getSubProduct();
+                    boolean isDel = false;
+                    int currentStock = 0;
+                    if (subProduct == null || Boolean.TRUE.equals(subProduct.getDeleted())
+                            || subProduct.getProduct() == null || Boolean.TRUE.equals(subProduct.getProduct().getDeleted())) {
+                        isDel = true;
+                        currentStock = 0;
+                    } else {
+                        currentStock = subProduct.getStock() != null ? subProduct.getStock() : 0;
+                    }
+                    response.setIsDeleted(isDel);
+                    response.setStock(currentStock);
+                    response.setQty(currentStock);
+                    return response;
+                })
                 .collect(Collectors.toList());
     }
     @Override

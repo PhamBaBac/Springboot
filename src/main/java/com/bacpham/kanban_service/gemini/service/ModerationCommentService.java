@@ -1,20 +1,16 @@
 package com.bacpham.kanban_service.gemini.service;
 
-import com.bacpham.kanban_service.dto.request.ReviewProductRequest;
-import com.bacpham.kanban_service.dto.response.ModerationResult;
+import java.net.MalformedURLException;
+import java.util.ArrayList;
+import java.util.List;
+
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
-import org.springframework.ai.chat.messages.SystemMessage;
-import org.springframework.ai.chat.messages.UserMessage;
-import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.content.Media;
 import org.springframework.core.io.UrlResource;
 import org.springframework.stereotype.Service;
 import org.springframework.util.MimeTypeUtils;
 
-import java.net.MalformedURLException;
-import java.util.ArrayList;
-import java.util.List;
+import com.bacpham.kanban_service.dto.response.ModerationResult;
 
 @Service
 public class ModerationCommentService {

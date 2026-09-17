@@ -4,7 +4,6 @@ import com.bacpham.kanban_service.dto.request.ApiResponse;
 import com.bacpham.kanban_service.dto.request.SubProductCreationRequest;
 import com.bacpham.kanban_service.dto.response.SubProductResponse;
 import com.bacpham.kanban_service.service.ISubProductService;
-import com.bacpham.kanban_service.service.impl.SubProductServiceImpl;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
@@ -30,9 +29,12 @@ public class SubProductController {
     }
 
     @GetMapping("/get-filter-values")
-    ApiResponse<Map<String, List<?>>> getFilterValues() {
+    ApiResponse<Map<String, List<?>>> getFilterValues(
+            @RequestParam(value = "catIds", required = false) List<String> catIds,
+            @RequestParam(value = "search", required = false) String search
+    ) {
         return ApiResponse.<Map<String, List<?>>>builder()
-                .data(subProductService.getSubProducts())
+                .data(subProductService.getSubProducts(catIds, search))
                 .build();
     }
 

@@ -1,17 +1,16 @@
 package com.bacpham.kanban_service.service;
 
 
-import com.bacpham.kanban_service.helper.exception.AppException;
-import com.bacpham.kanban_service.helper.exception.ErrorCode;
-import lombok.RequiredArgsConstructor;
+import java.time.Instant;
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.stereotype.Service;
 
-import java.time.Instant;
-import java.util.List;
-
 import com.bacpham.kanban_service.configuration.redis.GenericRedisService;
+import com.bacpham.kanban_service.helper.exception.AppException;
+import com.bacpham.kanban_service.helper.exception.ErrorCode;
 
 @Service
 public class RedisScriptService {

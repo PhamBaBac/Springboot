@@ -16,4 +16,5 @@ public class FilterSubProductResponse {
     double price;
     double discount;
     Integer stock;
+    java.util.Map<String, String> attributes;
 }

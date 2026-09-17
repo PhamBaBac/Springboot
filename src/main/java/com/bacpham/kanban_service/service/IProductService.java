@@ -30,6 +30,15 @@ public interface IProductService {
             Pageable pageable
     );
 
+    Page<ProductResponse> getFilteredProducts(
+            List<String> categoryIds,
+            String search,
+            List<String> sizes,
+            List<String> colors,
+            List<Double> priceRange,
+            Pageable pageable
+    );
+
     List<ProductResponse> getListProductRecommendations(List<String> ids);
     List<ProductResponse> getBestSellers();
 }

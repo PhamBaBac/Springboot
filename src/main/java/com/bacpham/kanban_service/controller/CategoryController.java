@@ -3,9 +3,7 @@ package com.bacpham.kanban_service.controller;
 import com.bacpham.kanban_service.dto.request.ApiResponse;
 import com.bacpham.kanban_service.dto.request.CategoryRequest;
 import com.bacpham.kanban_service.dto.response.CategoryResponse;
-import com.bacpham.kanban_service.dto.response.PageResponse;
 import com.bacpham.kanban_service.service.ICategoryService;
-import com.bacpham.kanban_service.service.impl.CategoryServiceImpl;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
@@ -17,7 +15,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/admin/categories")
