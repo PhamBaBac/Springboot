@@ -22,5 +22,8 @@ public class OrderDetailResponse {
     private PaymentType paymentType;
     private OrderStatus orderStatus;
     private List<OrderResponse> orderResponses;
+    private String cancelReason;
+    private String trackingCode;
+    private String shippingStatus;
     private LocalDate createdAt;
 }

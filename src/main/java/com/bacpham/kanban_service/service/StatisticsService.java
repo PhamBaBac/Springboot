@@ -18,6 +18,8 @@ import com.bacpham.kanban_service.repository.ProductRepository;
 import com.bacpham.kanban_service.repository.SubProductRepository;
 import com.bacpham.kanban_service.repository.SupplierRepository;
 
+import com.bacpham.kanban_service.enums.OrderStatus;
+
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -34,18 +36,24 @@ public class StatisticsService {
         // Get counts
         long supplierCount = supplierRepository.count();
         long productCount = productRepository.count();
-        long orderCount = orderRepository.count();
+
+        List<Order> validOrders = orderRepository.findAll().stream()
+                .filter(order -> !Boolean.TRUE.equals(order.getDeleted()))
+                .toList();
+        long orderCount = validOrders.size();
 
         long subProductWithStockCount = subProductRepository.countSubProductsWithStock();
         long totalSubProductQty = subProductRepository.getTotalQty();
         double totalSubProductAmount = subProductRepository.getTotalSubProductAmount();
 
-        double totalOrderAmount = orderRepository.findAll().stream()
-                .filter(order -> !order.getDeleted())
+        double totalOrderAmount = validOrders.stream()
+                .filter(order -> order.getOrderStatus() == OrderStatus.COMPLETED)
                 .mapToDouble(Order::getTotal)
                 .sum();
 
-        List<OrderItem> allOrders = orderItemRepository.findAll();
+        List<OrderItem> allOrders = orderItemRepository.findAll().stream()
+                .filter(item -> item.getOrder() != null && !Boolean.TRUE.equals(item.getOrder().getDeleted()))
+                .toList();
 
         List<StatisticsOrderResponse> recentSales = allOrders.stream()
                 .map(statisticsMapper::toStatisticsOrderResponse)

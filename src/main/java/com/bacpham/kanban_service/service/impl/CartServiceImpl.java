@@ -13,6 +13,7 @@ import com.bacpham.kanban_service.repository.CartRepository;
 import com.bacpham.kanban_service.repository.SubProductRepository;
 import com.bacpham.kanban_service.repository.UserRepository;
 import com.bacpham.kanban_service.service.ICartService;
+import com.bacpham.kanban_service.service.ISubProductService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -32,7 +33,7 @@ public class CartServiceImpl implements ICartService {
     private final CartMapper cartMapper;
     private final UserRepository userRepository;
     private final SubProductRepository subProductRepository;
-    private final SubProductServiceImpl subProductService;
+    private final ISubProductService subProductService;
 
     @Override
     public CartResponse addToCart(CartCreateRequest request) {

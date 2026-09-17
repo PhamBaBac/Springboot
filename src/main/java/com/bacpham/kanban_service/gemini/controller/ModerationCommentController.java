@@ -6,7 +6,7 @@ import com.bacpham.kanban_service.entity.User;
 import com.bacpham.kanban_service.gemini.service.ModerationCommentService;
 import com.bacpham.kanban_service.helper.exception.AppException;
 import com.bacpham.kanban_service.helper.exception.ErrorCode;
-import com.bacpham.kanban_service.service.impl.ReviewProductServiceImpl;
+import com.bacpham.kanban_service.service.IReviewProductService;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
@@ -23,6 +23,8 @@ import org.springframework.web.bind.annotation.RestController;
 @Slf4j
 public class ModerationCommentController {
     ModerationCommentService moderationCommentService;
+    IReviewProductService reviewProductService;
+
     @PostMapping
     public ApiResponse<String> createComment(
             @RequestBody ReviewProductRequest request
@@ -39,5 +41,4 @@ public class ModerationCommentController {
             throw new AppException(ErrorCode.REVIEW_REJECTED_BY_MODERATION);
         }
     }
-    private final ReviewProductServiceImpl reviewProductService;
 }

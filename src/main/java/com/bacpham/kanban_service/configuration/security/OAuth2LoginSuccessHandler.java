@@ -117,15 +117,25 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
         String accessToken = jwtService.generateAccessToken(user);
         String refreshToken = jwtService.generateRefreshToken(user);
 
-        // Set cookie
-        ResponseCookie cookie = ResponseCookie.from(AuthenticationServiceImpl.REFRESH_TOKEN_COOKIE_NAME, refreshToken)
+        // Set role-specific cookie
+        String cookieName = AuthenticationServiceImpl.getRefreshTokenCookieName(user.getRole());
+        ResponseCookie cookie = ResponseCookie.from(cookieName, refreshToken)
                 .httpOnly(true)
                 .secure(isCookieSecure)
                 .path("/")
                 .maxAge(Duration.ofDays(7))
                 .sameSite("Lax")
                 .build();
-        response.setHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+
+        ResponseCookie legacyCookie = ResponseCookie.from(AuthenticationServiceImpl.REFRESH_TOKEN_COOKIE_NAME, refreshToken)
+                .httpOnly(true)
+                .secure(isCookieSecure)
+                .path("/")
+                .maxAge(Duration.ofDays(7))
+                .sameSite("Lax")
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, legacyCookie.toString());
 
         // Sinh exchange code dùng 1 lần (TTL 60s trong Redis)
         String exchangeCode = UUID.randomUUID().toString();

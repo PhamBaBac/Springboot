@@ -10,7 +10,7 @@ import com.bacpham.kanban_service.entity.User;
 import com.bacpham.kanban_service.helper.exception.AppException;
 import com.bacpham.kanban_service.helper.exception.ErrorCode;
 import com.bacpham.kanban_service.repository.UserRepository;
-import com.bacpham.kanban_service.service.impl.OrderServiceImpl;
+import com.bacpham.kanban_service.service.IOrderService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -22,19 +22,21 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import lombok.extern.slf4j.Slf4j;
 import java.util.concurrent.TimeUnit;
 
+@Slf4j
 @Controller
 @RequestMapping("/api/v1/payment")
 public class PaymentVNPayController {
     private final UserRepository userRepository;
-    private final OrderServiceImpl orderService;
+    private final IOrderService orderService;
     private final GenericRedisService<String, String, String> redisService;
     private final GenericRedisService<String, String, OrderCreateRequest> redisServiceOrder;
 
     public PaymentVNPayController(
             UserRepository userRepository,
-            OrderServiceImpl orderService,
+            IOrderService orderService,
             GenericRedisService<String, String, String> redisService,
             GenericRedisService<String, String, OrderCreateRequest> redisServiceOrder) {
         this.userRepository = userRepository;
@@ -116,21 +118,18 @@ public class PaymentVNPayController {
         Collections.sort(fieldNames);
         StringBuilder hashData = new StringBuilder();
         StringBuilder query = new StringBuilder();
-        Iterator<String> itr = fieldNames.iterator();
-        while (itr.hasNext()) {
-            String fieldName = itr.next();
+        for (String fieldName : fieldNames) {
             String fieldValue = vnp_Params.get(fieldName);
             if (fieldValue != null && !fieldValue.isEmpty()) {
-                hashData.append(fieldName).append('=')
-                        .append(URLEncoder.encode(fieldValue, StandardCharsets.US_ASCII));
-                query.append(URLEncoder.encode(fieldName, StandardCharsets.US_ASCII))
-                        .append('=')
-                        .append(URLEncoder.encode(fieldValue, StandardCharsets.US_ASCII));
-                if (itr.hasNext()) {
-                    hashData.append('&');
-                    query.append('&');
-                }
+                hashData.append(fieldName).append('=').append(URLEncoder.encode(fieldValue, StandardCharsets.US_ASCII)).append('&');
+                query.append(URLEncoder.encode(fieldName, StandardCharsets.US_ASCII)).append('=').append(URLEncoder.encode(fieldValue, StandardCharsets.US_ASCII)).append('&');
             }
+        }
+        if (hashData.length() > 0) {
+            hashData.setLength(hashData.length() - 1);
+        }
+        if (query.length() > 0) {
+            query.setLength(query.length() - 1);
         }
         String vnp_SecureHash = ConfigVNPay.hmacSHA512(ConfigVNPay.vnp_HashSecret, hashData.toString());
         String queryUrl = query + "&vnp_SecureHash=" + vnp_SecureHash;
@@ -140,9 +139,13 @@ public class PaymentVNPayController {
         redisService.set("payment:txnRef:" + vnp_TxnRef + ":userId", userId);
         redisService.setTimeToLive("payment:txnRef:" + vnp_TxnRef + ":userId", 15, TimeUnit.MINUTES);
 
-        // Lưu request order của user
+        // Lưu request order của user theo cả TxnRef và userId
+        redisServiceOrder.set("payment:order:" + vnp_TxnRef, request);
+        redisServiceOrder.setTimeToLive("payment:order:" + vnp_TxnRef, 15, TimeUnit.MINUTES);
         redisServiceOrder.set("payment:items:" + userId, request);
         redisServiceOrder.setTimeToLive("payment:items:" + userId, 15, TimeUnit.MINUTES);
+
+        log.info("VNPay paymentUrl created for txnRef: {}, tmnCode: {}", vnp_TxnRef, vnp_TmnCode);
 
         return ApiResponse.<PaymentResponse>builder()
                 .code(200)
@@ -160,10 +163,50 @@ public class PaymentVNPayController {
         String vnp_TxnRef = params.get("vnp_TxnRef");
         String vnp_TransactionNo = params.get("vnp_TransactionNo");
         String vnp_PayDate = params.get("vnp_PayDate");
+        String vnp_SecureHash = params.get("vnp_SecureHash");
         String paymentType = "VNPAY";
+
+        log.info("VNPay return callback received: txnRef={}, responseCode={}, transactionNo={}",
+                vnp_TxnRef, vnp_ResponseCode, vnp_TransactionNo);
 
         if (vnp_TxnRef == null) {
             model.addAttribute("message", "Transaction reference not provided by VNPAY");
+            return "payment-result.html";
+        }
+
+        // Kiểm tra chữ ký từ VNPay
+        Map<String, String> fields = new HashMap<>();
+        for (Map.Entry<String, String> entry : params.entrySet()) {
+            String fieldName = entry.getKey();
+            String fieldValue = entry.getValue();
+            if (fieldValue != null && !fieldValue.isEmpty()) {
+                fields.put(fieldName, fieldValue);
+            }
+        }
+        fields.remove("vnp_SecureHashType");
+        fields.remove("vnp_SecureHash");
+
+        List<String> fieldNames = new ArrayList<>(fields.keySet());
+        Collections.sort(fieldNames);
+        StringBuilder hashData = new StringBuilder();
+        for (String fieldName : fieldNames) {
+            String fieldValue = fields.get(fieldName);
+            if (fieldValue != null && !fieldValue.isEmpty()) {
+                hashData.append(fieldName).append('=').append(URLEncoder.encode(fieldValue, StandardCharsets.US_ASCII)).append('&');
+            }
+        }
+        if (hashData.length() > 0) {
+            hashData.setLength(hashData.length() - 1);
+        }
+
+        String signValue = ConfigVNPay.hmacSHA512(ConfigVNPay.vnp_HashSecret, hashData.toString());
+        boolean isValidSignature = signValue.equalsIgnoreCase(vnp_SecureHash);
+
+        if (!isValidSignature) {
+            log.warn("VNPay signature verification failed for txnRef: {}. Expected: {}, Received: {}",
+                    vnp_TxnRef, signValue, vnp_SecureHash);
+            model.addAttribute("message", "Invalid checksum from VNPay");
+            model.addAttribute("responseCode", "INVALID_SIGNATURE");
             return "payment-result.html";
         }
 
@@ -175,18 +218,25 @@ public class PaymentVNPayController {
         }
 
         // Lấy request từ Redis
-        OrderCreateRequest request = redisServiceOrder.get("payment:items:" + userId);
+        OrderCreateRequest request = redisServiceOrder.get("payment:order:" + vnp_TxnRef);
         if (request == null) {
-            model.addAttribute("message", "Cannot find order details for user: " + userId);
+            request = redisServiceOrder.get("payment:items:" + userId);
+        }
+        if (request == null) {
+            model.addAttribute("message", "Cannot find order details for transaction: " + vnp_TxnRef);
             return "payment-result.html";
         }
 
-
         if ("00".equals(vnp_ResponseCode)) {
-            orderService.createOrderFromSelectedItems(userId, paymentType,  request );
+            orderService.createOrderFromSelectedItems(userId, paymentType, request);
+            redisServiceOrder.delete("payment:order:" + vnp_TxnRef);
+            redisServiceOrder.delete("payment:items:" + userId);
+            redisService.delete("payment:txnRef:" + vnp_TxnRef + ":userId");
+            log.info("Order successfully created for VNPay txnRef: {}, userId: {}", vnp_TxnRef, userId);
             model.addAttribute("message", "Payment successful for transaction: " + vnp_TxnRef + " at " + vnp_PayDate);
             model.addAttribute("transactionNo", vnp_TransactionNo);
         } else {
+            log.warn("VNPay payment failed for txnRef: {}, responseCode: {}", vnp_TxnRef, vnp_ResponseCode);
             model.addAttribute("message", "Payment failed for transaction: " + vnp_TxnRef);
             model.addAttribute("responseCode", vnp_ResponseCode);
         }

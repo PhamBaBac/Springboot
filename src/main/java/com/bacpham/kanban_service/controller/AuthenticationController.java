@@ -3,7 +3,6 @@ package com.bacpham.kanban_service.controller;
 import com.bacpham.kanban_service.dto.request.*;
 import com.bacpham.kanban_service.dto.response.AuthenticationResponse;
 import com.bacpham.kanban_service.service.IAuthenticationService;
-import com.bacpham.kanban_service.service.impl.RedisCartServiceImpl;
 import jakarta.mail.MessagingException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -13,6 +12,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import com.bacpham.kanban_service.service.IRedisCartService;
+
 import java.io.IOException;
 
 @RestController
@@ -21,7 +22,7 @@ import java.io.IOException;
 public class AuthenticationController {
 
     private final IAuthenticationService service;
-    private final RedisCartServiceImpl redisCartService;
+    private final IRedisCartService redisCartService;
 
     @PostMapping("/register")
     public ApiResponse<?> register(

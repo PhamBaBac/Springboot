@@ -15,6 +15,15 @@ import java.util.List;
 @Repository
 public interface OrderRepository extends JpaRepository<Order, String> {
     List<Order> findByUserAndDeletedFalse(User user);
+
+    @Query("""
+        SELECT o FROM Order o
+        WHERE o.user = :user
+          AND (o.customerHidden = false OR o.customerHidden IS NULL)
+          AND (o.deleted = false OR o.deleted IS NULL)
+    """)
+    List<Order> findByUserAndNotCustomerHidden(@Param("user") User user);
+
     Page<Order> findAllByDeletedFalse(Pageable pageable);
 
     @Query("""
@@ -33,5 +42,5 @@ public interface OrderRepository extends JpaRepository<Order, String> {
             @Param("subProductId") String subProductId
     );
 
-
+    java.util.Optional<Order> findByTrackingCode(String trackingCode);
 }

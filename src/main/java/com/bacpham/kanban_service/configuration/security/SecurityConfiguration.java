@@ -15,6 +15,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import org.springframework.security.web.context.RequestAttributeSecurityContextRepository;
 import java.util.List;
 import static org.springframework.security.config.http.SessionCreationPolicy.IF_REQUIRED;
 import java.util.Arrays;
@@ -41,6 +42,7 @@ public class SecurityConfiguration {
             "/api/v1/subProducts/**",
             "/api/v1/reviewProducts/**",
             "/api/v1/ai/**",
+            "/api/v1/shipping/**",
             "/oauth2/**",
             "/login/oauth2/**",
             "/v2/api-docs",
@@ -72,6 +74,9 @@ public class SecurityConfiguration {
                                 .authenticated()
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(IF_REQUIRED))
+                .securityContext(context -> context
+                        .securityContextRepository(new RequestAttributeSecurityContextRepository())
+                )
                 .exceptionHandling(exception -> exception.authenticationEntryPoint(new JwtAuthenticationEntryPoint()))
                 .authenticationProvider(authenticationProvider)
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)

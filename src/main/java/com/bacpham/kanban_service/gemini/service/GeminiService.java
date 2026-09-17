@@ -8,10 +8,9 @@ import com.bacpham.kanban_service.gemini.dto.GeminiImageRequest;
 import com.bacpham.kanban_service.gemini.dto.GeminiRequest;
 import com.bacpham.kanban_service.gemini.dto.GeminiResponse;
 import com.bacpham.kanban_service.gemini.dto.Part;
-import com.bacpham.kanban_service.service.impl.CategoryServiceImpl;
-import com.bacpham.kanban_service.service.impl.ProductServiceImpl;
-import com.bacpham.kanban_service.service.impl.SubProductServiceImpl;
-import com.bacpham.kanban_service.service.impl.SupplierServiceImpl;
+import com.bacpham.kanban_service.service.IProductService;
+import com.bacpham.kanban_service.service.ISubProductService;
+import com.bacpham.kanban_service.service.ISupplierService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -36,17 +35,16 @@ public class GeminiService {
     private final RestClient restClient;
     private final String geminiApiKey;
     private final String model;
-    private final ProductServiceImpl productService;
-    private final SubProductServiceImpl subProductService;
-    private final SupplierServiceImpl supplierService;
+    private final IProductService productService;
+    private final ISubProductService subProductService;
+    private final ISupplierService supplierService;
 
     public GeminiService(@Qualifier("geminiRestClient") RestClient restClient,
                          @Value("${spring.ai.openai.api-key}") String geminiApiKey,
                          @Value("${spring.ai.openai.chat.options.model:gemini-3.8-flash}") String model,
-                         ProductServiceImpl productService,
-                         CategoryServiceImpl categoryService,
-                         SubProductServiceImpl subProductService,
-                         SupplierServiceImpl supplierService) {
+                         IProductService productService,
+                         ISubProductService subProductService,
+                         ISupplierService supplierService) {
         this.restClient = restClient;
         this.geminiApiKey = geminiApiKey;
         this.model = (model != null && !model.isBlank()) ? model : "gemini-2.5-flash";

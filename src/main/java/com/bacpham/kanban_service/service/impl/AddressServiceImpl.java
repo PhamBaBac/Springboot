@@ -22,11 +22,11 @@ import java.util.stream.Collectors;
 @Slf4j
 public class AddressServiceImpl implements IAddressService {
     private final AddressRepository addressRepository;
-    private  final AddressMapper addressMapper;
+    private final AddressMapper addressMapper;
     private final UserRepository userRepository;
 
     @Override
-    public AddressResponse createAddress(AddressCreateRequest request , String userId) {
+    public AddressResponse createAddress(AddressCreateRequest request, String userId) {
         var address = addressMapper.toAddress(request);
 
         var savedAddress = addressRepository.save(address);
@@ -34,6 +34,7 @@ public class AddressServiceImpl implements IAddressService {
         return addressMapper.toResponse(savedAddress);
 
     }
+
     @Override
     public List<AddressResponse> getAddresses(String userId) {
         User user = userRepository.findById(userId)

@@ -13,4 +13,6 @@ import lombok.experimental.FieldDefaults;
 @ToString
 public class UpdateStatusOrder {
     OrderStatus orderStatus;
+    String cancelReason;
+    String trackingCode;
 }

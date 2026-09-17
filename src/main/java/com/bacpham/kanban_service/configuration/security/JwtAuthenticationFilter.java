@@ -38,8 +38,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(@NonNull HttpServletRequest request) {
         String path = request.getServletPath();
-        return Arrays.stream(SecurityConfiguration.WHITE_LIST_URL)
-                .anyMatch(pattern -> pathMatcher.match(pattern, path));
+        return path.startsWith("/api/v1/auth/authenticate")
+                || path.startsWith("/api/v1/auth/register")
+                || path.startsWith("/api/v1/auth/exchange-token")
+                || path.startsWith("/oauth2/")
+                || path.startsWith("/login/oauth2/");
     }
 
     @Override
@@ -48,13 +51,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             @NonNull HttpServletResponse response,
             @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
-        String jwt = getJwtFromCookie(request);
+        final String authHeader = request.getHeader("Authorization");
+        String jwt = null;
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            jwt = authHeader.substring(7);
+        }
 
         if (jwt == null) {
-            final String authHeader = request.getHeader("Authorization");
-            if (authHeader != null && authHeader.startsWith("Bearer ")) {
-                jwt = authHeader.substring(7);
-            }
+            jwt = getJwtFromCookie(request);
         }
 
         if (jwt == null) {
@@ -65,7 +69,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try {
             final String userEmail = jwtService.extractUsername(jwt);
 
-            if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+            if (userEmail != null) {
                 UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
 
                 boolean isBlacklisted = redisService.get("blacklist:" + jwt) != null;

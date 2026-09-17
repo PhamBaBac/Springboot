@@ -5,6 +5,7 @@ import com.bacpham.kanban_service.dto.response.StatisticsResponse;
 import com.bacpham.kanban_service.dto.response.StatisticsTopSellingLowQuantityResponse;
 import com.bacpham.kanban_service.entity.Order;
 import com.bacpham.kanban_service.repository.OrderRepository;
+import com.bacpham.kanban_service.enums.OrderStatus;
 import com.bacpham.kanban_service.service.StatisticsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -41,7 +42,10 @@ public class StatisticsController {
 
         List<Map<String, Object>> result = new ArrayList<>();
 
-        List<Order> orders = orderRepository.findAll();
+        List<Order> orders = orderRepository.findAll().stream()
+                .filter(order -> !Boolean.TRUE.equals(order.getDeleted())
+                        && order.getOrderStatus() == OrderStatus.COMPLETED)
+                .toList();
 
         Map<String, List<Order>> groupedOrders = new HashMap<>();
         for (Order order : orders) {

@@ -16,6 +16,7 @@ import com.bacpham.kanban_service.helper.exception.AppException;
 import com.bacpham.kanban_service.helper.exception.ErrorCode;
 import com.bacpham.kanban_service.mapper.CartMapper;
 import com.bacpham.kanban_service.repository.SubProductRepository;
+import com.bacpham.kanban_service.service.ICartService;
 import com.bacpham.kanban_service.service.IRedisCartService;
 
 import lombok.RequiredArgsConstructor;
@@ -28,7 +29,7 @@ public class RedisCartServiceImpl implements IRedisCartService {
 
     private final GenericRedisService<String, String, CartCreateRequest> redisService;
     private final CartMapper cartMapper;
-    private final CartServiceImpl cartService;
+    private final ICartService cartService;
     private final SubProductRepository subProductRepository;
 
     private String buildKey(String sessionId) {

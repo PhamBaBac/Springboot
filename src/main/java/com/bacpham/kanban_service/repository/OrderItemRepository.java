@@ -30,8 +30,10 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, String> {
         sp.images
     )
     FROM OrderItem oi
+    JOIN oi.order o
     JOIN oi.subProduct sp
     JOIN sp.product p
+    WHERE o.orderStatus = 'COMPLETED' AND (o.deleted IS NULL OR o.deleted = false)
     GROUP BY sp.id, p.title, sp.color, sp.size, sp.stock
     ORDER BY SUM(oi.quantity) DESC
      LIMIT 5

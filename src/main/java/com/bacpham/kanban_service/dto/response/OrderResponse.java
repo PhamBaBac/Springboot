@@ -9,6 +9,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
 
+import java.util.Map;
+
 @Getter
 @Setter
 @NoArgsConstructor
@@ -21,10 +23,12 @@ public class OrderResponse {
     private String image;
     private String title;
     private String size;
+    private String color;
+    private Map<String, String> attributes;
     private int qty;
     private double price;
     private double totalPrice;
     private OrderStatus orderStatus;
+    private String trackingCode;
     private Boolean isReviewed;
-
 }

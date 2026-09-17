@@ -68,6 +68,7 @@ public enum ErrorCode {
     INSUFFICIENT_STOCK(5002, "Insufficient stock", HttpStatus.BAD_REQUEST),
     BILL_NOT_FOUND(5003, "Bill not found", HttpStatus.NOT_FOUND),
     CANNOT_CANCEL_ORDER(5004, "Cannot cancel order", HttpStatus.BAD_REQUEST),
+    INVALID_ORDER_STATUS_TRANSITION(5005, "Invalid order status transition", HttpStatus.BAD_REQUEST),
 
     // ==================================================
     // 6xxx - Reviews / Chat / Messages

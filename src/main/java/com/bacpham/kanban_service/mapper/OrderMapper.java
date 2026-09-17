@@ -19,6 +19,9 @@ public interface OrderMapper {
     @Mapping(source = "paymentType", target = "paymentType")
     @Mapping(source = "orderStatus", target = "orderStatus")
     @Mapping(source = "items", target = "orderResponses")
+    @Mapping(source = "cancelReason", target = "cancelReason")
+    @Mapping(source = "trackingCode", target = "trackingCode")
+    @Mapping(source = "shippingStatus", target = "shippingStatus")
     @Mapping(source = "createdAt", target = "createdAt")
     OrderDetailResponse toOrderDetailResponse(Order order);
 
@@ -26,11 +29,14 @@ public interface OrderMapper {
     @Mapping(source = "subProduct.id", target = "subProductId")
     @Mapping(source = "subProduct.product.title", target = "title")
     @Mapping(source = "subProduct.size", target = "size")
+    @Mapping(source = "subProduct.color", target = "color")
+    @Mapping(source = "subProduct.attributes", target = "attributes")
     @Mapping(source = "quantity", target = "qty")
     @Mapping(source = "priceAtOrderTime", target = "price")
     @Mapping(source = "subProduct", target = "image", qualifiedByName = "mapFirstImage")
     @Mapping(target = "totalPrice", expression = "java(item.getPriceAtOrderTime() * item.getQuantity())")
     @Mapping(source = "order.orderStatus", target = "orderStatus")
+    @Mapping(source = "order.trackingCode", target = "trackingCode")
     OrderResponse toOrderResponse(OrderItem item);
 
 

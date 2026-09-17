@@ -18,7 +18,7 @@ public class Address extends BaseModel {
     String name; // tên người nhận
     String phoneNumber;
 
-    String address; // ví dụ: "Xóm 6, Xã Trù Sơn, Huyện Đô Lương, Nghệ An"
+    String address; // ví dụ: "Xóm Thượng Giáp, Xã Bạch Hà, Tỉnh Nghệ An"
 
     String province;
     String district;

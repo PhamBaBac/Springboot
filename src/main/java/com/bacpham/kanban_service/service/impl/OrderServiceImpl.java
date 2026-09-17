@@ -14,7 +14,9 @@ import com.bacpham.kanban_service.helper.exception.AppException;
 import com.bacpham.kanban_service.helper.exception.ErrorCode;
 import com.bacpham.kanban_service.mapper.OrderMapper;
 import com.bacpham.kanban_service.repository.*;
+import com.bacpham.kanban_service.service.IGhnShippingService;
 import com.bacpham.kanban_service.service.IOrderService;
+import com.bacpham.kanban_service.service.IPromotionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -23,8 +25,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import jakarta.annotation.PostConstruct;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 @Service
@@ -39,7 +43,8 @@ public class OrderServiceImpl implements IOrderService {
     private final SubProductRepository subProductRepository;
     private final AddressRepository addressRepository;
     private final ReviewProductRepository reviewRepository;
-    private final PromotionServiceImpl promotionService;
+    private final IPromotionService promotionService;
+    private final IGhnShippingService ghnShippingService;
 
     @Override
     @Transactional
@@ -70,7 +75,11 @@ public class OrderServiceImpl implements IOrderService {
             }
 
             // Cập nhật tồn kho
-            subProduct.setStock(subProduct.getStock() - dto.getCount());
+            int currentStock = subProduct.getStock() != null ? subProduct.getStock() : 0;
+            int currentQty = subProduct.getQty() != null ? subProduct.getQty() : 0;
+            subProduct.setStock(currentStock - dto.getCount());
+            subProduct.setQty(Math.max(0, currentQty - dto.getCount()));
+            subProductRepository.save(subProduct);
 
             double itemTotal = dto.getPrice() * dto.getCount();
             double unitPriceAfterDiscount = dto.getPrice();
@@ -131,6 +140,7 @@ public class OrderServiceImpl implements IOrderService {
                 .total(total)
                 .orderStatus(OrderStatus.PENDING)
                 .paymentType(paymentTypeEnum)
+                .customerHidden(false)
                 .items(new ArrayList<>())
                 .build();
 
@@ -157,10 +167,10 @@ public class OrderServiceImpl implements IOrderService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
-        List<Order> orders = orderRepository.findByUserAndDeletedFalse(user);
+        List<Order> orders = orderRepository.findByUserAndNotCustomerHidden(user);
 
         if (orders.isEmpty()) {
-            throw new AppException(ErrorCode.BILL_NOT_FOUND);
+            return Collections.emptyList();
         }
 
         List<OrderResponse> responses = new ArrayList<>();
@@ -169,13 +179,10 @@ public class OrderServiceImpl implements IOrderService {
             for (OrderItem item : order.getItems()) {
                 OrderResponse response = orderMapper.toOrderResponse(item);
 
-
                 boolean hasReviewed = reviewRepository.existsByCreatedByIdAndSubProductIdAndOrderId(
                         userId,
                         item.getSubProduct().getId(),
-                        order.getId()
-                );
-
+                        order.getId());
 
                 response.setIsReviewed(hasReviewed);
 
@@ -221,18 +228,24 @@ public class OrderServiceImpl implements IOrderService {
             throw new AppException(ErrorCode.UNAUTHORIZED);
         }
 
+        // Nếu đơn hàng đã ở trạng thái CANCELLED (idempotent), trả về thành công ngay để tránh lỗi khi click đúp
+        if (order.getOrderStatus() == OrderStatus.CANCELLED) {
+            log.info("Order {} is already CANCELLED, returning success.", orderId);
+            return;
+        }
+
         if (order.getOrderStatus() != OrderStatus.PENDING) {
+            log.warn("Cannot cancel order {}: current status in DB is {}", orderId, order.getOrderStatus());
             throw new AppException(ErrorCode.CANNOT_CANCEL_ORDER);
         }
 
         order.setOrderStatus(OrderStatus.CANCELLED);
+        order.setCancelReason("Khách hàng tự hủy đơn");
 
-        for (OrderItem item : order.getItems()) {
-            SubProduct subProduct = item.getSubProduct();
-            subProduct.setQty(subProduct.getStock() + item.getQuantity());
-        }
+        restockOrderItems(order);
 
         orderRepository.save(order);
+        log.info("Order {} cancelled successfully by user {}", orderId, userId);
     }
 
     @Override
@@ -249,10 +262,11 @@ public class OrderServiceImpl implements IOrderService {
 
         return orderMapper.toOrderDetailResponse(order);
     }
+
     @Override
 
     public void deleteOrder(String userId, String orderId) {
-         userRepository.findById(userId)
+        userRepository.findById(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
         Order order = orderRepository.findById(orderId)
@@ -261,24 +275,117 @@ public class OrderServiceImpl implements IOrderService {
         if (!order.getUser().getId().equals(userId)) {
             throw new AppException(ErrorCode.UNAUTHORIZED);
         }
-        //update lai delete la true
-        order.setDeleted(true);
+        // Ẩn đơn hàng phía khách hàng, giữ lại đơn cho Admin và Thống kê
+        order.setCustomerHidden(true);
+        order.setDeleted(false);
         orderRepository.save(order);
     }
 
     @Override
+    @Transactional
     public void updateOrderStatus(String orderId, UpdateStatusOrder status) {
-        log.info("Updating order status for order ", orderId, status);
+        log.info("Updating order status for orderId: {} to status: {}", orderId, status);
 
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new AppException(ErrorCode.BILL_NOT_FOUND));
 
-        if (status == null || status.getOrderStatus() == null) {
+        if (status == null) {
             throw new AppException(ErrorCode.INVALID_KEY);
         }
 
+        OrderStatus oldStatus = order.getOrderStatus();
+        OrderStatus newStatus = status.getOrderStatus() != null ? status.getOrderStatus() : oldStatus;
 
-        order.setOrderStatus(status.getOrderStatus());
+        if (status.getTrackingCode() != null && !status.getTrackingCode().isBlank()) {
+            order.setTrackingCode(status.getTrackingCode().trim());
+        }
+
+        if (newStatus != oldStatus) {
+            if (!isValidStatusTransition(oldStatus, newStatus)) {
+                log.warn("Invalid order status transition from {} to {} for orderId: {}", oldStatus, newStatus, orderId);
+                throw new AppException(ErrorCode.INVALID_ORDER_STATUS_TRANSITION);
+            }
+
+            // Tự động gọi API GHN tạo đơn khi chuyển sang PROCESSING (nếu chưa có mã vận đơn)
+            if (newStatus == OrderStatus.PROCESSING) {
+                if (order.getTrackingCode() == null || order.getTrackingCode().isBlank()) {
+                    try {
+                        String ghnCode = ghnShippingService.createShippingOrder(order);
+                        if (ghnCode != null && !ghnCode.isBlank()) {
+                            order.setTrackingCode(ghnCode);
+                            order.setShippingStatus("ready_to_pick");
+                            log.info("Tự động tạo đơn GHN thành công cho orderId {}: trackingCode={}", orderId, ghnCode);
+                        }
+                    } catch (Exception e) {
+                        log.error("Không thể tự động tạo đơn qua GHN cho orderId {}: {}", orderId, e.getMessage());
+                        throw new RuntimeException("Tự động tạo đơn GHN thất bại: " + e.getMessage(), e);
+                    }
+                }
+            }
+
+            if (newStatus == OrderStatus.CANCELLED) {
+                String reason = status.getCancelReason();
+                if (reason == null || reason.trim().isEmpty()) {
+                    reason = "Hủy bởi Quản trị viên";
+                }
+                order.setCancelReason(reason);
+                restockOrderItems(order);
+            } else if (newStatus == OrderStatus.REFUNDED) {
+                if (status.getCancelReason() != null && !status.getCancelReason().trim().isEmpty()) {
+                    order.setCancelReason(status.getCancelReason());
+                }
+                restockOrderItems(order);
+            }
+
+            order.setOrderStatus(newStatus);
+        }
+
         orderRepository.save(order);
+        log.info("Order {} updated successfully. Status: {}, TrackingCode: {}", orderId, order.getOrderStatus(), order.getTrackingCode());
+    }
+
+    private boolean isValidStatusTransition(OrderStatus from, OrderStatus to) {
+        if (from == to) {
+            return true;
+        }
+        return switch (from) {
+            case PENDING -> to == OrderStatus.PROCESSING || to == OrderStatus.CANCELLED;
+            case PROCESSING -> to == OrderStatus.COMPLETED || to == OrderStatus.CANCELLED;
+            case COMPLETED -> to == OrderStatus.REFUNDED;
+            case CANCELLED, REFUNDED -> false;
+        };
+    }
+
+    private void restockOrderItems(Order order) {
+        if (order.getItems() == null) return;
+        for (OrderItem item : order.getItems()) {
+            SubProduct subProduct = item.getSubProduct();
+            if (subProduct != null) {
+                int currentStock = subProduct.getStock() != null ? subProduct.getStock() : 0;
+                int currentQty = subProduct.getQty() != null ? subProduct.getQty() : 0;
+                subProduct.setStock(currentStock + item.getQuantity());
+                subProduct.setQty(currentQty + item.getQuantity());
+                subProductRepository.save(subProduct);
+            }
+        }
+    }
+
+    @PostConstruct
+    public void recoverPreviouslyDeletedOrders() {
+        try {
+            List<Order> deletedOrders = orderRepository.findAll().stream()
+                    .filter(o -> Boolean.TRUE.equals(o.getDeleted()))
+                    .toList();
+            if (!deletedOrders.isEmpty()) {
+                log.info("Restoring {} orders that were previously marked deleted to customerHidden=true, deleted=false", deletedOrders.size());
+                for (Order o : deletedOrders) {
+                    o.setDeleted(false);
+                    o.setCustomerHidden(true);
+                }
+                orderRepository.saveAll(deletedOrders);
+            }
+        } catch (Exception e) {
+            log.warn("Could not recover previously deleted orders: {}", e.getMessage());
+        }
     }
 }

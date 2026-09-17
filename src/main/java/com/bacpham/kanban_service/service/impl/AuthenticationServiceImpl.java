@@ -8,6 +8,8 @@ import java.util.Date;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
+import java.util.List;
+import com.bacpham.kanban_service.enums.Role;
 import io.jsonwebtoken.Claims;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -51,6 +53,13 @@ import lombok.extern.slf4j.Slf4j;
 public class AuthenticationServiceImpl implements IAuthenticationService {
 
     public static final String REFRESH_TOKEN_COOKIE_NAME = "refreshToken";
+    public static final String REFRESH_TOKEN_COOKIE_ADMIN = "refreshTokenAdmin";
+    public static final String REFRESH_TOKEN_COOKIE_USER = "refreshTokenUser";
+
+    public static String getRefreshTokenCookieName(Role role) {
+        return (role == Role.ADMIN) ? REFRESH_TOKEN_COOKIE_ADMIN : REFRESH_TOKEN_COOKIE_USER;
+    }
+
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
     private static final int MAX_OTP_ATTEMPTS = 5;
     private static final long OTP_COOLDOWN_SECONDS = 60;
@@ -179,7 +188,22 @@ public class AuthenticationServiceImpl implements IAuthenticationService {
                 return;
             }
 
+            String clientType = request.getHeader("X-Client-Type");
+            String origin = request.getHeader("Origin");
+            String referer = request.getHeader("Referer");
+            boolean isAdminClient = "admin".equalsIgnoreCase(clientType)
+                    || (origin != null && origin.contains("5173"))
+                    || (referer != null && referer.contains("5173"));
+
+            if (isAdminClient && user.getRole() != Role.ADMIN) {
+                log.warn("Access denied during refresh: user {} with role {} attempted to refresh admin session", user.getEmail(), user.getRole());
+                writeErrorResponse(response, "Access denied: Account is not an administrator", HttpServletResponse.SC_FORBIDDEN);
+                return;
+            }
+
             String accessToken = createAndStoreAccessToken(user);
+            createOrRenewRefreshToken(user, response);
+
             AuthenticationResponse authResponse = AuthenticationResponse.builder()
                     .accessToken(accessToken)
                     .mfaEnabled(user.isMfaEnabled())
@@ -216,14 +240,16 @@ public class AuthenticationServiceImpl implements IAuthenticationService {
             }
         }
 
-        ResponseCookie cleanCookie = ResponseCookie.from(REFRESH_TOKEN_COOKIE_NAME, "")
-                .httpOnly(true)
-                .secure(isCookieSecure)
-                .path("/")
-                .maxAge(0)
-                .sameSite("Lax")
-                .build();
-        response.setHeader(HttpHeaders.SET_COOKIE, cleanCookie.toString());
+        for (String cookieName : List.of(REFRESH_TOKEN_COOKIE_ADMIN, REFRESH_TOKEN_COOKIE_USER, REFRESH_TOKEN_COOKIE_NAME, "refresh_token")) {
+            ResponseCookie cleanCookie = ResponseCookie.from(cookieName, "")
+                    .httpOnly(true)
+                    .secure(isCookieSecure)
+                    .path("/")
+                    .maxAge(0)
+                    .sameSite("Lax")
+                    .build();
+            response.addHeader(HttpHeaders.SET_COOKIE, cleanCookie.toString());
+        }
     }
 
     @Override
@@ -382,16 +408,27 @@ public class AuthenticationServiceImpl implements IAuthenticationService {
 
     private String createOrRenewRefreshToken(User user, HttpServletResponse response) {
         String token = jwtService.generateRefreshToken(user);
+        String cookieName = getRefreshTokenCookieName(user.getRole());
 
-        ResponseCookie cookie = ResponseCookie.from(REFRESH_TOKEN_COOKIE_NAME, token)
+        // Set role-specific cookie (e.g., refreshTokenAdmin or refreshTokenUser)
+        ResponseCookie cookie = ResponseCookie.from(cookieName, token)
                 .httpOnly(true)
                 .secure(isCookieSecure)
                 .path("/")
                 .sameSite("Lax")
                 .maxAge(Duration.ofDays(7))
                 .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
 
-        response.setHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+        // Also set legacy cookie for backward compatibility
+        ResponseCookie legacyCookie = ResponseCookie.from(REFRESH_TOKEN_COOKIE_NAME, token)
+                .httpOnly(true)
+                .secure(isCookieSecure)
+                .path("/")
+                .sameSite("Lax")
+                .maxAge(Duration.ofDays(7))
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, legacyCookie.toString());
 
         return token;
     }
@@ -408,14 +445,51 @@ public class AuthenticationServiceImpl implements IAuthenticationService {
     }
 
     private String extractRefreshTokenFromCookie(HttpServletRequest request) {
-        return Arrays.stream(Optional.ofNullable(request.getCookies()).orElse(new Cookie[0]))
-                .filter(c -> REFRESH_TOKEN_COOKIE_NAME.equals(c.getName())
-                        || "refresh_token".equalsIgnoreCase(c.getName())
-                        || "refreshTokenUser".equals(c.getName())
-                        || "refreshTokenAdmin".equals(c.getName()))
-                .map(Cookie::getValue)
-                .findFirst()
-                .orElse(null);
+        String clientType = request.getHeader("X-Client-Type");
+        String origin = request.getHeader("Origin");
+        String referer = request.getHeader("Referer");
+
+        boolean isAdminClient = "admin".equalsIgnoreCase(clientType)
+                || (origin != null && origin.contains("5173"))
+                || (referer != null && referer.contains("5173"));
+
+        Cookie[] cookies = Optional.ofNullable(request.getCookies()).orElse(new Cookie[0]);
+
+        if (isAdminClient) {
+            // First check refreshTokenAdmin
+            for (Cookie c : cookies) {
+                if (REFRESH_TOKEN_COOKIE_ADMIN.equals(c.getName())) {
+                    return c.getValue();
+                }
+            }
+            // Fallback to legacy
+            for (Cookie c : cookies) {
+                if (REFRESH_TOKEN_COOKIE_NAME.equals(c.getName()) || "refresh_token".equalsIgnoreCase(c.getName())) {
+                    return c.getValue();
+                }
+            }
+        } else {
+            // Check refreshTokenUser first
+            for (Cookie c : cookies) {
+                if (REFRESH_TOKEN_COOKIE_USER.equals(c.getName())) {
+                    return c.getValue();
+                }
+            }
+            // Fallback to legacy
+            for (Cookie c : cookies) {
+                if (REFRESH_TOKEN_COOKIE_NAME.equals(c.getName()) || "refresh_token".equalsIgnoreCase(c.getName())) {
+                    return c.getValue();
+                }
+            }
+            // Fallback to admin cookie if nothing else exists
+            for (Cookie c : cookies) {
+                if (REFRESH_TOKEN_COOKIE_ADMIN.equals(c.getName())) {
+                    return c.getValue();
+                }
+            }
+        }
+
+        return null;
     }
 
     private String extractTokenFromHeader(HttpServletRequest request) {

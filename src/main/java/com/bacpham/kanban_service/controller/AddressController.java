@@ -19,33 +19,33 @@ import java.util.List;
 @RequestMapping("/api/v1/addresses")
 @RequiredArgsConstructor
 public class AddressController {
-    private final IAddressService addressService;
-    private final UserRepository userRepository;
-    @PostMapping("/create")
-    public ApiResponse<AddressResponse> createAddress(
-            @AuthenticationPrincipal UserDetails userDetails,
-            @RequestBody AddressCreateRequest request
-    ) {
+        private final IAddressService addressService;
+        private final UserRepository userRepository;
 
-        User user = userRepository.findByEmail(userDetails.getUsername())
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
-        String userId = user.getId();
-        AddressResponse address = addressService.createAddress(request, userId);
-        return  ApiResponse.<AddressResponse>builder()
-                .data(address)
-                .message("Address created successfully")
-                .build();
-    }
+        @PostMapping("/create")
+        public ApiResponse<AddressResponse> createAddress(
+                        @AuthenticationPrincipal UserDetails userDetails,
+                        @RequestBody AddressCreateRequest request) {
 
-    @GetMapping("/all")
-    public ApiResponse<List<AddressResponse>> getAllAddress( @AuthenticationPrincipal UserDetails userDetails) {
-        User user = userRepository.findByEmail(userDetails.getUsername())
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
-        String userId = user.getId();
-        List<AddressResponse> addresses = addressService.getAddresses(userId);
-        return ApiResponse.<List<AddressResponse>>builder()
-                .message("Fetched cart successfully")
-                .data(addresses)
-                .build();
-    }
+                User user = userRepository.findByEmail(userDetails.getUsername())
+                                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+                String userId = user.getId();
+                AddressResponse address = addressService.createAddress(request, userId);
+                return ApiResponse.<AddressResponse>builder()
+                                .data(address)
+                                .message("Address created successfully")
+                                .build();
+        }
+
+        @GetMapping("/all")
+        public ApiResponse<List<AddressResponse>> getAllAddress(@AuthenticationPrincipal UserDetails userDetails) {
+                User user = userRepository.findByEmail(userDetails.getUsername())
+                                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+                String userId = user.getId();
+                List<AddressResponse> addresses = addressService.getAddresses(userId);
+                return ApiResponse.<List<AddressResponse>>builder()
+                                .message("Fetched cart successfully")
+                                .data(addresses)
+                                .build();
+        }
 }

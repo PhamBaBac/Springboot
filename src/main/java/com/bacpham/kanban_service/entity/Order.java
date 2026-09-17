@@ -32,6 +32,13 @@ public class Order extends BaseModel {
     private PaymentType paymentType;
 
     private double total;
+    private String cancelReason;
+    private String trackingCode;     // Mã vận đơn GHN (vd: "L5G7S1")
+    private String shippingStatus;   // Trạng thái vận chuyển GHN
+
+    @Builder.Default
+    @Column(name = "customer_hidden", columnDefinition = "boolean default false")
+    private Boolean customerHidden = false;
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL)
     private List<OrderItem> items;

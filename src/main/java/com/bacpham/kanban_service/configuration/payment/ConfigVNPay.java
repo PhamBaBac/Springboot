@@ -17,26 +17,26 @@ import java.util.*;
 public class ConfigVNPay {
     public static String vnp_PayUrl = "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html";
     public static String vnp_ReturnUrl = "http://localhost:8080/api/v1/payment/vnpay-return";
-    public static String vnp_TmnCode = "GE2X44LJ";
-    public static String vnp_HashSecret = "QNDE0P4SB43MO84431YBL17BXAZB5VIB";
+    public static String vnp_TmnCode = "7VS65JJC";
+    public static String vnp_HashSecret = "PISJVMJHTRJOLOGZFKOTAERXRKTYFNKP";
     public static String vnp_ApiUrl = "https://sandbox.vnpayment.vn/merchant_webapi/api/transaction";
 
-    @Value("${application.vnpay.pay-url:https://sandbox.vnpayment.vn/paymentv2/vpcpay.html}")
+    @Value("${spring.vnpay.pay-url:${VNPAY_PAY_URL:https://sandbox.vnpayment.vn/paymentv2/vpcpay.html}}")
     public void setPayUrl(String payUrl) {
         vnp_PayUrl = payUrl;
     }
 
-    @Value("${application.vnpay.return-url:http://localhost:8080/api/v1/payment/vnpay-return}")
+    @Value("${spring.vnpay.return-url:${VNPAY_RETURN_URL:http://localhost:8080/api/v1/payment/vnpay-return}}")
     public void setReturnUrl(String returnUrl) {
         vnp_ReturnUrl = returnUrl;
     }
 
-    @Value("${application.vnpay.tmn-code:GE2X44LJ}")
+    @Value("${spring.vnpay.tmn-code:${VNPAY_TMN_CODE:7VS65JJC}}")
     public void setTmnCode(String tmnCode) {
         vnp_TmnCode = tmnCode;
     }
 
-    @Value("${application.vnpay.hash-secret:QNDE0P4SB43MO84431YBL17BXAZB5VIB}")
+    @Value("${spring.vnpay.hash-secret:${VNPAY_HASH_SECRET:PISJVMJHTRJOLOGZFKOTAERXRKTYFNKP}}")
     public void setHashSecret(String hashSecret) {
         vnp_HashSecret = hashSecret;
     }
@@ -98,7 +98,7 @@ public class ConfigVNPay {
                 throw new NullPointerException();
             }
             final Mac hmac512 = Mac.getInstance("HmacSHA512");
-            byte[] hmacKeyBytes = key.getBytes();
+            byte[] hmacKeyBytes = key.getBytes(StandardCharsets.UTF_8);
             final SecretKeySpec secretKey = new SecretKeySpec(hmacKeyBytes, "HmacSHA512");
             hmac512.init(secretKey);
             byte[] dataBytes = data.getBytes(StandardCharsets.UTF_8);
@@ -117,11 +117,14 @@ public class ConfigVNPay {
         String ipAdress;
         try {
             ipAdress = request.getHeader("X-FORWARDED-FOR");
-            if (ipAdress == null) {
+            if (ipAdress == null || ipAdress.isEmpty() || "unknown".equalsIgnoreCase(ipAdress)) {
                 ipAdress = request.getRemoteAddr();
             }
+            if ("0:0:0:0:0:0:0:1".equals(ipAdress) || "::1".equals(ipAdress)) {
+                ipAdress = "127.0.0.1";
+            }
         } catch (Exception e) {
-            ipAdress = "Invalid IP:" + e.getMessage();
+            ipAdress = "127.0.0.1";
         }
         return ipAdress;
     }

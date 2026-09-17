@@ -1,5 +1,6 @@
 package com.bacpham.kanban_service.gemini.controller;
 
+import java.util.Collections;
 import java.util.List;
 
 import org.springframework.security.core.Authentication;
@@ -58,19 +59,21 @@ public class ChatController {
     public ApiResponse<AiChatResponse> chatSupport(
             @AuthenticationPrincipal User currentUser,
             @RequestBody ChatRequest request,
-            final Authentication  principal
+            final Authentication principal
     ) {
-        if (currentUser == null) {
+        String userId = getUserId(principal, currentUser);
+        if (userId == null) {
             throw new AppException(ErrorCode.UNAUTHORIZED);
         }
         String newMessageContent = request.getMessage();
         if (newMessageContent == null || newMessageContent.trim().isEmpty()) {
             throw new AppException(ErrorCode.INVALID_INPUT);
         }
-        AiChatResponse aiResponse = supportService.supportWithHistory(request, getUserId(principal));
+        AiChatResponse aiResponse = supportService.supportWithHistory(request, userId);
 
-        chatHistoryService.saveNewMessage(currentUser, newMessageContent, "USER");
-        chatHistoryService.saveNewMessage(currentUser, aiResponse.getMessage(), "ASSISTANT");
+        User user = (currentUser != null) ? currentUser : (User) principal.getPrincipal();
+        chatHistoryService.saveNewMessage(user, newMessageContent, "USER");
+        chatHistoryService.saveNewMessage(user, aiResponse.getMessage(), "ASSISTANT");
 
         return ApiResponse.<AiChatResponse>builder()
                 .data(aiResponse)
@@ -79,17 +82,34 @@ public class ChatController {
     }
 
     @GetMapping("/chat/history")
-    public ApiResponse<List<ChatHistoryResponse>> getChatHistory(final  Authentication principal) {
+    public ApiResponse<List<ChatHistoryResponse>> getChatHistory(
+            @AuthenticationPrincipal User currentUser,
+            final Authentication principal
+    ) {
+        String userId = getUserId(principal, currentUser);
+        if (userId == null) {
+            return ApiResponse.<List<ChatHistoryResponse>>builder()
+                    .data(Collections.emptyList())
+                    .message("No chat history for unauthenticated user")
+                    .build();
+        }
 
         return ApiResponse.<List<ChatHistoryResponse>>builder()
-                .data(chatHistoryService.getUserChatHistory(getUserId(principal)))
+                .data(chatHistoryService.getUserChatHistory(userId))
                 .build();
     }
 
     @DeleteMapping("/chat/history")
-    public ApiResponse<String> deleteChatHistory( final Authentication  principal) {
+    public ApiResponse<String> deleteChatHistory(
+            @AuthenticationPrincipal User currentUser,
+            final Authentication principal
+    ) {
+        String userId = getUserId(principal, currentUser);
+        if (userId == null) {
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+        }
 
-        chatHistoryService.deleteAllChatHistory(getUserId(principal));
+        chatHistoryService.deleteAllChatHistory(userId);
 
         return ApiResponse.<String>builder()
                 .data("Chat history deleted successfully")
@@ -97,7 +117,13 @@ public class ChatController {
                 .build();
     }
 
-    private String getUserId(final Authentication  principal) {
-        return ((User) principal.getPrincipal()).getId();
+    private String getUserId(final Authentication principal, final User currentUser) {
+        if (currentUser != null) {
+            return currentUser.getId();
+        }
+        if (principal != null && principal.getPrincipal() instanceof User user) {
+            return user.getId();
+        }
+        return null;
     }
 }
