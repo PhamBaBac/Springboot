@@ -31,7 +31,7 @@ public interface IVNPayService {
     VNPayCallbackResult handleCallback(Map<String, String> params);
 
     /**
-     * Ket qua xu ly callback tu VNPay.
+     * Ket qua xu ly callback tu VNPay (Thread-safe & Idempotent).
      */
     record VNPayCallbackResult(
             boolean success,
@@ -39,6 +39,9 @@ public interface IVNPayService {
             String message,
             String transactionNo,
             String payDate,
-            String txnRef
+            String txnRef,
+            String userId,
+            OrderCreateRequest orderRequest,
+            boolean alreadyProcessed
     ) {}
 }

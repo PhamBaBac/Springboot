@@ -11,6 +11,7 @@ import org.springframework.security.config.annotation.authentication.configurati
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestTemplate;
 
@@ -66,10 +67,13 @@ public class ApplicationConfig {
 
     /**
      * RestTemplate bean dùng cho các HTTP call ra ngoài (GHN, v.v.)
-     * Khai báo ở đây để tuân thủ Dependency Inversion Principle.
+     * Cấu hình connectTimeout = 5s, readTimeout = 10s để chống nghẽn thread vĩnh viễn khi mạng chậm / remote die.
      */
     @Bean
     public RestTemplate restTemplate() {
-        return new RestTemplate();
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(5000);
+        factory.setReadTimeout(10000);
+        return new RestTemplate(factory);
     }
 }

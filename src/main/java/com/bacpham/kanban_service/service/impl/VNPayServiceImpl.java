@@ -88,7 +88,7 @@ public class VNPayServiceImpl implements IVNPayService {
         String vnp_SecureHash = params.get("vnp_SecureHash");
 
         if (vnp_TxnRef == null) {
-            return new VNPayCallbackResult(false, false, "Transaction reference not provided by VNPAY", null, null, null);
+            return new VNPayCallbackResult(false, false, "Transaction reference not provided by VNPAY", null, null, null, null, null, false);
         }
 
         // Verify chu ky
@@ -118,33 +118,39 @@ public class VNPayServiceImpl implements IVNPayService {
 
         if (!isValidSignature) {
             log.warn("VNPay signature verification failed for txnRef: {}", vnp_TxnRef);
-            return new VNPayCallbackResult(false, false, "Invalid checksum from VNPay", vnp_TransactionNo, vnp_PayDate, vnp_TxnRef);
+            return new VNPayCallbackResult(false, false, "Invalid checksum from VNPay", vnp_TransactionNo, vnp_PayDate, vnp_TxnRef, null, null, false);
         }
 
         boolean success = "00".equals(vnp_ResponseCode);
+        String userId = null;
+        OrderCreateRequest orderRequest = null;
+
         if (success) {
-            // Lay thong tin order tu Redis
-            String userId = redisService.get("payment:txnRef:" + vnp_TxnRef + ":userId");
-            if (userId == null) {
-                return new VNPayCallbackResult(false, true, "Cannot find user info for transaction: " + vnp_TxnRef, vnp_TransactionNo, vnp_PayDate, vnp_TxnRef);
+            // Kiểm tra Idempotency: chống race condition khi user refresh hoặc double callback
+            String processed = redisService.get("payment:processed:" + vnp_TxnRef);
+            if ("COMPLETED".equals(processed)) {
+                log.info("VNPay transaction {} has already been processed (Idempotent call)", vnp_TxnRef);
+                return new VNPayCallbackResult(true, true, "Transaction already completed", vnp_TransactionNo, vnp_PayDate, vnp_TxnRef, null, null, true);
             }
-            OrderCreateRequest orderRequest = redisServiceOrder.get("payment:order:" + vnp_TxnRef);
+
+            // Lay thong tin order tu Redis
+            userId = redisService.get("payment:txnRef:" + vnp_TxnRef + ":userId");
+            if (userId == null) {
+                return new VNPayCallbackResult(false, true, "Cannot find user info for transaction: " + vnp_TxnRef, vnp_TransactionNo, vnp_PayDate, vnp_TxnRef, null, null, false);
+            }
+            orderRequest = redisServiceOrder.get("payment:order:" + vnp_TxnRef);
             if (orderRequest == null) {
                 orderRequest = redisServiceOrder.get("payment:items:" + userId);
             }
             if (orderRequest == null) {
-                return new VNPayCallbackResult(false, true, "Cannot find order details for transaction: " + vnp_TxnRef, vnp_TransactionNo, vnp_PayDate, vnp_TxnRef);
+                return new VNPayCallbackResult(false, true, "Cannot find order details for transaction: " + vnp_TxnRef, vnp_TransactionNo, vnp_PayDate, vnp_TxnRef, null, null, false);
             }
-            // Xoa Redis sau khi lay xong
-            redisServiceOrder.delete("payment:order:" + vnp_TxnRef);
-            redisServiceOrder.delete("payment:items:" + userId);
-            redisService.delete("payment:txnRef:" + vnp_TxnRef + ":userId");
-            log.info("VNPay callback success for txnRef: {}, userId: {}", vnp_TxnRef, userId);
+            log.info("VNPay callback validated successfully for txnRef: {}, userId: {}", vnp_TxnRef, userId);
         }
 
         String msg = success ? "Payment successful for transaction: " + vnp_TxnRef + " at " + vnp_PayDate
                              : "Payment failed for transaction: " + vnp_TxnRef;
-        return new VNPayCallbackResult(success, true, msg, vnp_TransactionNo, vnp_PayDate, vnp_TxnRef);
+        return new VNPayCallbackResult(success, true, msg, vnp_TransactionNo, vnp_PayDate, vnp_TxnRef, userId, orderRequest, false);
     }
 
     // ===== Private helper methods =====

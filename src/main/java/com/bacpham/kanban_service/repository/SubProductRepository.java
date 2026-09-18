@@ -2,15 +2,27 @@ package com.bacpham.kanban_service.repository;
 
 import com.bacpham.kanban_service.entity.Product;
 import com.bacpham.kanban_service.entity.SubProduct;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface SubProductRepository extends JpaRepository<SubProduct, String> {
+
+    /**
+     * Fix Concurrency: Khóa bi quan (Pessimistic Write Lock - SELECT ... FOR UPDATE)
+     * Đảm bảo khi nhiều transaction cùng trừ tồn kho, chỉ 1 transaction được xử lý tại 1 thời điểm.
+     * Tránh triệt để Race Condition, Lost Update và Overselling.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT sp FROM SubProduct sp WHERE sp.id = :id")
+    Optional<SubProduct> findByIdWithLock(@Param("id") String id);
 
     List<SubProduct> findAllByProductAndDeletedFalse(Product product);
     @Query("SELECT SUM(sp.stock) FROM SubProduct sp WHERE sp.product.id = :productId")

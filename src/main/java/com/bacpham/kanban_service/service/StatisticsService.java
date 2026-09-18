@@ -37,29 +37,21 @@ public class StatisticsService implements IStatisticsService {
 
     @Override
     public StatisticsResponse getStatistics() {
-        // Get counts
+        // Fix RAM-4: Dùng aggregate queries trực tiếp trên DB thay vì findAll() vào memory
         long supplierCount = supplierRepository.count();
         long productCount = productRepository.count();
-
-        List<Order> validOrders = orderRepository.findAll().stream()
-                .filter(order -> !Boolean.TRUE.equals(order.getDeleted()))
-                .toList();
-        long orderCount = validOrders.size();
+        long orderCount = orderRepository.countByDeletedFalse();
 
         long subProductWithStockCount = subProductRepository.countSubProductsWithStock();
         long totalSubProductQty = subProductRepository.getTotalQty();
         double totalSubProductAmount = subProductRepository.getTotalSubProductAmount();
 
-        double totalOrderAmount = validOrders.stream()
-                .filter(order -> order.getOrderStatus() == OrderStatus.COMPLETED)
-                .mapToDouble(Order::getTotal)
-                .sum();
+        // Fix RAM-4: Tính tổng doanh thu bằng @Query aggregate, không cần load toàn bộ Order vào memory
+        double totalOrderAmount = orderRepository.sumTotalByStatusAndDeletedFalse(OrderStatus.COMPLETED);
 
-        List<OrderItem> allOrders = orderItemRepository.findAll().stream()
-                .filter(item -> item.getOrder() != null && !Boolean.TRUE.equals(item.getOrder().getDeleted()))
-                .toList();
-
-        List<StatisticsOrderResponse> recentSales = allOrders.stream()
+        // Recent sales: chỉ cần vài order gần nhất, không phải toàn bộ
+        List<OrderItem> recentItems = orderItemRepository.findRecentOrderItems(20);
+        List<StatisticsOrderResponse> recentSales = recentItems.stream()
                 .map(statisticsMapper::toStatisticsOrderResponse)
                 .toList();
 

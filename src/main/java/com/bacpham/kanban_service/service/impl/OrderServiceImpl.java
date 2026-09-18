@@ -29,7 +29,9 @@ import jakarta.annotation.PostConstruct;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -60,8 +62,17 @@ public class OrderServiceImpl implements IOrderService {
             promotionService.applyPromotionCode(user.getId(), request.getCode());
         }
 
-        for (OrderItemRequest dto : items) {
-            SubProduct subProduct = subProductRepository.findById(dto.getSubProductId())
+        // A-1 Concurrency Fix:
+        // Sắp xếp items theo subProductId để đảm bảo tất cả các transaction khóa theo cùng một thứ tự.
+        // Điều này ngăn chặn triệt để tình trạng Deadlock giữa 2 đơn hàng chứa cùng các sản phẩm.
+        List<OrderItemRequest> sortedItems = items.stream()
+                .sorted(Comparator.comparing(OrderItemRequest::getSubProductId, Comparator.nullsLast(Comparator.naturalOrder())))
+                .toList();
+
+        for (OrderItemRequest dto : sortedItems) {
+            // Khóa bi quan (Pessimistic Write Lock: SELECT ... FOR UPDATE)
+            // Ngăn chặn 2 transaction cùng đọc 1 số lượng tồn kho rồi ghi đè (Lost Update / Overselling)
+            SubProduct subProduct = subProductRepository.findByIdWithLock(dto.getSubProductId())
                     .orElseThrow(() -> new AppException(ErrorCode.SUB_PRODUCT_NOT_FOUND));
 
             if (Boolean.TRUE.equals(subProduct.getDeleted())
@@ -74,7 +85,7 @@ public class OrderServiceImpl implements IOrderService {
                 throw new AppException(ErrorCode.INSUFFICIENT_STOCK);
             }
 
-            // Cập nhật tồn kho
+            // Cập nhật tồn kho an toàn dưới khóa
             int currentStock = subProduct.getStock() != null ? subProduct.getStock() : 0;
             int currentQty = subProduct.getQty() != null ? subProduct.getQty() : 0;
             subProduct.setStock(currentStock - dto.getCount());
@@ -173,19 +184,28 @@ public class OrderServiceImpl implements IOrderService {
             return Collections.emptyList();
         }
 
-        List<OrderResponse> responses = new ArrayList<>();
+        // Fix N+1: Gom tất cả orderId và subProductId, load reviewed status 1 lần duy nhất
+        // Thay vì N×M queries `existsByReviewed` trong vòng lặp
+        List<String> orderIds = orders.stream().map(Order::getId).toList();
+        List<String> subProductIds = orders.stream()
+                .flatMap(o -> o.getItems().stream())
+                .map(item -> item.getSubProduct().getId())
+                .distinct()
+                .toList();
 
+        // 1 query duy nhất lấy tất cả combo (subProductId, orderId) đã review
+        Set<String> reviewedKeys = reviewRepository
+                .findByCreatedByIdAndSubProductIdInAndOrderIdIn(userId, subProductIds, orderIds)
+                .stream()
+                .map(r -> r.getSubProduct().getId() + "::" + r.getOrder().getId())
+                .collect(java.util.stream.Collectors.toSet());
+
+        List<OrderResponse> responses = new ArrayList<>();
         for (Order order : orders) {
             for (OrderItem item : order.getItems()) {
                 OrderResponse response = orderMapper.toOrderResponse(item);
-
-                boolean hasReviewed = reviewRepository.existsByCreatedByIdAndSubProductIdAndOrderId(
-                        userId,
-                        item.getSubProduct().getId(),
-                        order.getId());
-
-                response.setIsReviewed(hasReviewed);
-
+                String key = item.getSubProduct().getId() + "::" + order.getId();
+                response.setIsReviewed(reviewedKeys.contains(key));
                 responses.add(response);
             }
         }
@@ -358,31 +378,28 @@ public class OrderServiceImpl implements IOrderService {
 
     private void restockOrderItems(Order order) {
         if (order.getItems() == null) return;
-        for (OrderItem item : order.getItems()) {
-            SubProduct subProduct = item.getSubProduct();
-            if (subProduct != null) {
-                int currentStock = subProduct.getStock() != null ? subProduct.getStock() : 0;
-                int currentQty = subProduct.getQty() != null ? subProduct.getQty() : 0;
-                subProduct.setStock(currentStock + item.getQuantity());
-                subProduct.setQty(currentQty + item.getQuantity());
-                subProductRepository.save(subProduct);
-            }
+        List<OrderItem> sortedItems = order.getItems().stream()
+                .filter(item -> item.getSubProduct() != null && item.getSubProduct().getId() != null)
+                .sorted(Comparator.comparing(item -> item.getSubProduct().getId()))
+                .toList();
+
+        for (OrderItem item : sortedItems) {
+            SubProduct subProduct = subProductRepository.findByIdWithLock(item.getSubProduct().getId())
+                    .orElse(item.getSubProduct());
+            int currentStock = subProduct.getStock() != null ? subProduct.getStock() : 0;
+            int currentQty = subProduct.getQty() != null ? subProduct.getQty() : 0;
+            subProduct.setStock(currentStock + item.getQuantity());
+            subProduct.setQty(currentQty + item.getQuantity());
+            subProductRepository.save(subProduct);
         }
     }
 
     @PostConstruct
     public void recoverPreviouslyDeletedOrders() {
         try {
-            List<Order> deletedOrders = orderRepository.findAll().stream()
-                    .filter(o -> Boolean.TRUE.equals(o.getDeleted()))
-                    .toList();
-            if (!deletedOrders.isEmpty()) {
-                log.info("Restoring {} orders that were previously marked deleted to customerHidden=true, deleted=false", deletedOrders.size());
-                for (Order o : deletedOrders) {
-                    o.setDeleted(false);
-                    o.setCustomerHidden(true);
-                }
-                orderRepository.saveAll(deletedOrders);
+            int restoredCount = orderRepository.recoverDeletedOrders();
+            if (restoredCount > 0) {
+                log.info("Restored {} orders that were previously marked deleted to customerHidden=true, deleted=false", restoredCount);
             }
         } catch (Exception e) {
             log.warn("Could not recover previously deleted orders: {}", e.getMessage());

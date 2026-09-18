@@ -28,34 +28,32 @@ public class EmailService {
     private final SpringTemplateEngine templateEngine;
     @Value("${spring.mail.username}")
     String sender;
-    @Async
+    @Async("taskExecutor")
     public void sendVerificationCodeEmail(
             String destinationEmail, String code
-    ) throws MessagingException {
-
-        MimeMessage mimeMessage = mailSender.createMimeMessage();
-        MimeMessageHelper messageHelper = new MimeMessageHelper(mimeMessage, MimeMessageHelper.MULTIPART_MODE_MIXED_RELATED, UTF_8.name());
-        messageHelper.setFrom(sender);
-
-        final String templateName = EMAIL_CONFIRMATION.getTemplate();
-
-        Map<String, Object> variables = new HashMap<>();
-
-        variables.put("code", code);
-
-        Context context = new Context();
-        context.setVariables(variables);
-        messageHelper.setSubject(EMAIL_CONFIRMATION.getSubject());
-
+    ) {
         try {
+            MimeMessage mimeMessage = mailSender.createMimeMessage();
+            MimeMessageHelper messageHelper = new MimeMessageHelper(mimeMessage, MimeMessageHelper.MULTIPART_MODE_MIXED_RELATED, UTF_8.name());
+            messageHelper.setFrom(sender);
+
+            final String templateName = EMAIL_CONFIRMATION.getTemplate();
+
+            Map<String, Object> variables = new HashMap<>();
+            variables.put("code", code);
+
+            Context context = new Context();
+            context.setVariables(variables);
+            messageHelper.setSubject(EMAIL_CONFIRMATION.getSubject());
+
             String htmlTemplate = templateEngine.process(templateName, context);
             messageHelper.setText(htmlTemplate, true);
 
             messageHelper.setTo(destinationEmail);
             mailSender.send(mimeMessage);
-            log.info(String.format("INFO - Email successfully sent to %s with template %s ", destinationEmail, templateName));
-        } catch (MessagingException e) {
-            log.warn("WARNING - Cannot send Email to {} ", destinationEmail);
+            log.info("INFO - Email successfully sent to {} with template {}", destinationEmail, templateName);
+        } catch (Exception e) {
+            log.warn("WARNING - Cannot send Email to {}: {}", destinationEmail, e.getMessage());
         }
     }
 }

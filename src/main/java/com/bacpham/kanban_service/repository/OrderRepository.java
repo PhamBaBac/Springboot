@@ -1,29 +1,65 @@
 package com.bacpham.kanban_service.repository;
 
-import com.bacpham.kanban_service.entity.Order;
-import com.bacpham.kanban_service.entity.User;
-import com.bacpham.kanban_service.enums.OrderStatus;
+import java.util.List;
+import java.util.Optional;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
+import com.bacpham.kanban_service.entity.Order;
+import com.bacpham.kanban_service.entity.User;
+import com.bacpham.kanban_service.enums.OrderStatus;
 
 @Repository
 public interface OrderRepository extends JpaRepository<Order, String> {
+
+    /**
+     * Fix A-5: Khôi phục trực tiếp trên database bằng 1 câu UPDATE duy nhất.
+     * Tránh việc findAll() load toàn bộ Order vào bộ nhớ tại thời điểm khởi động server (@PostConstruct).
+     */
+    @Modifying
+    @Transactional
+    @Query("UPDATE Order o SET o.deleted = false, o.customerHidden = true WHERE o.deleted = true")
+    int recoverDeletedOrders();
+
     List<Order> findByUserAndDeletedFalse(User user);
 
+    /**
+     * Fix N+1: Eager load items + subProduct trong 1 query.
+     * Không dùng @EntityGraph vì Spring Data không hỗ trợ tốt với collection fetch + pagination.
+     * Dùng JPQL JOIN FETCH thay thế.
+     */
     @Query("""
-        SELECT o FROM Order o
+        SELECT DISTINCT o FROM Order o
+        LEFT JOIN FETCH o.items i
+        LEFT JOIN FETCH i.subProduct sp
+        LEFT JOIN FETCH sp.product
         WHERE o.user = :user
           AND (o.customerHidden = false OR o.customerHidden IS NULL)
           AND (o.deleted = false OR o.deleted IS NULL)
     """)
     List<Order> findByUserAndNotCustomerHidden(@Param("user") User user);
 
+    /**
+     * Fix N+1-2: Eager load user + address + items khi lấy paginated orders cho admin.
+     * Dùng countQuery riêng để pagination vẫn đúng khi có JOIN FETCH.
+     */
+    @Query(value = """
+        SELECT DISTINCT o FROM Order o
+        LEFT JOIN FETCH o.user u
+        LEFT JOIN FETCH o.address a
+        LEFT JOIN FETCH o.items i
+        LEFT JOIN FETCH i.subProduct sp
+        LEFT JOIN FETCH sp.product p
+        WHERE o.deleted = false
+    """,
+    countQuery = "SELECT COUNT(o) FROM Order o WHERE o.deleted = false")
     Page<Order> findAllByDeletedFalse(Pageable pageable);
 
     @Query("""
@@ -42,5 +78,26 @@ public interface OrderRepository extends JpaRepository<Order, String> {
             @Param("subProductId") String subProductId
     );
 
-    java.util.Optional<Order> findByTrackingCode(String trackingCode);
+    Optional<Order> findByTrackingCode(String trackingCode);
+
+    /** Fix RAM-4: Tính tổng doanh thu bằng DB aggregate — không cần load toàn bộ Order vào memory */
+    @Query("SELECT COALESCE(SUM(o.total), 0) FROM Order o WHERE o.orderStatus = :status AND (o.deleted = false OR o.deleted IS NULL)")
+    double sumTotalByStatusAndDeletedFalse(@Param("status") com.bacpham.kanban_service.enums.OrderStatus status);
+
+    /** Fix RAM-4: Đếm tổng số order không bị xóa bằng DB aggregate */
+    @Query("SELECT COUNT(o) FROM Order o WHERE o.deleted = false OR o.deleted IS NULL")
+    long countByDeletedFalse();
+
+    /**
+     * Fix RAM-4: Tìm order theo id với eager fetch để tránh lazy N+1 khi truy cập items.
+     */
+    @Query("""
+        SELECT o FROM Order o
+        LEFT JOIN FETCH o.items i
+        LEFT JOIN FETCH i.subProduct sp
+        LEFT JOIN FETCH sp.product p
+        LEFT JOIN FETCH o.address a
+        WHERE o.id = :id
+    """)
+    Optional<Order> findByIdWithDetails(@Param("id") String id);
 }

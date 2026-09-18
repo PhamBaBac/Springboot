@@ -95,19 +95,36 @@ public class ProductServiceImpl implements IProductService {
             log.info("Returning cached product page for key");
             return cached;
         }
-        log.info("Fetching product page from database for key");
-        Pageable pageable = PageRequest.of(page - 1, pageSize, Sort.by("createdAt").descending());
-        Page<Product> pageData = productRepository.findAllByDeletedFalse(pageable);
 
-        List<ProductResponse> productResponses = pageData.getContent().stream()
+        log.info("Fetching product page from database for key");
+
+        // Fix N+1-3: 2-query pattern
+        // Query 1: Lấy IDs (với đúng offset/limit — không bị HHH90003004)
+        long totalElements = productRepository.countByDeletedFalse();
+        int totalPages = (int) Math.ceil((double) totalElements / pageSize);
+
+        Pageable idPageable = PageRequest.of(page - 1, pageSize);
+        List<String> ids = productRepository.findIdsByDeletedFalseOrdered(idPageable);
+
+        // Query 2: Batch fetch đầy đủ associations (JOIN FETCH) chỉ cho page hiện tại
+        List<Product> products = ids.isEmpty()
+                ? Collections.emptyList()
+                : productRepository.findByIdsWithAssociations(ids);
+
+        // Giữ thứ tự theo ids (vì JOIN FETCH có thể đổi thứ tự)
+        Map<String, Product> productMap = products.stream()
+                .collect(Collectors.toMap(Product::getId, p -> p));
+        List<ProductResponse> productResponses = ids.stream()
+                .map(id -> productMap.get(id))
+                .filter(Objects::nonNull)
                 .map(productMapper::toProductResponse)
                 .toList();
 
         PageResponse<ProductResponse> response = PageResponse.<ProductResponse>builder()
                 .currentPage(page)
-                .pageSize(pageData.getSize())
-                .totalPages(pageData.getTotalPages())
-                .totalElements(pageData.getTotalElements())
+                .pageSize(pageSize)
+                .totalPages(totalPages)
+                .totalElements(totalElements)
                 .data(productResponses)
                 .build();
 

@@ -20,6 +20,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 /**
  * PaymentVNPayController sau khi refactor theo SRP:
@@ -80,15 +81,28 @@ public class PaymentVNPayController {
         }
 
         if (result.success()) {
-            // Lay order request tu Redis va tao don hang
-            String userId = redisService.get("payment:txnRef:" + result.txnRef() + ":userId");
-            OrderCreateRequest orderRequest = redisServiceOrder.get("payment:order:" + result.txnRef());
-            if (orderRequest == null && userId != null) {
-                orderRequest = redisServiceOrder.get("payment:items:" + userId);
+            // A-7 Idempotency & Concurrency check:
+            // Nếu transaction đã hoàn tất trước đó (user bấm F5 refresh trang), chỉ hiển thị thông tin thành công, không tạo đơn lần 2
+            if (result.alreadyProcessed()) {
+                log.info("VNPay return already processed for txnRef: {}", result.txnRef());
+                model.addAttribute("message", "Đơn hàng đã được ghi nhận và tạo thành công trước đó.");
+                model.addAttribute("transactionNo", result.transactionNo());
+                return "payment-result.html";
             }
-            if (orderRequest != null && userId != null) {
-                orderService.createOrderFromSelectedItems(userId, "VNPAY", orderRequest);
-                log.info("Order successfully created for VNPay txnRef: {}, userId: {}", result.txnRef(), userId);
+
+            // Tạo đơn hàng an toàn từ payload đã được validate bởi VNPayService
+            if (result.orderRequest() != null && result.userId() != null) {
+                orderService.createOrderFromSelectedItems(result.userId(), "VNPAY", result.orderRequest());
+                log.info("Order successfully created for VNPay txnRef: {}, userId: {}", result.txnRef(), result.userId());
+
+                // Đánh dấu đã xử lý thành công (Idempotency key lưu trong 24h)
+                redisService.set("payment:processed:" + result.txnRef(), "COMPLETED");
+                redisService.setTimeToLive("payment:processed:" + result.txnRef(), 24, TimeUnit.HOURS);
+
+                // Dọn dẹp dữ liệu tạm sau khi đơn hàng đã được tạo và lưu trữ bền vững
+                redisServiceOrder.delete("payment:order:" + result.txnRef());
+                redisServiceOrder.delete("payment:items:" + result.userId());
+                redisService.delete("payment:txnRef:" + result.txnRef() + ":userId");
             }
             model.addAttribute("message", result.message());
             model.addAttribute("transactionNo", result.transactionNo());

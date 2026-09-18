@@ -4,6 +4,7 @@ import com.bacpham.kanban_service.dto.response.LowQuantityProductResponse;
 import com.bacpham.kanban_service.entity.Category;
 import com.bacpham.kanban_service.entity.Product;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -20,6 +21,34 @@ public interface ProductRepository extends JpaRepository<Product, String>, JpaSp
     Page<Product> findByTitleContainingIgnoreCase(String title, Pageable pageable);
 
     Page<Product> findAllByDeletedFalse(Pageable pageable);
+
+    /** Đếm tổng số product không bị xóa — dùng cho 2-query pagination pattern */
+    long countByDeletedFalse();
+
+    /**
+     * Fix N+1-3: Lấy danh sách product IDs trước (paginated), sau đó batch fetch associations.
+     * Tránh "HHH90003004: firstResult/maxResults specified with collection fetch" exception.
+     * Pattern: 2 queries = 1 COUNT + 1 IN(...) thay vì N+1 lazy queries.
+     */
+    @Query("""
+        SELECT p.id FROM Product p
+        WHERE p.deleted = false
+        ORDER BY p.createdAt DESC
+    """)
+    List<String> findIdsByDeletedFalseOrdered(Pageable pageable);
+
+    /**
+     * Batch fetch products với đầy đủ associations bằng ID list.
+     * Dùng sau khi đã paginate bằng ID — tránh N+1 lazy load.
+     */
+    @Query("""
+        SELECT DISTINCT p FROM Product p
+        LEFT JOIN FETCH p.subProducts sp
+        LEFT JOIN FETCH p.categories c
+        LEFT JOIN FETCH p.supplier s
+        WHERE p.id IN :ids
+    """)
+    List<Product> findByIdsWithAssociations(@Param("ids") List<String> ids);
 
     @Query(value = """
    SELECT DISTINCT p FROM Product p
@@ -114,6 +143,4 @@ public interface ProductRepository extends JpaRepository<Product, String>, JpaSp
 """)
     List<LowQuantityProductResponse> findLowQuantityProducts();
 
-
-
-}
+}

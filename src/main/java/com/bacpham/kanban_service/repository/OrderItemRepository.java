@@ -1,14 +1,18 @@
 package com.bacpham.kanban_service.repository;
 
-import com.bacpham.kanban_service.dto.response.SubProductSellingInfo;
-import com.bacpham.kanban_service.entity.OrderItem;
+import java.util.List;
+
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
-import java.util.List;
+import com.bacpham.kanban_service.dto.response.SubProductSellingInfo;
+import com.bacpham.kanban_service.entity.OrderItem;
+
 @Repository
 public interface OrderItemRepository extends JpaRepository<OrderItem, String> {
+
     @Query("""
         SELECT sp.product.id, SUM(oi.quantity) as totalSold
         FROM OrderItem oi
@@ -19,6 +23,7 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, String> {
         ORDER BY totalSold DESC LIMIT 8
     """)
     List<Object[]> findBestSellerProductIds();
+
     @Query("""
     SELECT new com.bacpham.kanban_service.dto.response.SubProductSellingInfo(
         p.title,
@@ -39,4 +44,23 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, String> {
      LIMIT 5
 """)
     List<SubProductSellingInfo> findTopSellingSubProducts();
+
+    /**
+     * Fix RAM-4: Thay findAll() bằng query giới hạn N items gần nhất.
+     * Dùng cho "recent sales" trong Statistics dashboard.
+     * @param limit số lượng items muốn lấy (ví dụ: 20)
+     */
+    @Query("""
+        SELECT oi FROM OrderItem oi
+        JOIN FETCH oi.order o
+        JOIN FETCH oi.subProduct sp
+        JOIN FETCH sp.product p
+        WHERE (o.deleted IS NULL OR o.deleted = false)
+        ORDER BY o.createdAt DESC
+    """)
+    List<OrderItem> findRecentOrderItems(Pageable pageable);
+
+    default List<OrderItem> findRecentOrderItems(int limit) {
+        return findRecentOrderItems(org.springframework.data.domain.PageRequest.of(0, limit));
+    }
 }
