@@ -3,6 +3,7 @@ package com.bacpham.kanban_service.gemini.controller;
 import java.util.Collections;
 import java.util.List;
 
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -40,6 +41,7 @@ public class ChatController {
     private final GeminiService geminiService;
 
     @PostMapping("/generate")
+    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<String> generateContent(@RequestBody AiGenerateRequest request) {
         if (request.getTitle() == null || request.getTitle().trim().isEmpty()) {
             throw new AppException(ErrorCode.INVALID_INPUT);

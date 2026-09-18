@@ -5,6 +5,8 @@ import com.bacpham.kanban_service.dto.request.CartCreateRequest;
 import com.bacpham.kanban_service.dto.request.CartUpdateRequest;
 import com.bacpham.kanban_service.dto.response.CartResponse;
 import com.bacpham.kanban_service.service.ICartService;
+import com.bacpham.kanban_service.entity.User;
+import com.bacpham.kanban_service.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -17,9 +19,24 @@ import java.util.List;
 public class CartController {
 
     private final ICartService cartService;
+    private final UserRepository userRepository;
+
+    private User getAuthenticatedUser(Principal principal) {
+        if (principal == null) {
+            return null;
+        }
+        return userRepository.findByEmail(principal.getName()).orElse(null);
+    }
 
     @PostMapping("/add")
-    public ApiResponse<CartResponse> addToCart(@RequestBody CartCreateRequest request) {
+    public ApiResponse<CartResponse> addToCart(
+            @RequestBody CartCreateRequest request,
+            Principal connectedUser
+    ) {
+        User user = getAuthenticatedUser(connectedUser);
+        if (user != null) {
+            request.setCreatedBy(user.getId());
+        }
         CartResponse cart = cartService.addToCart(request);
         return ApiResponse.<CartResponse>builder()
                 .message("Added to cart successfully")
@@ -30,9 +47,12 @@ public class CartController {
     @PutMapping("/update")
     public ApiResponse<CartResponse> updateCart(
             @RequestParam String id,
-            @RequestParam int count
+            @RequestParam int count,
+            Principal connectedUser
     ) {
-        CartResponse cart = cartService.updateCart(id, count);
+        User user = getAuthenticatedUser(connectedUser);
+        String userId = user != null ? user.getId() : null;
+        CartResponse cart = cartService.updateCart(id, count, userId);
         return ApiResponse.<CartResponse>builder()
                 .message("Cart updated successfully")
                 .data(cart)
@@ -40,16 +60,26 @@ public class CartController {
     }
 
     @DeleteMapping("/{id}")
-    public ApiResponse<?> deleteCartById(@PathVariable String id) {
-        cartService.deleteCart(id);
+    public ApiResponse<?> deleteCartById(
+            @PathVariable String id,
+            Principal connectedUser
+    ) {
+        User user = getAuthenticatedUser(connectedUser);
+        String userId = user != null ? user.getId() : null;
+        cartService.deleteCart(id, userId);
         return ApiResponse.builder()
                 .message("Deleted cart item successfully")
                 .build();
     }
 
     @DeleteMapping("/remove")
-    public ApiResponse<?> deleteCart(@RequestParam String id) {
-        cartService.deleteCart(id);
+    public ApiResponse<?> deleteCart(
+            @RequestParam String id,
+            Principal connectedUser
+    ) {
+        User user = getAuthenticatedUser(connectedUser);
+        String userId = user != null ? user.getId() : null;
+        cartService.deleteCart(id, userId);
         return ApiResponse.builder()
                 .message("Deleted cart item successfully")
                 .build();

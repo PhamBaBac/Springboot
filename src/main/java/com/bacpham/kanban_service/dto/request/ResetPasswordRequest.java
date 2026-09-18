@@ -10,5 +10,6 @@ import lombok.*;
 @ToString
 public class ResetPasswordRequest {
     private String email;
+    private String code;
     private String newPassword;
 }

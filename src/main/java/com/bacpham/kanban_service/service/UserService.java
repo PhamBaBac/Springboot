@@ -17,6 +17,7 @@ import com.bacpham.kanban_service.repository.UserRepository;
 import com.bacpham.kanban_service.tfa.TwoFactorAuthenticationService;
 import com.bacpham.kanban_service.utils.email.EmailService;
 
+import com.bacpham.kanban_service.configuration.redis.GenericRedisService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,6 +32,7 @@ public class UserService implements IUserService {
     private final TwoFactorAuthenticationService tfaService;
     private final UserMapper userMapper;
     private final EmailService emailService;
+    private final GenericRedisService<String, String, String> redisService;
 
     @Override
     public void changePassword(ChangePasswordRequest request, Principal connectedUser) {
@@ -86,12 +88,31 @@ public class UserService implements IUserService {
     @Override
     @Transactional
     public void resetPassword(ResetPasswordRequest request) {
-        User user = repository.findByEmail(request.getEmail())
+        String email = request.getEmail();
+        if (email == null || email.isBlank()) {
+            throw new AppException(ErrorCode.INVALID_INPUT);
+        }
+
+        // Kiểm tra mã OTP trực tiếp hoặc cờ đã xác thực qua email từ Redis
+        String verifiedFlag = redisService.get("pwd_reset_verified:" + email);
+        String codeInRedis = redisService.get("code:" + email);
+
+        boolean isVerified = "true".equals(verifiedFlag) ||
+                (request.getCode() != null && !request.getCode().isBlank() && request.getCode().equals(codeInRedis));
+
+        if (!isVerified) {
+            throw new AppException(ErrorCode.INVALID_VERIFICATION_CODE);
+        }
+
+        User user = repository.findByEmail(email)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
-
         repository.save(user);
+
+        // Thu hồi mã OTP và cờ xác thực sau khi đổi mật khẩu thành công
+        redisService.delete("pwd_reset_verified:" + email);
+        redisService.delete("code:" + email);
     }
 
 }

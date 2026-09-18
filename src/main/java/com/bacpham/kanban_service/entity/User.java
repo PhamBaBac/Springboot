@@ -46,8 +46,9 @@ public class User extends BaseModel implements UserDetails {
     @Column(nullable = false)
     boolean mfaEnabled = false;
 
-    @Column(length = 100)
+    @Column(length = 255)
     @JsonIgnore
+    @Convert(converter = com.bacpham.kanban_service.utils.crypto.TwoFactorSecretEncryptor.class)
     String secret;
 
     @Enumerated(EnumType.STRING)

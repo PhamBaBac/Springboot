@@ -21,7 +21,12 @@ public class GenericRedisService<K, F, V> {
     @Autowired
     public GenericRedisService(RedisTemplate<K, V> redisTemplate) {
         this.redisTemplate = redisTemplate;
-        this.hashOperations = redisTemplate.opsForHash();
+        this.hashOperations = (redisTemplate != null) ? redisTemplate.opsForHash() : null;
+    }
+
+    protected GenericRedisService() {
+        this.redisTemplate = null;
+        this.hashOperations = null;
     }
 
     public void set(K key, V value) {

@@ -14,7 +14,11 @@ public interface ICartService {
 
     CartResponse updateCart(String cartId, int count);
 
+    CartResponse updateCart(String cartId, int count, String userId);
+
     void deleteCart(String cartId);
+
+    void deleteCart(String cartId, String userId);
 
     List<CartResponse> getUserCart(String userId);
 

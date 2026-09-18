@@ -23,12 +23,12 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(value = Exception.class)
     ResponseEntity<ApiResponse<Void>> handleException(Exception e) {
-        log.error("Exception: ", e);
+        log.error("Unhandled Exception: ", e);
         ApiResponse<Void> apiResponse = new ApiResponse<>();
         apiResponse.setCode(ErrorCode.UNCATEGORIZED.getCode());
-        apiResponse.setMessage(e.getMessage() != null && !e.getMessage().isBlank() ? e.getMessage() : ErrorCode.UNCATEGORIZED.getMessage());
+        apiResponse.setMessage("An unexpected error occurred. Please contact support if the issue persists.");
 
-        return ResponseEntity.badRequest().body(apiResponse);
+        return ResponseEntity.internalServerError().body(apiResponse);
     }
 
     @ExceptionHandler(value = AppException.class)

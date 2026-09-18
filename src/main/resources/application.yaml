@@ -40,7 +40,7 @@ spring:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
     mongodb:
-      uri: ${MONGODB_URI:mongodb+srv://phambac:${PASSWORD_MONGODB:}@cluster0.2rznse7.mongodb.net/chat?retryWrites=true&w=majority&appName=Cluster0}
+      uri: ${MONGODB_URI:mongodb://localhost:27017/chat}
       database: ${MONGODB_DATABASE:chat}
       auto-index-creation: true
   jpa:

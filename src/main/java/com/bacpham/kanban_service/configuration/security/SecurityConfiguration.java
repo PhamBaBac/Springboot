@@ -15,6 +15,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import org.springframework.http.HttpMethod;
 import org.springframework.security.web.context.RequestAttributeSecurityContextRepository;
 import java.util.List;
 import static org.springframework.security.config.http.SessionCreationPolicy.IF_REQUIRED;
@@ -35,13 +36,7 @@ public class SecurityConfiguration {
             "/api/v1/redisCarts/**",
             "/api/v1/public/categories/**",
             "/api/v1/payment/vnpay-return",
-            "/api/v1/suppliers/**",
-            "/api/v1/promotions",
-            "/api/v1/promotions/**",
             "/api/v1/public/products/**",
-            "/api/v1/subProducts/**",
-            "/api/v1/reviewProducts/**",
-            "/api/v1/ai/**",
             "/api/v1/shipping/**",
             "/oauth2/**",
             "/login/oauth2/**",
@@ -69,6 +64,15 @@ public class SecurityConfiguration {
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(req ->
                         req.requestMatchers(WHITE_LIST_URL)
+                                .permitAll()
+                                .requestMatchers(HttpMethod.GET,
+                                        "/api/v1/promotions",
+                                        "/api/v1/promotions/**",
+                                        "/api/v1/subProducts/**",
+                                        "/api/v1/reviewProducts/**")
+                                .permitAll()
+                                .requestMatchers(HttpMethod.POST,
+                                        "/api/v1/promotions/apply")
                                 .permitAll()
                                 .anyRequest()
                                 .authenticated()

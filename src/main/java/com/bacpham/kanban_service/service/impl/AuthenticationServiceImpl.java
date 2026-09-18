@@ -301,7 +301,7 @@ public class AuthenticationServiceImpl implements IAuthenticationService {
         }
 
         String codeInRedis = redisService.get(redisCodeKey);
-        log.info("Verifying code from Redis: {}", codeInRedis);
+        log.info("Verifying code from Redis for email: {}", email);
 
         // 2. Kiểm tra mã OTP
         if (codeInRedis == null || !codeInRedis.equals(request.getCode())) {
@@ -320,6 +320,10 @@ public class AuthenticationServiceImpl implements IAuthenticationService {
         redisService.delete(redisCodeKey);
         redisService.delete(redisAttemptsKey);
         redisService.delete("cooldown:email:" + email);
+
+        // Lưu cờ xác thực đặt lại mật khẩu trong 10 phút
+        redisService.set("pwd_reset_verified:" + email, "true");
+        redisService.setTimeToLive("pwd_reset_verified:" + email, 10, TimeUnit.MINUTES);
 
         Optional<User> optionalUser = repository.findByEmail(email);
 

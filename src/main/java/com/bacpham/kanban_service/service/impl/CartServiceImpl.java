@@ -65,10 +65,20 @@ public class CartServiceImpl implements ICartService {
 
     @Override
     public CartResponse updateCart(String cartId, int count) {
+        return updateCart(cartId, count, null);
+    }
+
+    @Override
+    public CartResponse updateCart(String cartId, int count, String userId) {
         log.info("cart update request: {}", cartId);
         Cart cart = cartRepository.findById(cartId)
                 .orElseThrow(() -> new AppException(ErrorCode.CART_NOT_FOUND));
-        if(cart.getCount() > cart.getSubProduct().getStock()) {
+
+        if (userId != null && cart.getCreatedBy() != null && !userId.equals(cart.getCreatedBy().getId())) {
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+        }
+
+        if (cart.getCount() > cart.getSubProduct().getStock()) {
             throw new AppException(ErrorCode.INSUFFICIENT_STOCK);
         }
         cart.setCount(count);
@@ -77,10 +87,19 @@ public class CartServiceImpl implements ICartService {
 
     @Override
     public void deleteCart(String cartId) {
-        if (!cartRepository.existsById(cartId)) {
-            throw new AppException(ErrorCode.CART_NOT_FOUND);
+        deleteCart(cartId, null);
+    }
+
+    @Override
+    public void deleteCart(String cartId, String userId) {
+        Cart cart = cartRepository.findById(cartId)
+                .orElseThrow(() -> new AppException(ErrorCode.CART_NOT_FOUND));
+
+        if (userId != null && cart.getCreatedBy() != null && !userId.equals(cart.getCreatedBy().getId())) {
+            throw new AppException(ErrorCode.UNAUTHORIZED);
         }
-        cartRepository.deleteById(cartId);
+
+        cartRepository.delete(cart);
     }
     @Override
     public List<CartResponse> getUserCart(String userName) {

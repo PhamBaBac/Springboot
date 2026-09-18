@@ -7,6 +7,7 @@ import com.bacpham.kanban_service.service.ISubProductService;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -22,6 +23,7 @@ public class SubProductController {
     ISubProductService subProductService;
 
     @PostMapping("/create")
+    @PreAuthorize("hasRole('ADMIN')")
     ApiResponse<SubProductResponse> createProduct(@RequestBody @Validated SubProductCreationRequest request) {
         return ApiResponse.<SubProductResponse>builder()
                 .data(subProductService.createSubProduct(request))
@@ -39,12 +41,14 @@ public class SubProductController {
     }
 
     @DeleteMapping("/remove-sub-product/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     ApiResponse<Void> deleteProduct(@PathVariable String id) {
         subProductService.delete(id);
         return ApiResponse.<Void>builder().build();
     }
 
     @PutMapping("/update")
+    @PreAuthorize("hasRole('ADMIN')")
     ApiResponse<SubProductResponse> updateProduct(@RequestBody @Validated SubProductCreationRequest request) {
         return ApiResponse.<SubProductResponse>builder()
                 .data(subProductService.updateSubProduct(request))

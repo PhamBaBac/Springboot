@@ -9,6 +9,8 @@ import com.bacpham.kanban_service.service.IUserService;
 import com.bacpham.kanban_service.service.UserActivityService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import com.bacpham.kanban_service.helper.exception.AppException;
+import com.bacpham.kanban_service.helper.exception.ErrorCode;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
@@ -65,7 +67,21 @@ public class UserController {
                 .build();
     }
     @PutMapping("/disable-tfa")
-    public ApiResponse<?> disableTfa(@RequestParam String email) {
+    public ApiResponse<?> disableTfa(
+            @RequestParam String email,
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        if (userDetails == null) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+
+        boolean isAdmin = userDetails.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+
+        if (!userDetails.getUsername().equals(email) && !isAdmin) {
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+        }
+
         service.disableTfaForUser(email);
 
         return ApiResponse.builder()

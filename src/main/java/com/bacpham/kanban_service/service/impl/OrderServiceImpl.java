@@ -14,9 +14,12 @@ import com.bacpham.kanban_service.helper.exception.AppException;
 import com.bacpham.kanban_service.helper.exception.ErrorCode;
 import com.bacpham.kanban_service.mapper.OrderMapper;
 import com.bacpham.kanban_service.repository.*;
-import com.bacpham.kanban_service.service.IGhnShippingService;
 import com.bacpham.kanban_service.service.IOrderService;
 import com.bacpham.kanban_service.service.IPromotionService;
+import com.bacpham.kanban_service.strategy.discount.DiscountCalculationResult;
+import com.bacpham.kanban_service.strategy.discount.DiscountCalculator;
+import com.bacpham.kanban_service.strategy.order.InventoryRestocker;
+import com.bacpham.kanban_service.strategy.order.OrderStatusHandlerRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -46,103 +49,90 @@ public class OrderServiceImpl implements IOrderService {
     private final AddressRepository addressRepository;
     private final ReviewProductRepository reviewRepository;
     private final IPromotionService promotionService;
-    private final IGhnShippingService ghnShippingService;
+    private final DiscountCalculator discountCalculator;
+    private final OrderStatusHandlerRegistry statusHandlerRegistry;
+    private final InventoryRestocker inventoryRestocker;
 
     @Override
     @Transactional
     public Order createOrderFromSelectedItems(String userId, String paymentType, OrderCreateRequest request) {
-        List<OrderItemRequest> items = request.getItems();
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
-        double total = 0.0;
-        List<OrderItem> orderItems = new ArrayList<>();
+        validateAndApplyPromotion(user, request.getCode());
 
-        if (request.getCode() != null && !request.getCode().isBlank()) {
-            promotionService.applyPromotionCode(user.getId(), request.getCode());
+        List<OrderItemRequest> sortedItems = sortItemsForDeadlockPrevention(request.getItems());
+
+        double total = 0.0;
+        List<OrderItem> orderItems = new ArrayList<>(sortedItems.size());
+        for (OrderItemRequest dto : sortedItems) {
+            ProcessedItemResult result = processOrderItem(dto);
+            orderItems.add(result.item());
+            total += result.total();
         }
 
-        // A-1 Concurrency Fix:
-        // Sắp xếp items theo subProductId để đảm bảo tất cả các transaction khóa theo cùng một thứ tự.
-        // Điều này ngăn chặn triệt để tình trạng Deadlock giữa 2 đơn hàng chứa cùng các sản phẩm.
-        List<OrderItemRequest> sortedItems = items.stream()
+        Order order = buildAndSaveOrder(user, request.getAddressId(), paymentType, total, orderItems);
+        cleanupCartItems(user, request.getItems());
+
+        return order;
+    }
+
+    private void validateAndApplyPromotion(User user, String code) {
+        if (code != null && !code.isBlank()) {
+            promotionService.applyPromotionCode(user.getId(), code);
+        }
+    }
+
+    private List<OrderItemRequest> sortItemsForDeadlockPrevention(List<OrderItemRequest> items) {
+        if (items == null) return Collections.emptyList();
+        return items.stream()
                 .sorted(Comparator.comparing(OrderItemRequest::getSubProductId, Comparator.nullsLast(Comparator.naturalOrder())))
                 .toList();
+    }
 
-        for (OrderItemRequest dto : sortedItems) {
-            // Khóa bi quan (Pessimistic Write Lock: SELECT ... FOR UPDATE)
-            // Ngăn chặn 2 transaction cùng đọc 1 số lượng tồn kho rồi ghi đè (Lost Update / Overselling)
-            SubProduct subProduct = subProductRepository.findByIdWithLock(dto.getSubProductId())
-                    .orElseThrow(() -> new AppException(ErrorCode.SUB_PRODUCT_NOT_FOUND));
+    private ProcessedItemResult processOrderItem(OrderItemRequest dto) {
+        SubProduct subProduct = subProductRepository.findByIdWithLock(dto.getSubProductId())
+                .orElseThrow(() -> new AppException(ErrorCode.SUB_PRODUCT_NOT_FOUND));
 
-            if (Boolean.TRUE.equals(subProduct.getDeleted())
-                    || subProduct.getProduct() == null
-                    || Boolean.TRUE.equals(subProduct.getProduct().getDeleted())) {
-                throw new AppException(ErrorCode.SUB_PRODUCT_NOT_FOUND);
-            }
-
-            if (subProduct.getStock() < dto.getCount()) {
-                throw new AppException(ErrorCode.INSUFFICIENT_STOCK);
-            }
-
-            // Cập nhật tồn kho an toàn dưới khóa
-            int currentStock = subProduct.getStock() != null ? subProduct.getStock() : 0;
-            int currentQty = subProduct.getQty() != null ? subProduct.getQty() : 0;
-            subProduct.setStock(currentStock - dto.getCount());
-            subProduct.setQty(Math.max(0, currentQty - dto.getCount()));
-            subProductRepository.save(subProduct);
-
-            double itemTotal = dto.getPrice() * dto.getCount();
-            double unitPriceAfterDiscount = dto.getPrice();
-
-            DiscountRequest discount = dto.getDiscountValue();
-            if (discount != null && discount.getValue() != null && discount.getType() != null) {
-                try {
-                    double discountValue = Double.parseDouble(discount.getValue());
-
-                    switch (discount.getType()) {
-                        case DISCOUNT -> {
-                            double discountAmount = discountValue;
-                            itemTotal -= discountAmount;
-                            unitPriceAfterDiscount = itemTotal / dto.getCount();
-                        }
-                        case PERCENT -> {
-                            double percent = discountValue / 100.0;
-                            itemTotal *= (1 - percent);
-                            unitPriceAfterDiscount = itemTotal / dto.getCount();
-                        }
-                        default -> throw new AppException(ErrorCode.INVALID_PROMOTION_TYPE);
-                    }
-                } catch (NumberFormatException e) {
-                    throw new AppException(ErrorCode.INVALID_PROMOTION_VALUE);
-                }
-            }
-
-            // Đảm bảo không âm
-            if (itemTotal < 0) {
-                itemTotal = 0;
-                unitPriceAfterDiscount = 0;
-            }
-
-            total += itemTotal;
-
-            OrderItem orderItem = OrderItem.builder()
-                    .subProduct(subProduct)
-                    .quantity(dto.getCount())
-                    .priceAtOrderTime(unitPriceAfterDiscount) // Lưu giá đã giảm cho mỗi đơn vị
-                    .build();
-
-            orderItems.add(orderItem);
+        if (Boolean.TRUE.equals(subProduct.getDeleted())
+                || subProduct.getProduct() == null
+                || Boolean.TRUE.equals(subProduct.getProduct().getDeleted())) {
+            throw new AppException(ErrorCode.SUB_PRODUCT_NOT_FOUND);
         }
 
-        PaymentType paymentTypeEnum;
+        if (subProduct.getStock() < dto.getCount()) {
+            throw new AppException(ErrorCode.INSUFFICIENT_STOCK);
+        }
+
+        // Cập nhật tồn kho an toàn dưới khóa bi quan
+        int currentStock = subProduct.getStock() != null ? subProduct.getStock() : 0;
+        int currentQty = subProduct.getQty() != null ? subProduct.getQty() : 0;
+        subProduct.setStock(currentStock - dto.getCount());
+        subProduct.setQty(Math.max(0, currentQty - dto.getCount()));
+        subProductRepository.save(subProduct);
+
+        // Strategy Pattern: Tính giảm giá độc lập bằng DiscountCalculator
+        DiscountCalculationResult discountResult = discountCalculator.calculate(
+                dto.getPrice(), dto.getCount(), dto.getDiscountValue());
+
+        OrderItem orderItem = OrderItem.builder()
+                .subProduct(subProduct)
+                .quantity(dto.getCount())
+                .priceAtOrderTime(discountResult.unitPriceAfterDiscount())
+                .build();
+
+        return new ProcessedItemResult(orderItem, discountResult.itemTotal());
+    }
+
+    private Order buildAndSaveOrder(User user, String addressId, String paymentTypeStr, double total, List<OrderItem> items) {
+        PaymentType paymentType;
         try {
-            paymentTypeEnum = PaymentType.valueOf(paymentType.toUpperCase());
+            paymentType = PaymentType.valueOf(paymentTypeStr.toUpperCase());
         } catch (IllegalArgumentException ex) {
             throw new AppException(ErrorCode.INVALID_CREDENTIALS);
         }
 
-        Address address = addressRepository.findById(request.getAddressId())
+        Address address = addressRepository.findById(addressId)
                 .orElseThrow(() -> new AppException(ErrorCode.ADDRESS_NOT_FOUND));
 
         Order order = Order.builder()
@@ -150,28 +140,28 @@ public class OrderServiceImpl implements IOrderService {
                 .address(address)
                 .total(total)
                 .orderStatus(OrderStatus.PENDING)
-                .paymentType(paymentTypeEnum)
+                .paymentType(paymentType)
                 .customerHidden(false)
                 .items(new ArrayList<>())
                 .build();
 
-        for (OrderItem item : orderItems) {
+        for (OrderItem item : items) {
             item.setOrder(order);
         }
+        order.setItems(items);
 
-        order.setItems(orderItems);
+        return orderRepository.save(order);
+    }
 
-        orderRepository.save(order);
-
-        // Xóa các sản phẩm trong giỏ hàng đã đặt mua
+    private void cleanupCartItems(User user, List<OrderItemRequest> items) {
+        if (items == null) return;
         List<String> subProductIds = items.stream()
                 .map(OrderItemRequest::getSubProductId)
                 .toList();
-
         cartRepository.deleteByCreatedByAndSubProductIds(user, subProductIds);
-
-        return order;
     }
+
+    private record ProcessedItemResult(OrderItem item, double total) {}
 
     @Override
     public List<OrderResponse> getOrdersByUserId(String userId) {
@@ -262,7 +252,7 @@ public class OrderServiceImpl implements IOrderService {
         order.setOrderStatus(OrderStatus.CANCELLED);
         order.setCancelReason("Khách hàng tự hủy đơn");
 
-        restockOrderItems(order);
+        inventoryRestocker.restockOrderItems(order);
 
         orderRepository.save(order);
         log.info("Order {} cancelled successfully by user {}", orderId, userId);
@@ -326,37 +316,8 @@ public class OrderServiceImpl implements IOrderService {
                 throw new AppException(ErrorCode.INVALID_ORDER_STATUS_TRANSITION);
             }
 
-            // Tự động gọi API GHN tạo đơn khi chuyển sang PROCESSING (nếu chưa có mã vận đơn)
-            if (newStatus == OrderStatus.PROCESSING) {
-                if (order.getTrackingCode() == null || order.getTrackingCode().isBlank()) {
-                    try {
-                        String ghnCode = ghnShippingService.createShippingOrder(order);
-                        if (ghnCode != null && !ghnCode.isBlank()) {
-                            order.setTrackingCode(ghnCode);
-                            order.setShippingStatus("ready_to_pick");
-                            log.info("Tự động tạo đơn GHN thành công cho orderId {}: trackingCode={}", orderId, ghnCode);
-                        }
-                    } catch (Exception e) {
-                        log.error("Không thể tự động tạo đơn qua GHN cho orderId {}: {}", orderId, e.getMessage());
-                        throw new RuntimeException("Tự động tạo đơn GHN thất bại: " + e.getMessage(), e);
-                    }
-                }
-            }
-
-            if (newStatus == OrderStatus.CANCELLED) {
-                String reason = status.getCancelReason();
-                if (reason == null || reason.trim().isEmpty()) {
-                    reason = "Hủy bởi Quản trị viên";
-                }
-                order.setCancelReason(reason);
-                restockOrderItems(order);
-            } else if (newStatus == OrderStatus.REFUNDED) {
-                if (status.getCancelReason() != null && !status.getCancelReason().trim().isEmpty()) {
-                    order.setCancelReason(status.getCancelReason());
-                }
-                restockOrderItems(order);
-            }
-
+            // Strategy Pattern: Ủy quyền xử lý side-effects cho handler tương ứng (GHN, restock kho, reason)
+            statusHandlerRegistry.executeTransition(order, newStatus, status);
             order.setOrderStatus(newStatus);
         }
 
@@ -374,24 +335,6 @@ public class OrderServiceImpl implements IOrderService {
             case COMPLETED -> to == OrderStatus.REFUNDED;
             case CANCELLED, REFUNDED -> false;
         };
-    }
-
-    private void restockOrderItems(Order order) {
-        if (order.getItems() == null) return;
-        List<OrderItem> sortedItems = order.getItems().stream()
-                .filter(item -> item.getSubProduct() != null && item.getSubProduct().getId() != null)
-                .sorted(Comparator.comparing(item -> item.getSubProduct().getId()))
-                .toList();
-
-        for (OrderItem item : sortedItems) {
-            SubProduct subProduct = subProductRepository.findByIdWithLock(item.getSubProduct().getId())
-                    .orElse(item.getSubProduct());
-            int currentStock = subProduct.getStock() != null ? subProduct.getStock() : 0;
-            int currentQty = subProduct.getQty() != null ? subProduct.getQty() : 0;
-            subProduct.setStock(currentStock + item.getQuantity());
-            subProduct.setQty(currentQty + item.getQuantity());
-            subProductRepository.save(subProduct);
-        }
     }
 
     @PostConstruct

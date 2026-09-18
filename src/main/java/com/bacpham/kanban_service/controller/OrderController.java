@@ -11,6 +11,7 @@ import com.bacpham.kanban_service.repository.UserRepository;
 import com.bacpham.kanban_service.service.IOrderService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
@@ -53,6 +54,7 @@ public class OrderController {
                 .build();
     }
     @GetMapping("/all")
+    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<?> getAllBills(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int pageSize
@@ -110,6 +112,7 @@ public class OrderController {
     }
 
     @PatchMapping("/{orderId}/status")
+    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<?> updateOrderStatus(
             @PathVariable String orderId,
             @RequestBody UpdateStatusOrder status

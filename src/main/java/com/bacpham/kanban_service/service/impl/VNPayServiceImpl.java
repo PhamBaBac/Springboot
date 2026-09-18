@@ -9,6 +9,8 @@ import com.bacpham.kanban_service.dto.response.PaymentResponse;
 import com.bacpham.kanban_service.helper.exception.AppException;
 import com.bacpham.kanban_service.helper.exception.ErrorCode;
 import com.bacpham.kanban_service.service.IVNPayService;
+import com.bacpham.kanban_service.strategy.discount.DiscountCalculationResult;
+import com.bacpham.kanban_service.strategy.discount.DiscountCalculator;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -32,6 +34,7 @@ public class VNPayServiceImpl implements IVNPayService {
 
     private final GenericRedisService<String, String, String> redisService;
     private final GenericRedisService<String, String, OrderCreateRequest> redisServiceOrder;
+    private final DiscountCalculator discountCalculator;
 
     @Override
     public PaymentResponse createPaymentUrl(OrderCreateRequest request, String userId, HttpServletRequest httpRequest) {
@@ -156,27 +159,12 @@ public class VNPayServiceImpl implements IVNPayService {
     // ===== Private helper methods =====
 
     /**
-     * Tinh tong tien don hang sau giam gia.
+     * Tinh tong tien don hang sau giam gia bang Strategy Pattern (DiscountCalculator).
      */
     private double calculateTotal(OrderCreateRequest request) {
         return request.getItems().stream()
-                .mapToDouble(item -> {
-                    double itemTotal = item.getPrice() * item.getCount();
-                    DiscountRequest discount = item.getDiscountValue();
-                    if (discount != null && discount.getValue() != null && discount.getType() != null) {
-                        try {
-                            double discountValue = Double.parseDouble(discount.getValue());
-                            switch (discount.getType()) {
-                                case DISCOUNT -> itemTotal -= discountValue;
-                                case PERCENT -> itemTotal *= (1 - discountValue / 100.0);
-                                default -> throw new AppException(ErrorCode.INVALID_PROMOTION_TYPE);
-                            }
-                        } catch (NumberFormatException e) {
-                            throw new AppException(ErrorCode.INVALID_PROMOTION_VALUE);
-                        }
-                    }
-                    return Math.max(0, itemTotal);
-                })
+                .mapToDouble(item -> discountCalculator.calculate(
+                        item.getPrice(), item.getCount(), item.getDiscountValue()).itemTotal())
                 .sum();
     }
 

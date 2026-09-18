@@ -8,6 +8,7 @@ import com.bacpham.kanban_service.service.IPromotionService;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -23,6 +24,7 @@ public class PromotionController {
     IPromotionService promotionService;
 
     @PostMapping("/addNew")
+    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<PromotionResponse> createPromotion(
             @RequestBody @Validated PromotionRequest request
     ) {
@@ -33,6 +35,7 @@ public class PromotionController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<PromotionResponse> updatePromotion(
             @PathVariable String id,
             @RequestBody @Validated PromotionRequest request
@@ -67,6 +70,7 @@ public class PromotionController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<Void> deletePromotion(@PathVariable String id) {
         promotionService.deletePromotion(id);
         return ApiResponse.<Void>builder().message("Deleted successfully").build();
