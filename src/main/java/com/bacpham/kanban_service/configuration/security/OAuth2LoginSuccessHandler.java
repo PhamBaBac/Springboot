@@ -97,7 +97,22 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
         final String finalAvatarUrl = avatarUrl;
 
         // Get or create user
-        User user = userRepository.findByEmail(finalEmail).orElseGet(() -> {
+        User user = userRepository.findByEmail(finalEmail).map(existingUser -> {
+            boolean updated = false;
+            if (existingUser.getProvider() == null) {
+                existingUser.setProvider(finalProvider);
+                updated = true;
+            }
+            if (existingUser.getProviderId() == null || existingUser.getProviderId().isBlank()) {
+                existingUser.setProviderId(finalProviderId);
+                updated = true;
+            }
+            if (existingUser.getAvatarUrl() == null && finalAvatarUrl != null) {
+                existingUser.setAvatarUrl(finalAvatarUrl);
+                updated = true;
+            }
+            return updated ? userRepository.save(existingUser) : existingUser;
+        }).orElseGet(() -> {
             log.info("Creating new user with email: {}", finalEmail);
             User newUser = new User();
             newUser.setEmail(finalEmail);

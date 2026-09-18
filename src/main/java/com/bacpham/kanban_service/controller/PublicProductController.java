@@ -91,11 +91,11 @@ public class PublicProductController {
 
     @GetMapping("/listProductRecommendations")
     public ApiResponse<List<ProductResponse>> getProductsByIds(@RequestBody List<String> ids) {
-        log.info("Received request to get product recommendations for IDs: {}", ids);
+        log.info("Nhận yêu cầu gợi ý sản phẩm theo danh sách ID: {}", ids);
         List<ProductResponse> result = productService.getListProductRecommendations(ids);
         return ApiResponse.<List<ProductResponse>>builder()
                 .data(result)
-                .message("success")
+                .message("Lấy gợi ý sản phẩm thành công")
                 .build();
     }
     @GetMapping({"/related/{id}", "/ai-related/{id}"})
@@ -107,7 +107,7 @@ public class PublicProductController {
         List<ProductResponse> related = recommendationService.getRelatedProductsByAi(id, safeLimit);
         return ApiResponse.<List<ProductResponse>>builder()
                 .data(related)
-                .message("success")
+                .message("Lấy danh sách sản phẩm liên quan thành công")
                 .build();
     }
 
@@ -127,7 +127,7 @@ public class PublicProductController {
         );
         return ApiResponse.<List<ProductResponse>>builder()
                 .data(filtered.getContent())
-                .message("success")
+                .message("Lấy danh sách sản phẩm theo danh mục thành công")
                 .build();
     }
 

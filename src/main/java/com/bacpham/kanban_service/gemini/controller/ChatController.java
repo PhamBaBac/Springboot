@@ -53,7 +53,7 @@ public class ChatController {
         );
         return ApiResponse.<String>builder()
                 .data(content)
-                .message("success")
+                .message("Tạo nội dung tiếp thị thành công")
                 .build();
     }
 
@@ -79,7 +79,7 @@ public class ChatController {
 
         return ApiResponse.<AiChatResponse>builder()
                 .data(aiResponse)
-                .message("success")
+                .message("Gửi tin nhắn hỗ trợ thành công")
                 .build();
     }
 
@@ -92,12 +92,13 @@ public class ChatController {
         if (userId == null) {
             return ApiResponse.<List<ChatHistoryResponse>>builder()
                     .data(Collections.emptyList())
-                    .message("No chat history for unauthenticated user")
+                    .message("Chưa có lịch sử trò chuyện cho người dùng chưa xác thực")
                     .build();
         }
 
         return ApiResponse.<List<ChatHistoryResponse>>builder()
                 .data(chatHistoryService.getUserChatHistory(userId))
+                .message("Lấy lịch sử trò chuyện thành công")
                 .build();
     }
 
@@ -114,8 +115,8 @@ public class ChatController {
         chatHistoryService.deleteAllChatHistory(userId);
 
         return ApiResponse.<String>builder()
-                .data("Chat history deleted successfully")
-                .message("success")
+                .data("Đã xóa toàn bộ lịch sử trò chuyện")
+                .message("Xóa lịch sử trò chuyện thành công")
                 .build();
     }
 

@@ -35,7 +35,7 @@ public class ModerationCommentController {
             reviewProductService.createReview(request);
             return ApiResponse.<String>builder()
                     .data("Bình luận của bạn đã được ghi nhận.")
-                    .message("success")
+                    .message("Bình luận hợp lệ và đã được phê duyệt")
                     .build();
         } else {
             throw new AppException(ErrorCode.REVIEW_REJECTED_BY_MODERATION);

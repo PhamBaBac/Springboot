@@ -166,16 +166,16 @@
                 </svg>
             `;
             resultTitle.textContent = "Thanh toán thành công!";
-            resultDesc.innerHTML = "Cảm ơn bạn đã mua sắm! Giao dịch VNPay của bạn đã hoàn tất và đơn hàng đã được tạo thành công.";
+            resultDesc.innerHTML = "Cảm ơn bạn đã mua sắm! Giao dịch thanh toán trực tuyến của bạn đã hoàn tất và đơn hàng đã được tạo thành công.";
 
             if (txnRef || transactionNo) {
                 infoBox.style.display = "block";
                 let html = "";
                 if (txnRef) {
-                    html += `<div class="info-row"><span class="info-label">Mã giao dịch:</span><span class="info-value">${txnRef}</span></div>`;
+                    html += `<div class="info-row"><span class="info-label">Mã tham chiếu:</span><span class="info-value">${txnRef}</span></div>`;
                 }
                 if (transactionNo && transactionNo !== "0") {
-                    html += `<div class="info-row"><span class="info-label">Mã VNPay:</span><span class="info-value">${transactionNo}</span></div>`;
+                    html += `<div class="info-row"><span class="info-label">Mã đối tác:</span><span class="info-value">${transactionNo}</span></div>`;
                 }
                 infoBox.innerHTML = html;
             }
@@ -195,9 +195,9 @@
             resultTitle.textContent = "Giao dịch chưa hoàn tất";
 
             let reason = "Giao dịch thanh toán đã bị hủy hoặc gặp sự cố.";
-            if (responseCode === "24") {
-                reason = "Bạn đã hủy giao dịch trên cổng thanh toán VNPay.";
-            } else if (responseCode === "51") {
+            if (responseCode === "24" || responseCode === "1006") {
+                reason = "Bạn đã hủy giao dịch trên cổng thanh toán.";
+            } else if (responseCode === "51" || responseCode === "9000") {
                 reason = "Tài khoản của bạn không đủ số dư để thực hiện giao dịch.";
             } else if (responseCode === "11") {
                 reason = "Giao dịch đã hết hạn chờ thanh toán.";

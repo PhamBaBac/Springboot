@@ -28,7 +28,7 @@ public class StatisticsController {
         StatisticsResponse statistics = statisticsService.getStatistics();
         return ApiResponse.<StatisticsResponse>builder()
                 .data(statistics)
-                .message("Statistics retrieved successfully")
+                .message("Lấy số liệu thống kê thành công")
                 .build();
     }
 
@@ -40,7 +40,7 @@ public class StatisticsController {
         List<Map<String, Object>> result = statisticsService.getOrderPurchaseStatistics(timeType);
         return ApiResponse.<List<Map<String, Object>>>builder()
                 .data(result)
-                .message("Order purchase statistics retrieved successfully")
+                .message("Lấy thống kê đơn hàng thành công")
                 .build();
     }
 
@@ -49,7 +49,7 @@ public class StatisticsController {
     public ApiResponse<?> getTopSellingAndLowQuantity() {
         return ApiResponse.<StatisticsTopSellingLowQuantityResponse>builder()
                 .data(statisticsService.getTopSellingAndLowQuantity())
-                .message("Top selling and low quantity statistics retrieved successfully")
+                .message("Lấy thống kê sản phẩm bán chạy và sắp hết hàng thành công")
                 .build();
     }
 }

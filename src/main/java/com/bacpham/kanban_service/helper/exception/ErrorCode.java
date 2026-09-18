@@ -14,74 +14,76 @@ public enum ErrorCode {
     // ==================================================
     // 1xxx - Common / System Errors
     // ==================================================
-    UNCATEGORIZED(1999, "Uncategorized", HttpStatus.INTERNAL_SERVER_ERROR),
-    INVALID_KEY(1001, "Invalid key", HttpStatus.BAD_REQUEST),
-    INVALID_INPUT(1002, "Invalid input", HttpStatus.BAD_REQUEST),
-    UNKNOWN(1003, "Unknown", HttpStatus.INTERNAL_SERVER_ERROR),
+    UNCATEGORIZED(1999, "Lỗi hệ thống chưa được phân loại. Vui lòng thử lại sau.", HttpStatus.INTERNAL_SERVER_ERROR),
+    INVALID_KEY(1001, "Khóa hoặc trường dữ liệu không hợp lệ", HttpStatus.BAD_REQUEST),
+    INVALID_INPUT(1002, "Dữ liệu đầu vào không hợp lệ", HttpStatus.BAD_REQUEST),
+    UNKNOWN(1003, "Đã xảy ra lỗi không xác định", HttpStatus.INTERNAL_SERVER_ERROR),
 
     // ==================================================
     // 2xxx - User / Authentication
     // ==================================================
-    USER_NOT_FOUND(2001, "User not found", HttpStatus.NOT_FOUND),
-    USER_ALREADY_EXISTS(2002, "User already exists", HttpStatus.BAD_REQUEST),
-    INVALID_PASSWORD(2003, "Password must be at least 8 characters and include uppercase, lowercase, number, and special character", HttpStatus.BAD_REQUEST),
-    INVALID_USERNAME(2004, "Username must be at least {min} characters", HttpStatus.BAD_REQUEST),
-    INVALID_DATE_OF_BIRTH(2005, "Invalid date of birth", HttpStatus.BAD_REQUEST),
-    INVALID_DOB(2006, "Invalid date of birth {min}", HttpStatus.BAD_REQUEST),
-    INVALID_CREDENTIALS(2007, "Invalid credentials", HttpStatus.UNAUTHORIZED),
-    UNAUTHENTICATED(2008, "Unauthenticated", HttpStatus.UNAUTHORIZED),
-    UNAUTHORIZED(2009, "You do not have permission", HttpStatus.FORBIDDEN),
-    TFA_NOT_ENABLED(2010, "TFA is not enabled", HttpStatus.BAD_REQUEST),
-    WRONG_PASSWORD(2011, "Wrong password", HttpStatus.BAD_REQUEST),
-    PASSWORDS_NOT_MATCH(2012, "Passwords do not match", HttpStatus.BAD_REQUEST),
-    INVALID_VERIFICATION_CODE(2013, "Invalid verification code", HttpStatus.BAD_REQUEST),
-    INVALID_EMAIL(2014, "Invalid email format", HttpStatus.BAD_REQUEST),
-    INVALID_SIZE_FIRST_NAME(2015, "First name must be at most {max} characters", HttpStatus.BAD_REQUEST),
-    INVALID_FIRST_NAME_PATTERN(2016, "First name must contain only letters and spaces", HttpStatus.BAD_REQUEST),
-    INVALID_SIZE_LAST_NAME(2017, "Last name must be at most {max} characters", HttpStatus.BAD_REQUEST),
-    OTP_MAX_ATTEMPTS_EXCEEDED(2018, "Maximum verification attempts exceeded. Please request a new code.", HttpStatus.TOO_MANY_REQUESTS),
-    RESEND_CODE_COOLDOWN(2019, "Please wait 60 seconds before requesting a new code", HttpStatus.TOO_MANY_REQUESTS),
-    INVALID_EXCHANGE_CODE(2020, "Invalid or expired exchange code", HttpStatus.BAD_REQUEST),
+    USER_NOT_FOUND(2001, "Không tìm thấy thông tin tài khoản", HttpStatus.NOT_FOUND),
+    USER_ALREADY_EXISTS(2002, "Tài khoản hoặc email này đã tồn tại trên hệ thống", HttpStatus.BAD_REQUEST),
+    INVALID_PASSWORD(2003, "Mật khẩu phải có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt", HttpStatus.BAD_REQUEST),
+    INVALID_USERNAME(2004, "Tên người dùng phải có ít nhất {min} ký tự", HttpStatus.BAD_REQUEST),
+    INVALID_DATE_OF_BIRTH(2005, "Ngày sinh không hợp lệ", HttpStatus.BAD_REQUEST),
+    INVALID_DOB(2006, "Độ tuổi không hợp lệ, yêu cầu tối thiểu {min} tuổi", HttpStatus.BAD_REQUEST),
+    INVALID_CREDENTIALS(2007, "Tài khoản hoặc mật khẩu không chính xác", HttpStatus.UNAUTHORIZED),
+    UNAUTHENTICATED(2008, "Phiên đăng nhập đã hết hạn hoặc chưa xác thực", HttpStatus.UNAUTHORIZED),
+    UNAUTHORIZED(2009, "Bạn không có quyền thực hiện thao tác này", HttpStatus.FORBIDDEN),
+    TFA_NOT_ENABLED(2010, "Xác thực hai yếu tố (2FA) chưa được kích hoạt", HttpStatus.BAD_REQUEST),
+    WRONG_PASSWORD(2011, "Mật khẩu hiện tại không chính xác", HttpStatus.BAD_REQUEST),
+    PASSWORDS_NOT_MATCH(2012, "Mật khẩu mới và xác nhận mật khẩu không khớp", HttpStatus.BAD_REQUEST),
+    INVALID_VERIFICATION_CODE(2013, "Mã xác thực không hợp lệ hoặc đã hết hạn", HttpStatus.BAD_REQUEST),
+    INVALID_EMAIL(2014, "Định dạng email không hợp lệ", HttpStatus.BAD_REQUEST),
+    INVALID_SIZE_FIRST_NAME(2015, "Tên không được vượt quá {max} ký tự", HttpStatus.BAD_REQUEST),
+    INVALID_FIRST_NAME_PATTERN(2016, "Tên chỉ được chứa các chữ cái và khoảng trắng", HttpStatus.BAD_REQUEST),
+    INVALID_SIZE_LAST_NAME(2017, "Họ không được vượt quá {max} ký tự", HttpStatus.BAD_REQUEST),
+    OTP_MAX_ATTEMPTS_EXCEEDED(2018, "Bạn đã nhập sai mã xác thực quá số lần cho phép. Vui lòng yêu cầu mã mới.", HttpStatus.TOO_MANY_REQUESTS),
+    RESEND_CODE_COOLDOWN(2019, "Vui lòng đợi 60 giây trước khi yêu cầu gửi lại mã xác thực", HttpStatus.TOO_MANY_REQUESTS),
+    INVALID_EXCHANGE_CODE(2020, "Mã trao đổi xác thực không hợp lệ hoặc đã hết hạn", HttpStatus.BAD_REQUEST),
+    OAUTH2_ACCOUNT_CANNOT_RESET_PASSWORD(2021, "Tài khoản này được đăng nhập bằng mạng xã hội (Google/GitHub). Vui lòng sử dụng tính năng Đăng nhập mạng xã hội thay vì đặt lại mật khẩu.", HttpStatus.BAD_REQUEST),
+    OAUTH2_ACCOUNT_CANNOT_CHANGE_PASSWORD(2022, "Tài khoản đăng nhập mạng xã hội không có mật khẩu nội bộ. Vui lòng quản lý bảo mật trên tài khoản mạng xã hội của bạn.", HttpStatus.BAD_REQUEST),
     // ==================================================
     // 3xxx - Product / Category / Supplier
     // ==================================================
-    PRODUCT_NOT_FOUND(3001, "Product not found", HttpStatus.NOT_FOUND),
-    SUB_PRODUCT_NOT_FOUND(3002, "Sub product not found", HttpStatus.NOT_FOUND),
-    CATEGORY_NOT_FOUND(3003, "Category not found", HttpStatus.NOT_FOUND),
-    SUPPLIER_NOT_FOUND(3004, "Supplier not found", HttpStatus.NOT_FOUND),
-    PRODUCT_SLUG_NOT_MATCH(3005, "Product slug does not match", HttpStatus.BAD_REQUEST),
+    PRODUCT_NOT_FOUND(3001, "Không tìm thấy sản phẩm", HttpStatus.NOT_FOUND),
+    SUB_PRODUCT_NOT_FOUND(3002, "Không tìm thấy biến thể sản phẩm", HttpStatus.NOT_FOUND),
+    CATEGORY_NOT_FOUND(3003, "Không tìm thấy danh mục", HttpStatus.NOT_FOUND),
+    SUPPLIER_NOT_FOUND(3004, "Không tìm thấy nhà cung cấp", HttpStatus.NOT_FOUND),
+    PRODUCT_SLUG_NOT_MATCH(3005, "Đường dẫn định danh sản phẩm (slug) không khớp", HttpStatus.BAD_REQUEST),
 
     // ==================================================
     // 4xxx - Promotions
     // ==================================================
-    PROMOTION_NOT_FOUND(4001, "Promotion not found", HttpStatus.NOT_FOUND),
-    PROMOTION_ALREADY_USED(4002, "Promotion already used", HttpStatus.BAD_REQUEST),
-    PROMOTION_OUT_OF_STOCK(4003, "Promotion out of stock", HttpStatus.BAD_REQUEST),
-    PROMOTION_EXPIRED(4004, "Promotion expired", HttpStatus.BAD_REQUEST),
-    INVALID_PROMOTION_TYPE(4005, "Invalid promotion type", HttpStatus.BAD_REQUEST),
-    INVALID_PROMOTION_VALUE(4006, "Invalid promotion value", HttpStatus.BAD_REQUEST),
+    PROMOTION_NOT_FOUND(4001, "Mã khuyến mãi không tồn tại", HttpStatus.NOT_FOUND),
+    PROMOTION_ALREADY_USED(4002, "Mã khuyến mãi đã được sử dụng", HttpStatus.BAD_REQUEST),
+    PROMOTION_OUT_OF_STOCK(4003, "Mã khuyến mãi đã hết lượt sử dụng", HttpStatus.BAD_REQUEST),
+    PROMOTION_EXPIRED(4004, "Mã khuyến mãi đã hết hạn sử dụng", HttpStatus.BAD_REQUEST),
+    INVALID_PROMOTION_TYPE(4005, "Loại khuyến mãi không hợp lệ", HttpStatus.BAD_REQUEST),
+    INVALID_PROMOTION_VALUE(4006, "Giá trị khuyến mãi không hợp lệ", HttpStatus.BAD_REQUEST),
 
     // ==================================================
     // 5xxx - Cart / Order / Billing
     // ==================================================
-    CART_NOT_FOUND(5001, "Cart not found", HttpStatus.NOT_FOUND),
-    INSUFFICIENT_STOCK(5002, "Insufficient stock", HttpStatus.BAD_REQUEST),
-    BILL_NOT_FOUND(5003, "Bill not found", HttpStatus.NOT_FOUND),
-    CANNOT_CANCEL_ORDER(5004, "Cannot cancel order", HttpStatus.BAD_REQUEST),
-    INVALID_ORDER_STATUS_TRANSITION(5005, "Invalid order status transition", HttpStatus.BAD_REQUEST),
+    CART_NOT_FOUND(5001, "Không tìm thấy giỏ hàng", HttpStatus.NOT_FOUND),
+    INSUFFICIENT_STOCK(5002, "Số lượng sản phẩm trong kho không đủ", HttpStatus.BAD_REQUEST),
+    BILL_NOT_FOUND(5003, "Không tìm thấy hóa đơn", HttpStatus.NOT_FOUND),
+    CANNOT_CANCEL_ORDER(5004, "Không thể hủy đơn hàng ở trạng thái hiện tại", HttpStatus.BAD_REQUEST),
+    INVALID_ORDER_STATUS_TRANSITION(5005, "Chuyển trạng thái đơn hàng không hợp lệ", HttpStatus.BAD_REQUEST),
 
     // ==================================================
     // 6xxx - Reviews / Chat / Messages
     // ==================================================
-    MESSAGE_TOO_LONG(6001, "Message too long", HttpStatus.BAD_REQUEST),
-    CHAT_HISTORY_NOT_FOUND(6002, "Chat history not found", HttpStatus.NOT_FOUND),
-    NO_COMPLETED_ORDER_FOR_REVIEW(6003, "No completed order for review", HttpStatus.BAD_REQUEST),
-    REVIEW_ALREADY_EXISTS_FOR_ORDER(6004, "Review already exists for this order", HttpStatus.BAD_REQUEST),
-    REVIEW_REJECTED_BY_MODERATION(6005, "Review rejected by moderation", HttpStatus.BAD_REQUEST),
+    MESSAGE_TOO_LONG(6001, "Tin nhắn quá dài, vui lòng rút gọn lại", HttpStatus.BAD_REQUEST),
+    CHAT_HISTORY_NOT_FOUND(6002, "Không tìm thấy lịch sử cuộc trò chuyện", HttpStatus.NOT_FOUND),
+    NO_COMPLETED_ORDER_FOR_REVIEW(6003, "Bạn chỉ có thể đánh giá sau khi đã hoàn thành đơn hàng", HttpStatus.BAD_REQUEST),
+    REVIEW_ALREADY_EXISTS_FOR_ORDER(6004, "Bạn đã gửi đánh giá cho đơn hàng này rồi", HttpStatus.BAD_REQUEST),
+    REVIEW_REJECTED_BY_MODERATION(6005, "Nội dung đánh giá bị từ chối do vi phạm tiêu chuẩn cộng đồng", HttpStatus.BAD_REQUEST),
     // ==================================================
     // 7xxx - Address / Delivery
     // ==================================================
-    ADDRESS_NOT_FOUND(7001, "Address not found", HttpStatus.NOT_FOUND);
+    ADDRESS_NOT_FOUND(7001, "Không tìm thấy thông tin địa chỉ", HttpStatus.NOT_FOUND);
 
     private final int code;
     private final String message;

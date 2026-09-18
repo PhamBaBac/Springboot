@@ -5,4 +5,5 @@ public enum PaymentType {
     BANK_TRANSFER,
     CREDIT_CARD,
     VNPAY, // VNPAY
+    MOMO,  // MoMo E-Wallet
 }

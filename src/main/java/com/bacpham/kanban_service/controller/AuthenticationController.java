@@ -30,7 +30,7 @@ public class AuthenticationController {
     ) {
         service.register(request);
         return ApiResponse.builder()
-                .message("Register info received. Please verify your email.")
+                .message("Đã nhận thông tin đăng ký. Vui lòng xác thực email của bạn.")
                 .data(true)
                 .build();
     }
@@ -39,7 +39,7 @@ public class AuthenticationController {
     public ApiResponse<?> sendCodeEmail(@RequestBody SendCodeRequest request) throws MessagingException {
         service.sendCodeEmail(request.getEmail());
         return ApiResponse.builder()
-                .message("Verification code sent successfully")
+                .message("Gửi mã xác thực thành công")
                 .build();
     }
 
@@ -56,7 +56,7 @@ public class AuthenticationController {
         }
         return ResponseEntity.ok(
                 ApiResponse.builder()
-                        .message("Authentication successful")
+                        .message("Đăng nhập thành công")
                         .data(authResponse)
                         .build()
         );
@@ -73,7 +73,7 @@ public class AuthenticationController {
         }
         return ResponseEntity.ok(
                 ApiResponse.builder()
-                        .message("Token exchange successful")
+                        .message("Chuyển đổi token thành công")
                         .data(authResponse)
                         .build()
         );
@@ -102,7 +102,7 @@ public class AuthenticationController {
             HttpServletResponse response
     ){
         return ApiResponse.<AuthenticationResponse>builder()
-                .message("Your message here")
+                .message("Kích hoạt xác thực hai yếu tố thành công")
                 .data(service.verifyCode(verificationRequest, response))
                 .build();
     }
@@ -113,7 +113,7 @@ public class AuthenticationController {
     ) throws MessagingException {
         AuthenticationResponse result = service.verifyCodeEmail(request, response);
         return ApiResponse.builder()
-                .message("Email verified and account activated")
+                .message("Xác thực email và kích hoạt tài khoản thành công")
                 .data(result)
                 .build();
     }
@@ -127,7 +127,7 @@ public class AuthenticationController {
     public ApiResponse<?> fail() {
         return ApiResponse.builder()
                 .code(400)
-                .message("Authentication failed")
+                .message("Đăng nhập thất bại")
                 .build();
     }
 

@@ -25,7 +25,7 @@ public class ConversationController {
         ConversationResponse conversation = conversationService.createConversation(request);
         return ApiResponse.<ConversationResponse>builder()
                 .data(conversation)
-                .message("Conversation created or returned successfully")
+                .message("Tạo hoặc lấy cuộc hội thoại thành công")
                 .build();
     }
 
@@ -34,7 +34,7 @@ public class ConversationController {
         List<ConversationResponse> conversations = conversationService.getMyConversations();
         return ApiResponse.<List<ConversationResponse>>builder()
                 .data(conversations)
-                .message("Fetched user conversations successfully")
+                .message("Lấy danh sách cuộc hội thoại thành công")
                 .build();
     }
 }

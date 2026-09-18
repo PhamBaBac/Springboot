@@ -17,11 +17,17 @@ import java.util.Set;
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @Entity
+@Table(name = "product", indexes = {
+        @Index(name = "idx_product_slug", columnList = "slug"),
+        @Index(name = "idx_product_deleted_created", columnList = "deleted, created_at"),
+        @Index(name = "idx_product_supplier_id", columnList = "supplier_id")
+})
 public class Product extends BaseModel {
 
     @Column(nullable = false, unique = true, length = 255)
     String title;
 
+    @Column(length = 255)
     String slug;
 
     @Column(columnDefinition = "TEXT")

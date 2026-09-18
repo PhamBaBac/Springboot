@@ -33,8 +33,8 @@ public class UserController {
             Principal connectedUser
     ) {
         service.changePassword(request, connectedUser);
-        return  ApiResponse.<Void>builder()
-                .message("Password changed successfully")
+        return ApiResponse.<Void>builder()
+                .message("Đổi mật khẩu thành công")
                 .build();
     }
     @GetMapping("/secretImageUri")
@@ -42,28 +42,28 @@ public class UserController {
             @AuthenticationPrincipal UserDetails userDetails
     ) {
         String connectedUser = userDetails.getUsername();
-        log.info("Fetching secret image URI for user: {}", connectedUser);
+        log.info("Đang lấy mã QR xác thực 2FA cho người dùng: {}", connectedUser);
         String secretImageUri = service.getSecretImageUriByEmail(connectedUser);
         return ApiResponse.<String>builder()
                 .data(secretImageUri)
-                .message("Fetched secret image URI successfully")
+                .message("Lấy mã QR 2FA thành công")
                 .build();
     }
     @GetMapping("/me")
     public ApiResponse<UserResponse> getMyInfo(@AuthenticationPrincipal UserDetails userDetails) {
-        log.info("Fetching my user info for user: {}", userDetails.getUsername());
+        log.info("Lấy thông tin người dùng: {}", userDetails != null ? userDetails.getUsername() : "null");
         if (userDetails == null) {
             return ApiResponse.<UserResponse>builder()
-                    .message("User not authenticated")
+                    .message("Người dùng chưa được xác thực")
                     .data(null)
                     .build();
         }
 
         UserResponse user = service.getUserByEmail(userDetails.getUsername());
-        log.info("User not authenticated: {}", user.getAvatarUrl());
+        log.info("Lấy thông tin người dùng thành công: {}", user.getEmail());
         return ApiResponse.<UserResponse>builder()
                 .data(user)
-                .message("Get user info successfully")
+                .message("Lấy thông tin người dùng thành công")
                 .build();
     }
     @PutMapping("/disable-tfa")
@@ -85,7 +85,7 @@ public class UserController {
         service.disableTfaForUser(email);
 
         return ApiResponse.builder()
-                .message("Two-factor authentication disabled successfully")
+                .message("Đã tắt xác thực hai yếu tố thành công")
                 .build();
     }
 
@@ -95,7 +95,7 @@ public class UserController {
             ) {
         service.resetPassword(request);
         return ApiResponse.builder()
-                .message("Forgot password request processed successfully")
+                .message("Yêu cầu đặt lại mật khẩu đã được xử lý thành công")
                 .build();
     }
     @PostMapping("/userActivity")
@@ -104,7 +104,7 @@ public class UserController {
             ) {
         userActivityService.recordViewProductActivity(userActiveRequest);
         return ApiResponse.<Void>builder()
-                .message("User activity recorded successfully")
+                .message("Ghi nhận hoạt động người dùng thành công")
                 .build();
     }
 

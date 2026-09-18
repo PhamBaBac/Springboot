@@ -39,9 +39,14 @@ public class ProductSpecification {
             }
 
             if (search != null && !search.trim().isEmpty()) {
+                String cleanSearch = search.trim().toLowerCase()
+                        .replace("\\", "\\\\")
+                        .replace("%", "\\%")
+                        .replace("_", "\\_");
                 predicates.add(cb.like(
                         cb.lower(root.get("title")),
-                        "%" + search.trim().toLowerCase() + "%"
+                        "%" + cleanSearch + "%",
+                        '\\'
                 ));
             }
 

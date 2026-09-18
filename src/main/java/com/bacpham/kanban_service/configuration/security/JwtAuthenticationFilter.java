@@ -33,6 +33,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
     private final GenericRedisService<String, String, String> redisService;
+    private final com.bacpham.kanban_service.service.UserCacheService userCacheService;
     private final AntPathMatcher pathMatcher = new AntPathMatcher();
 
     @Override
@@ -70,7 +71,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             final String userEmail = jwtService.extractUsername(jwt);
 
             if (userEmail != null) {
-                UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
+                UserDetails userDetails = this.userCacheService.getUserByEmail(userEmail);
 
                 boolean isBlacklisted = redisService.get("blacklist:" + jwt) != null;
                 boolean isAccessToken = "access".equals(jwtService.extractTokenType(jwt));

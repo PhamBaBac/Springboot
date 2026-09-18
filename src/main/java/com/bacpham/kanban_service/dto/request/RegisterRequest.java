@@ -31,8 +31,8 @@ public class RegisterRequest {
     private String password;
 
 
-    @NotNull(message = "Role is required")
-    private Role role;
+    @Builder.Default
+    private Role role = Role.USER;
 
     private boolean mfaEnabled;
 }

@@ -36,7 +36,7 @@ public class ReviewProductController {
 
         reviewProductService.createReview(request);
         return ApiResponse.builder()
-                .message("Review product created successfully")
+                .message("Đánh giá sản phẩm thành công")
                 .build();
     }
 
@@ -57,7 +57,7 @@ public class ReviewProductController {
         List<ReviewProductResponse> responses = reviewProductService.getReviewsBySubProductIds(subProductIds);
         return ApiResponse.<List<ReviewProductResponse>>builder()
                 .data(responses)
-                .message("Get reviews by sub product ids successfully")
+                .message("Lấy danh sách đánh giá thành công")
                 .build();
     }
 }

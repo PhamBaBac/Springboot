@@ -9,6 +9,7 @@ import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 import java.util.List;
+import com.bacpham.kanban_service.enums.Provider;
 import com.bacpham.kanban_service.enums.Role;
 import io.jsonwebtoken.Claims;
 
@@ -76,6 +77,10 @@ public class AuthenticationServiceImpl implements IAuthenticationService {
 
     @Override
     public void register(RegisterRequest request) {
+        if (request.getRole() == null) {
+            request.setRole(Role.USER);
+        }
+
         Optional<User> existingUser = repository.findByEmail(request.getEmail());
         if (existingUser.isPresent()) {
             throw new AppException(ErrorCode.USER_ALREADY_EXISTS);
@@ -140,12 +145,12 @@ public class AuthenticationServiceImpl implements IAuthenticationService {
     @Override
     @Transactional
     public AuthenticationResponse verifyCode(VerificationRequest request, HttpServletResponse response) {
-        log.info("Verification request: {}", request);
+        log.info("Yêu cầu xác thực OTP: {}", request);
         User user = repository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + request.getEmail()));
+                .orElseThrow(() -> new UsernameNotFoundException("Không tìm thấy người dùng: " + request.getEmail()));
 
         if (tfaService.isOtpNotValid(user.getSecret(), request.getCode())) {
-            throw new BadCredentialsException("Code is not valid");
+            throw new BadCredentialsException("Mã xác thực không hợp lệ");
         }
 
         if (!user.isMfaEnabled()) {
@@ -167,7 +172,7 @@ public class AuthenticationServiceImpl implements IAuthenticationService {
     public void refreshToken(HttpServletRequest request, HttpServletResponse response) throws IOException {
         String refreshToken = extractRefreshTokenFromCookie(request);
         if (refreshToken == null) {
-            writeErrorResponse(response, "Missing refresh token", HttpServletResponse.SC_UNAUTHORIZED);
+            writeErrorResponse(response, "Thiếu refresh token", HttpServletResponse.SC_UNAUTHORIZED);
             return;
         }
 
@@ -176,7 +181,7 @@ public class AuthenticationServiceImpl implements IAuthenticationService {
             boolean isRefresh = "refresh".equals(jwtService.extractTokenType(refreshToken));
 
             if (!isRefresh || jwtService.isTokenExpired(refreshToken)) {
-                writeErrorResponse(response, "Invalid or expired refresh token", HttpServletResponse.SC_UNAUTHORIZED);
+                writeErrorResponse(response, "Refresh token không hợp lệ hoặc đã hết hạn", HttpServletResponse.SC_UNAUTHORIZED);
                 return;
             }
 
@@ -184,7 +189,7 @@ public class AuthenticationServiceImpl implements IAuthenticationService {
                     .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
             if (!jwtService.isTokenValidForUser(refreshToken, user, "refresh")) {
-                writeErrorResponse(response, "Invalid refresh token", HttpServletResponse.SC_UNAUTHORIZED);
+                writeErrorResponse(response, "Refresh token không hợp lệ", HttpServletResponse.SC_UNAUTHORIZED);
                 return;
             }
 
@@ -196,8 +201,8 @@ public class AuthenticationServiceImpl implements IAuthenticationService {
                     || (referer != null && referer.contains("5173"));
 
             if (isAdminClient && user.getRole() != Role.ADMIN) {
-                log.warn("Access denied during refresh: user {} with role {} attempted to refresh admin session", user.getEmail(), user.getRole());
-                writeErrorResponse(response, "Access denied: Account is not an administrator", HttpServletResponse.SC_FORBIDDEN);
+                log.warn("Từ chối truy cập khi làm mới phiên: người dùng {} với vai trò {} cố gắng làm mới phiên quản trị", user.getEmail(), user.getRole());
+                writeErrorResponse(response, "Từ chối truy cập: Tài khoản không có quyền quản trị viên", HttpServletResponse.SC_FORBIDDEN);
                 return;
             }
 
@@ -213,7 +218,7 @@ public class AuthenticationServiceImpl implements IAuthenticationService {
             new ObjectMapper().writeValue(response.getOutputStream(), authResponse);
 
         } catch (ExpiredJwtException e) {
-            writeErrorResponse(response, "Refresh token expired", HttpServletResponse.SC_UNAUTHORIZED);
+            writeErrorResponse(response, "Phiên đăng nhập đã hết hạn", HttpServletResponse.SC_UNAUTHORIZED);
         } catch (Exception e) {
             writeErrorResponse(response, e.getMessage(), HttpServletResponse.SC_UNAUTHORIZED);
         }
@@ -236,7 +241,7 @@ public class AuthenticationServiceImpl implements IAuthenticationService {
                     redisService.setTimeToLive("blacklist:" + token, remainingMillis, TimeUnit.MILLISECONDS);
                 }
             } catch (Exception e) {
-                log.warn("Error blacklisting token on logout: {}", e.getMessage());
+                log.warn("Lỗi đưa token vào danh sách đen khi đăng xuất: {}", e.getMessage());
             }
         }
 
@@ -254,38 +259,47 @@ public class AuthenticationServiceImpl implements IAuthenticationService {
 
     @Override
     public void sendCodeEmail(String email) throws MessagingException {
-        String cooldownKey = "cooldown:email:" + email;
+        if (email == null || email.isBlank()) {
+            throw new AppException(ErrorCode.INVALID_INPUT);
+        }
+        String normalizedEmail = email.trim().toLowerCase();
+
+        String cooldownKey = "cooldown:email:" + normalizedEmail;
         if (redisService.get(cooldownKey) != null) {
             throw new AppException(ErrorCode.RESEND_CODE_COOLDOWN);
         }
 
-        String userDataJson = redisService.get("register:" + email);
-        Optional<User> user = repository.findByEmail(email);
+        String userDataJson = redisService.get("register:" + normalizedEmail);
+        Optional<User> user = repository.findByEmail(normalizedEmail);
 
         if (userDataJson == null && user.isEmpty()) {
             throw new AppException(ErrorCode.USER_NOT_FOUND);
         }
 
+        if (user.isPresent() && user.get().getProvider() != null && user.get().getProvider() != Provider.LOCAL) {
+            throw new AppException(ErrorCode.OAUTH2_ACCOUNT_CANNOT_RESET_PASSWORD);
+        }
+
         String code = String.format("%06d", SECURE_RANDOM.nextInt(1_000_000));
 
-        emailService.sendVerificationCodeEmail(email, code);
+        emailService.sendVerificationCodeEmail(normalizedEmail, code);
 
-        redisService.set("code:" + email, code);
-        redisService.setTimeToLive("code:" + email, 5, TimeUnit.MINUTES);
+        redisService.set("code:" + normalizedEmail, code);
+        redisService.setTimeToLive("code:" + normalizedEmail, 5, TimeUnit.MINUTES);
 
         // Set cooldown 60s
         redisService.set(cooldownKey, "true");
         redisService.setTimeToLive(cooldownKey, OTP_COOLDOWN_SECONDS, TimeUnit.SECONDS);
 
         // Reset attempts count for new code
-        redisService.delete("otp_attempts:" + email);
+        redisService.delete("otp_attempts:" + normalizedEmail);
     }
 
 
     @Override
     @Transactional
     public AuthenticationResponse verifyCodeEmail(VerificationRequest request, HttpServletResponse response) {
-        log.info("Verifying code for email: {}", request.getEmail());
+        log.info("Đang xác thực mã OTP cho email: {}", request.getEmail());
 
         String email = request.getEmail();
         String redisCodeKey = "code:" + email;
@@ -301,7 +315,7 @@ public class AuthenticationServiceImpl implements IAuthenticationService {
         }
 
         String codeInRedis = redisService.get(redisCodeKey);
-        log.info("Verifying code from Redis for email: {}", email);
+        log.info("Đang kiểm tra mã OTP từ Redis cho email: {}", email);
 
         // 2. Kiểm tra mã OTP
         if (codeInRedis == null || !codeInRedis.equals(request.getCode())) {
@@ -401,7 +415,8 @@ public class AuthenticationServiceImpl implements IAuthenticationService {
                 .lastname(request.getLastName())
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
-                .role(request.getRole())
+                .role(request.getRole() != null ? request.getRole() : Role.USER)
+                .provider(Provider.LOCAL)
                 .mfaEnabled(request.isMfaEnabled())
                 .build();
     }

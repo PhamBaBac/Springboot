@@ -76,7 +76,8 @@ class UserServiceSecurityTest {
                 new TwoFactorAuthenticationService(),
                 null,
                 null,
-                fakeRedisService
+                fakeRedisService,
+                new UserCacheService(repository)
         );
 
         sampleUser = User.builder()

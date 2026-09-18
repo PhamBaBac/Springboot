@@ -39,7 +39,7 @@ public class CartController {
         }
         CartResponse cart = cartService.addToCart(request);
         return ApiResponse.<CartResponse>builder()
-                .message("Added to cart successfully")
+                .message("Thêm vào giỏ hàng thành công")
                 .data(cart)
                 .build();
     }
@@ -54,7 +54,7 @@ public class CartController {
         String userId = user != null ? user.getId() : null;
         CartResponse cart = cartService.updateCart(id, count, userId);
         return ApiResponse.<CartResponse>builder()
-                .message("Cart updated successfully")
+                .message("Cập nhật giỏ hàng thành công")
                 .data(cart)
                 .build();
     }
@@ -68,7 +68,7 @@ public class CartController {
         String userId = user != null ? user.getId() : null;
         cartService.deleteCart(id, userId);
         return ApiResponse.builder()
-                .message("Deleted cart item successfully")
+                .message("Xóa sản phẩm khỏi giỏ hàng thành công")
                 .build();
     }
 
@@ -81,7 +81,7 @@ public class CartController {
         String userId = user != null ? user.getId() : null;
         cartService.deleteCart(id, userId);
         return ApiResponse.builder()
-                .message("Deleted cart item successfully")
+                .message("Xóa sản phẩm khỏi giỏ hàng thành công")
                 .build();
     }
 
@@ -90,7 +90,7 @@ public class CartController {
         String userName = connectedUser.getName();
         List<CartResponse> cartItems = cartService.getUserCart(userName);
         return ApiResponse.<List<CartResponse>>builder()
-                .message("Fetched cart successfully")
+                .message("Lấy thông tin giỏ hàng thành công")
                 .data(cartItems)
                 .build();
     }
@@ -100,7 +100,7 @@ public class CartController {
                                                     @RequestParam String id) {
         CartResponse updatedCart = cartService.updateCartFull(request, id);
         return ApiResponse.<CartResponse>builder()
-                .message("Cart updated successfully")
+                .message("Cập nhật giỏ hàng thành công")
                 .data(updatedCart)
                 .build();
     }

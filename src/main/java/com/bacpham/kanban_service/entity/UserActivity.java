@@ -13,7 +13,10 @@ import lombok.experimental.FieldDefaults;
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @Entity
-@Table(name = "user_activity")
+@Table(name = "user_activity", indexes = {
+        @Index(name = "idx_activity_user_action_time", columnList = "user_id, action_type, created_at"),
+        @Index(name = "idx_activity_created_at", columnList = "created_at")
+})
 public class UserActivity extends BaseModel {
 
     @ManyToOne(fetch = FetchType.LAZY) // Dùng LAZY để tối ưu hiệu năng
@@ -21,7 +24,7 @@ public class UserActivity extends BaseModel {
     User user;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "action_type", nullable = false)
     ActionType actionType;
 
     // Lưu ID của Product hoặc SubProduct

@@ -73,7 +73,7 @@ public class PromotionController {
     @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<Void> deletePromotion(@PathVariable String id) {
         promotionService.deletePromotion(id);
-        return ApiResponse.<Void>builder().message("Deleted successfully").build();
+        return ApiResponse.<Void>builder().message("Xóa mã khuyến mãi thành công").build();
     }
 
     @GetMapping("/check/{code}")
@@ -83,7 +83,7 @@ public class PromotionController {
         boolean isValid = promotionService.isPromotionValid(code);
         return ApiResponse.<Boolean>builder()
                 .data(isValid)
-                .message(isValid ? "Promotion code is valid" : "Promotion code is invalid or expired")
+                .message(isValid ? "Mã khuyến mãi hợp lệ" : "Mã khuyến mãi không hợp lệ hoặc đã hết hạn")
                 .build();
     }
 
@@ -97,7 +97,7 @@ public class PromotionController {
         boolean applied = promotionService.applyPromotionCode(userId, code);
         return ApiResponse.<Boolean>builder()
                 .data(applied)
-                .message(applied ? "Promotion applied successfully" : "Promotion already used")
+                .message(applied ? "Áp dụng mã khuyến mãi thành công" : "Mã khuyến mãi đã được sử dụng")
                 .build();
     }
 

@@ -1,5 +1,6 @@
 package com.bacpham.kanban_service.dto.response;
 
+import com.bacpham.kanban_service.enums.Provider;
 import com.bacpham.kanban_service.enums.Role;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -18,4 +19,5 @@ public class UserResponse {
     private String avatarUrl;
     private Role role;
     private boolean mfaEnabled;
+    private Provider provider;
 }

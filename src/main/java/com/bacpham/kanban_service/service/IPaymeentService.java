@@ -12,7 +12,7 @@ import java.util.Map;
  * Toan bo business logic tao URL, verify hash duoc chuyen xuong day.
  * Tuan thu DIP: Controller phu thuoc vao interface nay.
  */
-public interface IVNPayService {
+public interface IPaymeentService {
 
     /**
      * Tao URL thanh toan VNPay tu don hang.

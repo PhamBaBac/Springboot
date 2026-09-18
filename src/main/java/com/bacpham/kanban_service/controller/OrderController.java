@@ -38,7 +38,7 @@ public class OrderController {
 
         oderService.createOrderFromSelectedItems(userId, paymentType, request);
        return  ApiResponse.builder()
-               .message("Bill created successfully")
+               .message("Tạo đơn hàng thành công")
                .build();
     }
     @GetMapping("/listOrders")
@@ -50,7 +50,7 @@ public class OrderController {
         String userId = user.getId();
         return ApiResponse.<List<OrderResponse>>builder()
                 .data(oderService.getOrdersByUserId(userId))
-                .message("Bill retrieved successfully")
+                .message("Lấy danh sách đơn hàng thành công")
                 .build();
     }
     @GetMapping("/all")
@@ -61,7 +61,7 @@ public class OrderController {
     ) {
         return ApiResponse.<PageResponse<OrderDetailResponse>>builder()
                 .data(oderService.getPagedAllOrders(page, pageSize))
-                .message("All oders retrieved successfully")
+                .message("Lấy toàn bộ danh sách đơn hàng thành công")
                 .build();
     }
 
@@ -76,7 +76,7 @@ public class OrderController {
 
         oderService.cancelOrder(userId, orderId);
         return ApiResponse.builder()
-                .message("Order cancelled successfully")
+                .message("Hủy đơn hàng thành công")
                 .build();
     }
 
@@ -92,7 +92,7 @@ public class OrderController {
         OrderDetailResponse orderDetail = oderService.getOrderById(userId, orderId);
         return ApiResponse.<OrderDetailResponse>builder()
                 .data(orderDetail)
-                .message("Order retrieved successfully")
+                .message("Lấy thông tin đơn hàng thành công")
                 .build();
     }
 
@@ -107,7 +107,7 @@ public class OrderController {
 
         oderService.deleteOrder(userId, orderId);
         return ApiResponse.builder()
-                .message("Order deleted successfully")
+                .message("Xóa đơn hàng thành công")
                 .build();
     }
 
@@ -117,10 +117,10 @@ public class OrderController {
             @PathVariable String orderId,
             @RequestBody UpdateStatusOrder status
     ) {
-        log.info("Updating order status for orderId: {} to status: {}", orderId, status);
+        log.info("Cập nhật trạng thái đơn hàng {}: {}", orderId, status);
         oderService.updateOrderStatus(orderId, status);
         return ApiResponse.builder()
-                .message("Order status updated successfully")
+                .message("Cập nhật trạng thái đơn hàng thành công")
                 .build();
     }
 

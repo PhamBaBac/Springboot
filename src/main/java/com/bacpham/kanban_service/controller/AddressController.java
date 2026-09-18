@@ -33,7 +33,7 @@ public class AddressController {
                 AddressResponse address = addressService.createAddress(request, userId);
                 return ApiResponse.<AddressResponse>builder()
                                 .data(address)
-                                .message("Address created successfully")
+                                .message("Tạo địa chỉ thành công")
                                 .build();
         }
 
@@ -44,7 +44,7 @@ public class AddressController {
                 String userId = user.getId();
                 List<AddressResponse> addresses = addressService.getAddresses(userId);
                 return ApiResponse.<List<AddressResponse>>builder()
-                                .message("Fetched cart successfully")
+                                .message("Lấy danh sách địa chỉ thành công")
                                 .data(addresses)
                                 .build();
         }

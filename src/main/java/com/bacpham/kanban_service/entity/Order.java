@@ -10,7 +10,12 @@ import lombok.*;
 import java.util.List;
 
 @Entity
-@Table(name = "orders") // Changed from "order" to "orders"
+@Table(name = "orders", indexes = {
+        @Index(name = "idx_orders_user_deleted_hidden", columnList = "user_id, deleted, customer_hidden"),
+        @Index(name = "idx_orders_tracking_code", columnList = "tracking_code"),
+        @Index(name = "idx_orders_status_deleted", columnList = "order_status, deleted"),
+        @Index(name = "idx_orders_deleted_created", columnList = "deleted, created_at")
+})
 @Getter
 @Setter
 @NoArgsConstructor
@@ -26,14 +31,20 @@ public class Order extends BaseModel {
     private Address address;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "order_status")
     private OrderStatus orderStatus;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "payment_type")
     private PaymentType paymentType;
 
     private double total;
     private String cancelReason;
+
+    @Column(name = "tracking_code")
     private String trackingCode;     // Mã vận đơn GHN (vd: "L5G7S1")
+
+    @Column(name = "shipping_status")
     private String shippingStatus;   // Trạng thái vận chuyển GHN
 
     @Builder.Default

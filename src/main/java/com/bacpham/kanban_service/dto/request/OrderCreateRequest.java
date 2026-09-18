@@ -12,4 +12,5 @@ public class OrderCreateRequest {
     private String addressId;
     private List<OrderItemRequest> items;
     private String code;
+    private String paymentType;
 }

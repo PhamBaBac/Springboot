@@ -88,6 +88,13 @@ application:
     return-url: ${VNPAY_RETURN_URL:http://localhost:8080/api/v1/payment/vnpay-return}
     tmn-code: ${VNPAY_TMN_CODE:7VS65JJC}
     hash-secret: ${VNPAY_HASH_SECRET:PISJVMJHTRJOLOGZFKOTAERXRKTYFNKP}
+  momo:
+    pay-url: ${MOMO_PAY_URL:https://test-payment.momo.vn/v2/gateway/api/create}
+    return-url: ${MOMO_RETURN_URL:http://localhost:8080/api/v1/payment/momo-return}
+    ipn-url: ${MOMO_IPN_URL:http://localhost:8080/api/v1/payment/momo-return}
+    partner-code: ${MOMO_PARTNER_CODE:MOMO}
+    access-key: ${MOMO_ACCESS_KEY:F8BBA842ECF85}
+    secret-key: ${MOMO_SECRET_KEY:K951B6PE1waDMi640xX0huTrY0hs6AHQ}
   ghn:
     base-url: ${GHN_BASE_URL:https://dev-online-gateway.ghn.vn/shiip/public-api}
     token: ${GHN_TOKEN:e0578753-b28e-11f1-a973-aee5264794df}

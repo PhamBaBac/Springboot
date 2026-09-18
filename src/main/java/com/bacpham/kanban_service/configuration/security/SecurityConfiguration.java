@@ -36,6 +36,8 @@ public class SecurityConfiguration {
             "/api/v1/redisCarts/**",
             "/api/v1/public/categories/**",
             "/api/v1/payment/vnpay-return",
+            "/api/v1/payment/momo-return",
+            "/api/v1/payment/callback/**",
             "/api/v1/public/products/**",
             "/api/v1/shipping/**",
             "/oauth2/**",

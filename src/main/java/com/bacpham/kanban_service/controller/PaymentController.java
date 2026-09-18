@@ -4,12 +4,15 @@ import com.bacpham.kanban_service.configuration.redis.GenericRedisService;
 import com.bacpham.kanban_service.dto.request.ApiResponse;
 import com.bacpham.kanban_service.dto.request.OrderCreateRequest;
 import com.bacpham.kanban_service.dto.response.PaymentResponse;
+import com.bacpham.kanban_service.enums.PaymentType;
 import com.bacpham.kanban_service.helper.exception.AppException;
 import com.bacpham.kanban_service.helper.exception.ErrorCode;
 import com.bacpham.kanban_service.repository.UserRepository;
 import com.bacpham.kanban_service.entity.User;
 import com.bacpham.kanban_service.service.IOrderService;
-import com.bacpham.kanban_service.service.IVNPayService;
+import com.bacpham.kanban_service.strategy.payment.PaymentCallbackResult;
+import com.bacpham.kanban_service.strategy.payment.PaymentStrategy;
+import com.bacpham.kanban_service.strategy.payment.PaymentStrategyRegistry;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,20 +26,22 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
- * PaymentVNPayController sau khi refactor theo SRP:
- * - Chi xu ly HTTP request / response.
- * - Delegate business logic (tao URL, verify hash, tinh tien) sang IVNPayService.
- * - Delegate tao order sang IOrderService.
+ * PaymentController áp dụng Strategy Pattern & Registry Pattern:
+ * - Tuân thủ Open/Closed Principle (OCP): Có thể mở rộng thêm MoMo, ZaloPay, Stripe mà không cần sửa Controller.
+ * - Tuân thủ Dependency Inversion Principle (DIP): Phụ thuộc vào PaymentStrategy & PaymentStrategyRegistry.
+ * - Tuân thủ Single Responsibility Principle (SRP):
+ *     + Xử lý HTTP request/response & điều hướng thanh toán.
+ *     + Tái sử dụng quy trình hậu xử lý callback (idempotency, tạo order, dọn dẹp Redis) cho tất cả các cổng.
  */
 @Slf4j
 @Controller
 @RequestMapping("/api/v1/payment")
 @RequiredArgsConstructor
-public class PaymentVNPayController {
+public class PaymentController {
 
     private final UserRepository userRepository;
     private final IOrderService orderService;
-    private final IVNPayService vnPayService;
+    private final PaymentStrategyRegistry paymentStrategyRegistry;
     private final GenericRedisService<String, String, OrderCreateRequest> redisServiceOrder;
     private final GenericRedisService<String, String, String> redisService;
 
@@ -44,30 +49,61 @@ public class PaymentVNPayController {
     @ResponseBody
     public ApiResponse<PaymentResponse> createPayment(
             @RequestBody OrderCreateRequest request,
+            @RequestParam(value = "type", required = false) String typeParam,
             HttpServletRequest httpRequest,
             @AuthenticationPrincipal UserDetails userDetails) {
 
         User user = userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
-        PaymentResponse paymentResponse = vnPayService.createPaymentUrl(request, user.getId(), httpRequest);
+        String paymentTypeStr = typeParam != null ? typeParam : request.getPaymentType();
+        PaymentStrategy strategy = paymentStrategyRegistry.getStrategyOrDefault(paymentTypeStr);
+
+        PaymentResponse paymentResponse = strategy.createPaymentUrl(request, user.getId(), httpRequest);
 
         return ApiResponse.<PaymentResponse>builder()
                 .code(200)
-                .message("Payment URL created successfully")
+                .message("Tạo đường dẫn thanh toán thành công")
                 .data(paymentResponse)
                 .build();
     }
 
+    /**
+     * Endpoint callback cho VNPay (giữ nguyên tương thích ngược 100%).
+     */
     @GetMapping("/vnpay-return")
-    public String vnpayReturn(
+    public String vnpayReturn(@RequestParam Map<String, String> params, Model model) {
+        return processCallback(paymentStrategyRegistry.getStrategy(PaymentType.VNPAY), params, model);
+    }
+
+    /**
+     * Endpoint callback cho MoMo.
+     */
+    @GetMapping("/momo-return")
+    public String momoReturn(@RequestParam Map<String, String> params, Model model) {
+        return processCallback(paymentStrategyRegistry.getStrategy(PaymentType.MOMO), params, model);
+    }
+
+    /**
+     * Endpoint callback động cho các cổng thanh toán tương lai (/callback/vnpay, /callback/momo, /callback/zalopay...).
+     */
+    @GetMapping("/callback/{gateway}")
+    public String dynamicCallback(
+            @PathVariable String gateway,
             @RequestParam Map<String, String> params,
             Model model) {
+        PaymentStrategy strategy = paymentStrategyRegistry.getStrategyOrDefault(gateway);
+        return processCallback(strategy, params, model);
+    }
 
-        log.info("VNPay return callback received: txnRef={}, responseCode={}",
-                params.get("vnp_TxnRef"), params.get("vnp_ResponseCode"));
+    /**
+     * Quy trình hậu xử lý callback dùng chung cho tất cả các cổng thanh toán.
+     */
+    private String processCallback(PaymentStrategy strategy, Map<String, String> params, Model model) {
+        PaymentType paymentType = strategy.getPaymentType();
+        log.info("Nhận callback thanh toán {} với tham số: {}", paymentType, params);
 
-        IVNPayService.VNPayCallbackResult result = vnPayService.handleCallback(params);
+        PaymentCallbackResult result = strategy.handleCallback(params);
 
         if (!result.signatureValid()) {
             model.addAttribute("message", result.message());
@@ -81,19 +117,18 @@ public class PaymentVNPayController {
         }
 
         if (result.success()) {
-            // A-7 Idempotency & Concurrency check:
-            // Nếu transaction đã hoàn tất trước đó (user bấm F5 refresh trang), chỉ hiển thị thông tin thành công, không tạo đơn lần 2
+            // Idempotency & Concurrency check: Tránh duplicate order khi người dùng F5 hoặc callback kép
             if (result.alreadyProcessed()) {
-                log.info("VNPay return already processed for txnRef: {}", result.txnRef());
+                log.info("Giao dịch {} cho mã tham chiếu {} đã được xử lý trước đó", paymentType, result.txnRef());
                 model.addAttribute("message", "Đơn hàng đã được ghi nhận và tạo thành công trước đó.");
                 model.addAttribute("transactionNo", result.transactionNo());
                 return "payment-result.html";
             }
 
-            // Tạo đơn hàng an toàn từ payload đã được validate bởi VNPayService
+            // Tạo đơn hàng an toàn từ payload đã được validate bởi Strategy
             if (result.orderRequest() != null && result.userId() != null) {
-                orderService.createOrderFromSelectedItems(result.userId(), "VNPAY", result.orderRequest());
-                log.info("Order successfully created for VNPay txnRef: {}, userId: {}", result.txnRef(), result.userId());
+                orderService.createOrderFromSelectedItems(result.userId(), paymentType.name(), result.orderRequest());
+                log.info("Đã tạo đơn hàng thành công cho cổng thanh toán {}, mã giao dịch: {}, người dùng: {}", paymentType, result.txnRef(), result.userId());
 
                 // Đánh dấu đã xử lý thành công (Idempotency key lưu trong 24h)
                 redisService.set("payment:processed:" + result.txnRef(), "COMPLETED");
@@ -107,9 +142,10 @@ public class PaymentVNPayController {
             model.addAttribute("message", result.message());
             model.addAttribute("transactionNo", result.transactionNo());
         } else {
-            log.warn("VNPay payment failed for txnRef: {}, responseCode: {}", result.txnRef(), params.get("vnp_ResponseCode"));
+            log.warn("Thanh toán {} thất bại cho mã giao dịch: {}", paymentType, result.txnRef());
             model.addAttribute("message", result.message());
-            model.addAttribute("responseCode", params.get("vnp_ResponseCode"));
+            String responseCode = params.getOrDefault("vnp_ResponseCode", params.getOrDefault("resultCode", "FAILED"));
+            model.addAttribute("responseCode", responseCode);
         }
 
         return "payment-result.html";

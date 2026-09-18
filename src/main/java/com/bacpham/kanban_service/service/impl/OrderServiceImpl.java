@@ -240,12 +240,12 @@ public class OrderServiceImpl implements IOrderService {
 
         // Nếu đơn hàng đã ở trạng thái CANCELLED (idempotent), trả về thành công ngay để tránh lỗi khi click đúp
         if (order.getOrderStatus() == OrderStatus.CANCELLED) {
-            log.info("Order {} is already CANCELLED, returning success.", orderId);
+            log.info("Đơn hàng {} đã ở trạng thái ĐÃ HỦY, trả về thành công.", orderId);
             return;
         }
 
         if (order.getOrderStatus() != OrderStatus.PENDING) {
-            log.warn("Cannot cancel order {}: current status in DB is {}", orderId, order.getOrderStatus());
+            log.warn("Không thể hủy đơn hàng {}: trạng thái hiện tại là {}", orderId, order.getOrderStatus());
             throw new AppException(ErrorCode.CANNOT_CANCEL_ORDER);
         }
 
@@ -255,7 +255,7 @@ public class OrderServiceImpl implements IOrderService {
         inventoryRestocker.restockOrderItems(order);
 
         orderRepository.save(order);
-        log.info("Order {} cancelled successfully by user {}", orderId, userId);
+        log.info("Đơn hàng {} đã được hủy thành công bởi người dùng {}", orderId, userId);
     }
 
     @Override
@@ -263,7 +263,7 @@ public class OrderServiceImpl implements IOrderService {
         userRepository.findById(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
-        Order order = orderRepository.findById(orderId)
+        Order order = orderRepository.findByIdWithDetails(orderId)
                 .orElseThrow(() -> new AppException(ErrorCode.BILL_NOT_FOUND));
 
         if (!order.getUser().getId().equals(userId)) {
@@ -294,7 +294,7 @@ public class OrderServiceImpl implements IOrderService {
     @Override
     @Transactional
     public void updateOrderStatus(String orderId, UpdateStatusOrder status) {
-        log.info("Updating order status for orderId: {} to status: {}", orderId, status);
+        log.info("Đang cập nhật trạng thái đơn hàng {}: {}", orderId, status);
 
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new AppException(ErrorCode.BILL_NOT_FOUND));
@@ -312,7 +312,7 @@ public class OrderServiceImpl implements IOrderService {
 
         if (newStatus != oldStatus) {
             if (!isValidStatusTransition(oldStatus, newStatus)) {
-                log.warn("Invalid order status transition from {} to {} for orderId: {}", oldStatus, newStatus, orderId);
+                log.warn("Chuyển đổi trạng thái đơn hàng không hợp lệ từ {} sang {} cho đơn hàng: {}", oldStatus, newStatus, orderId);
                 throw new AppException(ErrorCode.INVALID_ORDER_STATUS_TRANSITION);
             }
 
@@ -322,7 +322,7 @@ public class OrderServiceImpl implements IOrderService {
         }
 
         orderRepository.save(order);
-        log.info("Order {} updated successfully. Status: {}, TrackingCode: {}", orderId, order.getOrderStatus(), order.getTrackingCode());
+        log.info("Cập nhật đơn hàng {} thành công. Trạng thái: {}, Mã vận đơn: {}", orderId, order.getOrderStatus(), order.getTrackingCode());
     }
 
     private boolean isValidStatusTransition(OrderStatus from, OrderStatus to) {
@@ -342,10 +342,10 @@ public class OrderServiceImpl implements IOrderService {
         try {
             int restoredCount = orderRepository.recoverDeletedOrders();
             if (restoredCount > 0) {
-                log.info("Restored {} orders that were previously marked deleted to customerHidden=true, deleted=false", restoredCount);
+                log.info("Đã phục hồi {} đơn hàng bị xóa trước đó sang customerHidden=true, deleted=false", restoredCount);
             }
         } catch (Exception e) {
-            log.warn("Could not recover previously deleted orders: {}", e.getMessage());
+            log.warn("Không thể phục hồi các đơn hàng đã bị xóa trước đó: {}", e.getMessage());
         }
     }
 }

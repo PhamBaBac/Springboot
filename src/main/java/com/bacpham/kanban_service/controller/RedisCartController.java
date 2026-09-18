@@ -21,11 +21,11 @@ public class RedisCartController {
 
     @PostMapping
     public ApiResponse<?> addToCart(@RequestBody CartCreateRequest request) {
-        log.info("Creating new promotion with request: {}", request.toString());
+        log.info("Thêm sản phẩm vào giỏ hàng Redis: {}", request.toString());
 
         redisCartService.addToCart(request.getCreatedBy(), request);
         return ApiResponse.builder()
-                .message("Added to cart successfully")
+                .message("Thêm vào giỏ hàng thành công")
                 .build();
     }
 
@@ -33,7 +33,7 @@ public class RedisCartController {
     public ApiResponse<List<CartResponse>> getCart(@RequestParam String sessionId) {
         List<CartResponse> cart = redisCartService.getCart(sessionId);
         return ApiResponse.<List<CartResponse>>builder()
-                .message("Fetched cart from Redis")
+                .message("Lấy giỏ hàng thành công")
                 .data(cart)
                 .build();
     }
@@ -42,7 +42,7 @@ public class RedisCartController {
     public ApiResponse<?> clearCart(@RequestParam String sessionId) {
         redisCartService.clearCart(sessionId);
         return ApiResponse.builder()
-                .message("Cart cleared")
+                .message("Đã làm trống giỏ hàng")
                 .build();
     }
 
@@ -53,7 +53,7 @@ public class RedisCartController {
     ) {
         redisCartService.updateCart(id, count);
         return ApiResponse.builder()
-                .message("Cart updated successfully")
+                .message("Cập nhật giỏ hàng thành công")
                 .build();
     }
     @DeleteMapping("/remove")
@@ -63,7 +63,7 @@ public class RedisCartController {
     ) {
         redisCartService.deleteOneCartItem(sessionId, cartId);
         return ApiResponse.builder()
-                .message("Deleted cart item successfully")
+                .message("Xóa sản phẩm khỏi giỏ hàng thành công")
                 .build();
     }
 
@@ -75,7 +75,7 @@ public class RedisCartController {
     ) {
         CartResponse updatedCart = redisCartService.updateCartFull(sessionId, currentSubProductId, updatedRequest);
         return ApiResponse.<CartResponse>builder()
-                .message("Cart updated successfully")
+                .message("Cập nhật giỏ hàng thành công")
                 .data(updatedCart)
                 .build();
     }
@@ -86,7 +86,7 @@ public class RedisCartController {
     ) {
         redisCartService.syncToDatabase(sessionId, userId);
         return ApiResponse.builder()
-                .message("Cart synced to database successfully")
+                .message("Đồng bộ giỏ hàng thành công")
                 .build();
     }
 }
