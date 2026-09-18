@@ -12,6 +12,12 @@ public interface IGhnShippingService {
     ShippingTrackingResponse getTrackingDetail(String orderCode);
 
     /**
+     * Tra cứu hành trình vận đơn từ GHN theo orderId trong hệ thống
+     * (tự nội bộ tìm trackingCode từ DB rồi gọi GHN)
+     */
+    ShippingTrackingResponse getTrackingByOrderId(String orderId);
+
+    /**
      * Tự động tạo đơn giao hàng trên GHN Open API
      * @param order Đối tượng Order cần tạo vận đơn
      * @return Mã vận đơn (order_code) từ GHN
@@ -24,3 +30,4 @@ public interface IGhnShippingService {
      */
     void handleWebhookEvent(Map<String, Object> payload);
 }
+

@@ -5,8 +5,8 @@ import com.bacpham.kanban_service.dto.request.ChangePasswordRequest;
 import com.bacpham.kanban_service.dto.request.ResetPasswordRequest;
 import com.bacpham.kanban_service.dto.request.UserActiveRequest;
 import com.bacpham.kanban_service.dto.response.UserResponse;
+import com.bacpham.kanban_service.service.IUserService;
 import com.bacpham.kanban_service.service.UserActivityService;
-import com.bacpham.kanban_service.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -21,7 +21,7 @@ import java.security.Principal;
 @Slf4j
 public class UserController {
 
-    private final UserService service;
+    private final IUserService service;
     private final UserActivityService userActivityService;
 
 

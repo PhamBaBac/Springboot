@@ -1,6 +1,9 @@
 package com.bacpham.kanban_service.service;
 
-import java.util.List;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.temporal.WeekFields;
+import java.util.*;
 
 import org.springframework.stereotype.Service;
 
@@ -24,7 +27,7 @@ import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
-public class StatisticsService {
+public class StatisticsService implements IStatisticsService {
     private final SupplierRepository supplierRepository;
     private final ProductRepository productRepository;
     private final OrderRepository orderRepository;
@@ -32,6 +35,7 @@ public class StatisticsService {
     private final SubProductRepository subProductRepository;
     private final StatisticsMapper statisticsMapper;
 
+    @Override
     public StatisticsResponse getStatistics() {
         // Get counts
         long supplierCount = supplierRepository.count();
@@ -71,6 +75,7 @@ public class StatisticsService {
                 .build();
     }
 
+    @Override
     public StatisticsTopSellingLowQuantityResponse getTopSellingAndLowQuantity() {
         // 1) Lấy top 5 sản phẩm con bán chạy nhất (đã gộp từ JPQL)
         List<SubProductSellingInfo> topSelling =
@@ -87,4 +92,58 @@ public class StatisticsService {
                 .build();
     }
 
-}
+    /**
+     * Thống kê đơn hàng theo khoảng thời gian (weekly/monthly/yearly).
+     * Logic được chuyển từ Controller xuống Service để tuân thủ SRP.
+     */
+    @Override
+    public List<Map<String, Object>> getOrderPurchaseStatistics(String timeType) {
+        List<Order> orders = orderRepository.findAll().stream()
+                .filter(order -> !Boolean.TRUE.equals(order.getDeleted())
+                        && order.getOrderStatus() == OrderStatus.COMPLETED)
+                .toList();
+
+        Map<String, List<Order>> groupedOrders = new HashMap<>();
+        for (Order order : orders) {
+            LocalDate createdAt = order.getCreatedAt().toInstant()
+                    .atZone(ZoneId.systemDefault())
+                    .toLocalDate();
+
+            String key;
+            if ("weekly".equalsIgnoreCase(timeType)) {
+                WeekFields weekFields = WeekFields.ISO;
+                int weekNumber = createdAt.get(weekFields.weekOfWeekBasedYear());
+                key = createdAt.getYear() + "-W" + weekNumber;
+            } else if ("yearly".equalsIgnoreCase(timeType)) {
+                key = String.valueOf(createdAt.getYear());
+            } else { // default monthly
+                key = createdAt.getYear() + "-" + String.format("%02d", createdAt.getMonthValue());
+            }
+            groupedOrders.computeIfAbsent(key, k -> new ArrayList<>()).add(order);
+        }
+
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Map.Entry<String, List<Order>> entry : groupedOrders.entrySet()) {
+            String date = entry.getKey();
+            List<Order> orderList = entry.getValue();
+
+            int orderCount = orderList.size();
+            double purchaseTotal = orderList.stream()
+                    .mapToDouble(Order::getTotal)
+                    .sum();
+
+            Map<String, Object> data = new HashMap<>();
+            data.put("orders", orderCount);
+            data.put("purchase", purchaseTotal);
+
+            Map<String, Object> dataMap = new HashMap<>();
+            dataMap.put("date", date);
+            dataMap.put("data", data);
+
+            result.add(dataMap);
+        }
+
+        result.sort(Comparator.comparing(m -> (String) m.get("date")));
+        return result;
+    }
+}

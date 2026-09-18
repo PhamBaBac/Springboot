@@ -2,10 +2,8 @@ package com.bacpham.kanban_service.controller;
 
 import com.bacpham.kanban_service.dto.request.ApiResponse;
 import com.bacpham.kanban_service.dto.response.ShippingTrackingResponse;
-import com.bacpham.kanban_service.entity.Order;
 import com.bacpham.kanban_service.helper.exception.AppException;
 import com.bacpham.kanban_service.helper.exception.ErrorCode;
-import com.bacpham.kanban_service.repository.OrderRepository;
 import com.bacpham.kanban_service.service.IGhnShippingService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,7 +19,6 @@ import java.util.Map;
 public class ShippingController {
 
     private final IGhnShippingService ghnShippingService;
-    private final OrderRepository orderRepository;
 
     @GetMapping("/tracking/{trackingCode}")
     public ApiResponse<ShippingTrackingResponse> getTrackingByCode(@PathVariable String trackingCode) {
@@ -34,16 +31,12 @@ public class ShippingController {
 
     @GetMapping("/order/{orderId}")
     public ApiResponse<ShippingTrackingResponse> getTrackingByOrderId(@PathVariable String orderId) {
-        Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new AppException(ErrorCode.BILL_NOT_FOUND));
+        ShippingTrackingResponse tracking = ghnShippingService.getTrackingByOrderId(orderId);
 
-        if (order.getTrackingCode() == null || order.getTrackingCode().trim().isEmpty()) {
-            return ApiResponse.<ShippingTrackingResponse>builder()
-                    .message("Đơn hàng chưa có mã vận đơn")
-                    .build();
+        if (tracking == null) {
+            throw new AppException(ErrorCode.BILL_NOT_FOUND);
         }
 
-        ShippingTrackingResponse tracking = ghnShippingService.getTrackingDetail(order.getTrackingCode());
         return ApiResponse.<ShippingTrackingResponse>builder()
                 .data(tracking)
                 .message("Tra cứu vận đơn thành công")
@@ -64,3 +57,4 @@ public class ShippingController {
         return ResponseEntity.ok(Map.of("code", 200, "message", "Success"));
     }
 }
+

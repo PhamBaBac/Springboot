@@ -12,6 +12,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestTemplate;
 
 import com.bacpham.kanban_service.auditing.ApplicationAuditAware;
 import com.bacpham.kanban_service.helper.exception.AppException;
@@ -61,5 +62,14 @@ public class ApplicationConfig {
         return RestClient.builder()
                 .baseUrl("https://generativelanguage.googleapis.com")
                 .build();
+    }
+
+    /**
+     * RestTemplate bean dùng cho các HTTP call ra ngoài (GHN, v.v.)
+     * Khai báo ở đây để tuân thủ Dependency Inversion Principle.
+     */
+    @Bean
+    public RestTemplate restTemplate() {
+        return new RestTemplate();
     }
 }

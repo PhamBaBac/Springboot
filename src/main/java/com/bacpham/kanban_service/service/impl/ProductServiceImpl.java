@@ -41,6 +41,7 @@ public class ProductServiceImpl implements IProductService {
     OrderItemRepository orderItemRepository;
     // Change the redisService declaration
     GenericRedisService<String, String, PageResponse<ProductResponse>> redisService;
+    @Override
     public ProductResponse createProduct(ProductCreationRequest request) {
         log.info("Creating product with request: {}", request.toString());
         Product product = productMapper.toProduct(request);
@@ -65,11 +66,13 @@ public class ProductServiceImpl implements IProductService {
     }
 
 
+    @Override
     public List<ProductResponse> getProducts() {
         return productRepository.findAll().stream()
                 .map(productMapper::toProductResponse)
                 .collect(Collectors.toList());
     }
+    @Override
     public PageResponse<ProductResponse> getProductPage(int page, int pageSize, String title) {
         if (title != null && !title.isEmpty()) {
             Sort sort = Sort.by("createdAt").descending();
@@ -115,6 +118,7 @@ public class ProductServiceImpl implements IProductService {
     }
 
 
+    @Override
     public void deleteProduct(String id) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_FOUND));
@@ -126,8 +130,9 @@ public class ProductServiceImpl implements IProductService {
         redisService.deleteKeysMatching("product:page:*");
     }
 
+    @Override
     public ProductResponse getProductById(String slug, String id) {
-log.info("Retrieving product with id: {}", id);
+        log.info("Retrieving product with id: {}", id);
         Product product = productRepository.findById(id).orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_FOUND));
         return productMapper.toProductResponse(product);
 
@@ -135,6 +140,7 @@ log.info("Retrieving product with id: {}", id);
     }
 
 
+    @Override
     public ProductResponse updateProduct(String id, ProductCreationRequest request) {
         log.info("Updating product with id: {}, request: {}", id, request);
         Product product = productRepository.findById(id)

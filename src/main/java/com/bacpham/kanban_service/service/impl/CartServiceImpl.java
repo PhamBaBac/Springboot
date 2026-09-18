@@ -121,6 +121,7 @@ public class CartServiceImpl implements ICartService {
         cart.setCount(cart.getCount() + countToAddOrUpdate);
         cartRepository.save(cart);
     }
+    @Override
     public CartResponse updateCartFull(CartUpdateRequest request, String id) {
         log.info("cart update full id: {} ", id);
 

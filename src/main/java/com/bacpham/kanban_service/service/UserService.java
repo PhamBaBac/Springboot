@@ -24,13 +24,15 @@ import lombok.extern.slf4j.Slf4j;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class UserService {
+public class UserService implements IUserService {
 
     private final PasswordEncoder passwordEncoder;
     private final UserRepository repository;
     private final TwoFactorAuthenticationService tfaService;
     private final UserMapper userMapper;
-    private  final EmailService emailService;
+    private final EmailService emailService;
+
+    @Override
     public void changePassword(ChangePasswordRequest request, Principal connectedUser) {
 
         var user = (User) ((UsernamePasswordAuthenticationToken) connectedUser).getPrincipal();
@@ -46,6 +48,7 @@ public class UserService {
 
         repository.save(user);
     }
+    @Override
     public String getSecretImageUriByEmail(String email) {
         User user = repository.findByEmail(email)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
@@ -64,11 +67,13 @@ public class UserService {
         return secretImageUri;
     }
 
+    @Override
     public UserResponse getUserByEmail(String email) {
         return repository.findByEmail(email)
                 .map(userMapper::toUserResponse)
                 .orElse(null);
     }
+    @Override
     public void disableTfaForUser(String email) {
         User user = repository.findByEmail(email)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
@@ -78,6 +83,7 @@ public class UserService {
 
         repository.save(user);
     }
+    @Override
     @Transactional
     public void resetPassword(ResetPasswordRequest request) {
         User user = repository.findByEmail(request.getEmail())
