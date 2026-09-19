@@ -15,4 +15,5 @@ public interface CategoryRepository extends JpaRepository<Category, String> {
     Page<Category> findAllByDeletedFalse(Pageable pageable);
     List<Category> findAllByDeletedFalse();
     Set<Category> findByTitleIn(Collection<String> titles);
+    List<Category> findByParentIdAndDeletedFalse(String parentId);
 }

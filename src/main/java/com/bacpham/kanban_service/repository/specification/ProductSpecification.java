@@ -3,6 +3,7 @@ package com.bacpham.kanban_service.repository.specification;
 import com.bacpham.kanban_service.entity.Category;
 import com.bacpham.kanban_service.entity.Product;
 import com.bacpham.kanban_service.entity.SubProduct;
+import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
@@ -32,9 +33,11 @@ public class ProductSpecification {
 
             if (categoryIds != null && !categoryIds.isEmpty()) {
                 Join<Product, Category> categoryJoin = root.join("categories", JoinType.INNER);
+                // resolveAllCategoryIds() trong ProductServiceImpl đã expand toàn bộ ID con cháu.
+                // Chỉ cần match chính xác theo id hoặc slug — không cần parentId IN nữa.
                 predicates.add(cb.or(
                         categoryJoin.get("id").in(categoryIds),
-                        categoryJoin.get("parentId").in(categoryIds)
+                        categoryJoin.get("slug").in(categoryIds)
                 ));
             }
 
@@ -69,11 +72,23 @@ public class ProductSpecification {
                 if (hasColors) {
                     predicates.add(subProductJoin.get("color").in(colors));
                 }
-                if (hasMinPrice) {
-                    predicates.add(cb.greaterThanOrEqualTo(subProductJoin.get("price"), minPrice));
-                }
-                if (hasMaxPrice) {
-                    predicates.add(cb.lessThanOrEqualTo(subProductJoin.get("price"), maxPrice));
+
+                if (hasMinPrice || hasMaxPrice) {
+                    Expression<Double> effectivePrice = cb.selectCase()
+                            .when(cb.and(
+                                    cb.isNotNull(subProductJoin.get("discount")),
+                                    cb.gt(subProductJoin.get("discount"), 0),
+                                    cb.lt(subProductJoin.get("discount"), subProductJoin.get("price"))
+                            ), subProductJoin.get("discount"))
+                            .otherwise(subProductJoin.get("price"))
+                            .as(Double.class);
+
+                    if (hasMinPrice) {
+                        predicates.add(cb.greaterThanOrEqualTo(effectivePrice, minPrice));
+                    }
+                    if (hasMaxPrice) {
+                        predicates.add(cb.lessThanOrEqualTo(effectivePrice, maxPrice));
+                    }
                 }
             }
 

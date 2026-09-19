@@ -22,8 +22,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -80,6 +84,68 @@ public class CategoryServiceImpl implements ICategoryService {
                 .totalElements(pageData.getTotalElements())
                 .data(pageData.getContent().stream().map(categoryMapper::toCategoryResponse).toList())
                 .build();
+    }
+
+    @Override
+    public List<CategoryResponse> getCategoryBranch(String categoryId) {
+        if (categoryId == null || categoryId.trim().isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        Optional<Category> optCategory = categoryRepository.findById(categoryId.trim());
+        if (optCategory.isEmpty() || Boolean.TRUE.equals(optCategory.get().getDeleted())) {
+            // Thử tìm theo slug nếu không tìm thấy theo id
+            optCategory = categoryRepository.findAllByDeletedFalse().stream()
+                    .filter(c -> categoryId.trim().equalsIgnoreCase(c.getSlug()) || categoryId.trim().equalsIgnoreCase(c.getTitle()))
+                    .findFirst();
+            if (optCategory.isEmpty()) {
+                return Collections.emptyList();
+            }
+        }
+
+        // Truy ngược lên để tìm danh mục cha cao nhất (Root Parent)
+        Category current = optCategory.get();
+        Set<String> visited = new HashSet<>();
+        visited.add(current.getId());
+
+        while (current.getParentId() != null && !current.getParentId().trim().isEmpty()) {
+            String parentId = current.getParentId().trim();
+            if (visited.contains(parentId)) {
+                break; // Tránh loop vô tận nếu data bị circular
+            }
+            visited.add(parentId);
+            Optional<Category> parentOpt = categoryRepository.findById(parentId);
+            if (parentOpt.isPresent() && !Boolean.TRUE.equals(parentOpt.get().getDeleted())) {
+                current = parentOpt.get();
+            } else {
+                break;
+            }
+        }
+        Category rootCategory = current;
+
+        // Lấy danh mục cha gốc và tất cả các danh mục con cháu của nó
+        List<Category> branch = new ArrayList<>();
+        branch.add(rootCategory);
+        Set<String> visitedChildren = new HashSet<>();
+        visitedChildren.add(rootCategory.getId());
+        collectChildren(rootCategory.getId(), branch, visitedChildren);
+
+        return branch.stream()
+                .map(categoryMapper::toCategoryResponse)
+                .toList();
+    }
+
+    private void collectChildren(String parentId, List<Category> result, Set<String> visited) {
+        List<Category> children = categoryRepository.findByParentIdAndDeletedFalse(parentId);
+        if (children != null && !children.isEmpty()) {
+            for (Category child : children) {
+                if (child != null && child.getId() != null && !visited.contains(child.getId())) {
+                    visited.add(child.getId());
+                    result.add(child);
+                    collectChildren(child.getId(), result, visited);
+                }
+            }
+        }
     }
 
     @Transactional

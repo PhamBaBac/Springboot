@@ -36,5 +36,12 @@ public class PublicCategoryController {
                 .build();
     }
 
+    @GetMapping("/branch")
+    ApiResponse<List<CategoryResponse>> getCategoryBranch(@RequestParam("catId") String catId) {
+        return ApiResponse.<List<CategoryResponse>>builder()
+                .data(categoryService.getCategoryBranch(catId))
+                .build();
+    }
+
 
 }

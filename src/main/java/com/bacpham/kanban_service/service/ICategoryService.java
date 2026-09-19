@@ -14,6 +14,8 @@ public interface ICategoryService {
 
     PageResponse<CategoryResponse> getPageCategories(int page, int pageSize);
 
+    List<CategoryResponse> getCategoryBranch(String categoryId);
+
     void deleteCategory(String categoryId);
 
     CategoryResponse updateCategory(String categoryId, CategoryRequest request);

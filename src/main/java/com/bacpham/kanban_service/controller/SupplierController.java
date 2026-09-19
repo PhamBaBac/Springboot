@@ -27,10 +27,10 @@ import java.util.List;
 @RequiredArgsConstructor
 @FieldDefaults(makeFinal = true, level = lombok.AccessLevel.PRIVATE)
 @Slf4j
-@PreAuthorize("hasRole('ADMIN')")
 public class SupplierController {
      ISupplierService supplierService;
 
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/get-form")
     public SupplierFormDTO getSupplierForm() {
         List<FormItem> formItems = Arrays.asList(
@@ -54,6 +54,7 @@ public class SupplierController {
         return form;
     }
 
+     @PreAuthorize("hasRole('ADMIN')")
      @PostMapping("/add-new")
      ApiResponse<SupplierResponse> createSupplier(@RequestBody @Validated SupplierRequest request) {
          return ApiResponse.<SupplierResponse>builder()
@@ -61,6 +62,7 @@ public class SupplierController {
                  .build();
      }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/page")
     ApiResponse<PageResponse<SupplierResponse>> productPage(
             @RequestParam(value = "page", required = false, defaultValue = "1") int page,
@@ -71,18 +73,22 @@ public class SupplierController {
                 .build();
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/remove")
     ApiResponse<Void> deleteSupplier(@RequestParam (value = "id", required = false) String id) {
         supplierService.deleteSupplier(id);
         return ApiResponse.<Void>builder().build();
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/update/{id}")
     ApiResponse<SupplierResponse> updateSupplier(@PathVariable String id, @RequestBody SupplierRequest request) {
         return ApiResponse.<SupplierResponse>builder()
                 .data(supplierService.updateSupplier(id, request))
                 .build();
     }
+
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/export")
     public void exportSuppliersToExcel(
             HttpServletResponse response,

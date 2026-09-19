@@ -71,6 +71,7 @@ public class SecurityConfiguration {
                                         "/api/v1/promotions",
                                         "/api/v1/promotions/**",
                                         "/api/v1/subProducts/**",
+                                        "/api/v1/suppliers/**",
                                         "/api/v1/reviewProducts/**")
                                 .permitAll()
                                 .requestMatchers(HttpMethod.POST,
