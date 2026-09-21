@@ -25,6 +25,7 @@ public interface OrderMapper {
     @Mapping(source = "createdAt", target = "createdAt")
     OrderDetailResponse toOrderDetailResponse(Order order);
 
+    @Mapping(source = "id", target = "orderItemId")
     @Mapping(source = "order.id", target = "orderId")
     @Mapping(source = "subProduct.id", target = "subProductId")
     @Mapping(source = "subProduct.product.title", target = "title")

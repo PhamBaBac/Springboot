@@ -11,6 +11,7 @@ import org.springframework.data.jpa.domain.Specification;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 public class ProductSpecification {
 
@@ -42,15 +43,26 @@ public class ProductSpecification {
             }
 
             if (search != null && !search.trim().isEmpty()) {
-                String cleanSearch = search.trim().toLowerCase()
-                        .replace("\\", "\\\\")
-                        .replace("%", "\\%")
-                        .replace("_", "\\_");
-                predicates.add(cb.like(
-                        cb.lower(root.get("title")),
-                        "%" + cleanSearch + "%",
-                        '\\'
-                ));
+                Set<String> expandedKeywords = com.bacpham.kanban_service.utils.SearchSynonymUtils.expandKeywords(search);
+                List<Predicate> searchPredicates = new ArrayList<>();
+
+                for (String kw : expandedKeywords) {
+                    String cleanKw = kw.trim().toLowerCase()
+                            .replace("\\", "\\\\")
+                            .replace("%", "\\%")
+                            .replace("_", "\\_");
+
+                    // Khớp trong tiêu đề (title)
+                    searchPredicates.add(cb.like(cb.lower(root.get("title")), "%" + cleanKw + "%", '\\'));
+                    // Khớp trong slug
+                    searchPredicates.add(cb.like(cb.lower(root.get("slug")), "%" + cleanKw + "%", '\\'));
+                    // Khớp trong mô tả (description)
+                    searchPredicates.add(cb.like(cb.lower(root.get("description")), "%" + cleanKw + "%", '\\'));
+                }
+
+                if (!searchPredicates.isEmpty()) {
+                    predicates.add(cb.or(searchPredicates.toArray(new Predicate[0])));
+                }
             }
 
             boolean hasSizes = sizes != null && !sizes.isEmpty();

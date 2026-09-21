@@ -18,6 +18,7 @@ import java.util.Map;
 @Builder
 @ToString
 public class OrderResponse {
+    private String orderItemId;
     private String orderId;
     private String subProductId;
     private String image;

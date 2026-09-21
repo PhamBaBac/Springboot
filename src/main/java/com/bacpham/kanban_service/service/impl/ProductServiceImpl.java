@@ -41,6 +41,7 @@ public class ProductServiceImpl implements IProductService {
     OrderItemRepository orderItemRepository;
     // Change the redisService declaration
     GenericRedisService<String, String, PageResponse<ProductResponse>> redisService;
+
     @Override
     public ProductResponse createProduct(ProductCreationRequest request) {
         log.info("Creating product with request: {}", request.toString());
@@ -65,13 +66,13 @@ public class ProductServiceImpl implements IProductService {
         return productMapper.toProductResponse(product);
     }
 
-
     @Override
     public List<ProductResponse> getProducts() {
         return productRepository.findAll().stream()
                 .map(productMapper::toProductResponse)
                 .collect(Collectors.toList());
     }
+
     @Override
     public PageResponse<ProductResponse> getProductPage(int page, int pageSize, String title) {
         if (title != null && !title.isEmpty()) {
@@ -134,7 +135,6 @@ public class ProductServiceImpl implements IProductService {
         return response;
     }
 
-
     @Override
     public void deleteProduct(String id) {
         Product product = productRepository.findById(id)
@@ -150,12 +150,11 @@ public class ProductServiceImpl implements IProductService {
     @Override
     public ProductResponse getProductById(String slug, String id) {
         log.info("Retrieving product with id: {}", id);
-        Product product = productRepository.findById(id).orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_FOUND));
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_FOUND));
         return productMapper.toProductResponse(product);
 
-
     }
-
 
     @Override
     public ProductResponse updateProduct(String id, ProductCreationRequest request) {
@@ -168,7 +167,7 @@ public class ProductServiceImpl implements IProductService {
             Set<Category> categories = new HashSet<>(categoryRepository.findAllById(request.getCategories()));
             product.setCategories(categories);
         }
-        if ( request.getSupplierId() != null) {
+        if (request.getSupplierId() != null) {
             Supplier supplier = supplierRepository.findById(request.getSupplierId())
                     .orElseThrow(() -> new AppException(ErrorCode.SUPPLIER_NOT_FOUND));
             product.setSupplier(supplier);
@@ -188,8 +187,7 @@ public class ProductServiceImpl implements IProductService {
             List<String> sizes,
             List<String> colors,
             List<Double> priceRange,
-            Pageable pageable
-    ) {
+            Pageable pageable) {
         return getFilteredProducts(categoryIds, null, sizes, colors, priceRange, pageable);
     }
 
@@ -200,8 +198,7 @@ public class ProductServiceImpl implements IProductService {
             List<String> sizes,
             List<String> colors,
             List<Double> priceRange,
-            Pageable pageable
-    ) {
+            Pageable pageable) {
         if (categoryIds != null && categoryIds.isEmpty()) {
             categoryIds = null;
         }
@@ -216,9 +213,13 @@ public class ProductServiceImpl implements IProductService {
         }
 
         // Bước 1: Expand tất cả ID con cháu của các danh mục được chọn.
-        // Đảm bảo khi chọn danh mục cha, sản phẩm của tất cả danh mục con cũng được trả về.
-        // Bước 2: scope (categoryIds đã expand) được giữ nguyên — chỉ có price/size/color thêm vào.
-        List<String> resolvedCategoryIds = resolveAllCategoryIds(categoryIds);
+        // Đảm bảo khi chọn danh mục cha, sản phẩm của tất cả danh mục con cũng được trả
+        // về.
+        // Bước 2: Khi người dùng nhập từ khóa tìm kiếm (search), không bị giới hạn bởi
+        // category nữa (tìm kiếm toàn sàn).
+        List<String> resolvedCategoryIds = (search != null && !search.trim().isEmpty())
+                ? null
+                : resolveAllCategoryIds(categoryIds);
 
         Double minPrice = (priceRange != null && !priceRange.isEmpty()) ? priceRange.get(0) : null;
         Double maxPrice = (priceRange != null && priceRange.size() > 1) ? priceRange.get(1) : null;
@@ -229,8 +230,7 @@ public class ProductServiceImpl implements IProductService {
                 sizes,
                 colors,
                 minPrice,
-                maxPrice
-        );
+                maxPrice);
 
         Page<Product> filteredProductsPage = productRepository.findAll(spec, pageable);
         log.info("Filtered products page: {}", filteredProductsPage);
@@ -240,10 +240,13 @@ public class ProductServiceImpl implements IProductService {
 
     /**
      * BFS: Từ danh sách categoryIds ban đầu (có thể là cha/con), mở rộng ra tất cả
-     * các ID con cháu (descendant) để đảm bảo scope lọc bao phủ toàn bộ nhánh danh mục.
+     * các ID con cháu (descendant) để đảm bảo scope lọc bao phủ toàn bộ nhánh danh
+     * mục.
      *
-     * Ví dụ: catIds=["ao-dai-parent-id"] → resolve → ["ao-dai-parent-id", "ao-dai-co-dau-id", "ao-dai-tre-em-id", ...]
-     * Đảm bảo Bước 2 (lọc giá) luôn chạy trên đúng tập sản phẩm đã xác định ở Bước 1.
+     * Ví dụ: catIds=["ao-dai-parent-id"] → resolve → ["ao-dai-parent-id",
+     * "ao-dai-co-dau-id", "ao-dai-tre-em-id", ...]
+     * Đảm bảo Bước 2 (lọc giá) luôn chạy trên đúng tập sản phẩm đã xác định ở Bước
+     * 1.
      */
     private List<String> resolveAllCategoryIds(List<String> inputIds) {
         if (inputIds == null || inputIds.isEmpty()) {
@@ -262,6 +265,7 @@ public class ProductServiceImpl implements IProductService {
         }
         return new ArrayList<>(allIds);
     }
+
     @Override
     public List<ProductResponse> getListProductRecommendations(List<String> ids) {
         List<Product> products = productRepository.findAllById(ids);
@@ -269,6 +273,7 @@ public class ProductServiceImpl implements IProductService {
                 .map(productMapper::toProductResponse)
                 .toList();
     }
+
     @Override
     public List<ProductResponse> getBestSellers() {
         List<Object[]> result = orderItemRepository.findBestSellerProductIds();
@@ -281,6 +286,5 @@ public class ProductServiceImpl implements IProductService {
                 .map(productMapper::toProductResponse)
                 .collect(Collectors.toList());
     }
-
 
 }

@@ -3,6 +3,8 @@ package com.bacpham.kanban_service.utils.shipping;
 import com.bacpham.kanban_service.entity.Address;
 import com.bacpham.kanban_service.entity.Order;
 import com.bacpham.kanban_service.entity.OrderItem;
+import com.bacpham.kanban_service.entity.Shipment;
+import com.bacpham.kanban_service.entity.ShipmentItem;
 import com.bacpham.kanban_service.enums.PaymentType;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -22,6 +24,70 @@ import java.util.Map;
 @Component
 @Slf4j
 public class GhnOrderRequestBuilder {
+
+    /**
+     * Xay dung request body tu doi tuong Shipment (thong so thuc te dong goi)
+     */
+    public Map<String, Object> buildFromShipment(Shipment shipment) {
+        Order order = shipment.getOrder();
+        Map<String, Object> body = new HashMap<>();
+
+        body.put("payment_type_id", 2);
+        body.put("note", isNotBlank(shipment.getNote()) ? shipment.getNote() : ("Don hang " + (order.getId() != null ? order.getId() : "")));
+        body.put("required_note", isNotBlank(shipment.getRequiredNote()) ? shipment.getRequiredNote() : "CHOXEMHANGKHONGTHU");
+
+        // Dia chi kho gui hang cua Shop
+        body.put("from_name", "Kenny");
+        body.put("from_phone", "0989937030");
+        body.put("from_address", "123 Cau Giay, Ha Noi");
+        body.put("from_ward_code", "1A0101");
+        body.put("from_district_id", 1482);
+
+        // Dia chi nguoi nhan
+        buildRecipientAddress(body, order.getAddress(), order.getId());
+
+        // Tien thu ho COD
+        if (shipment.getCodAmount() != null) {
+            body.put("cod_amount", (int) Math.round(shipment.getCodAmount()));
+        } else if (order.getPaymentType() == PaymentType.COD) {
+            body.put("cod_amount", (int) Math.round(order.getTotal()));
+        } else {
+            body.put("cod_amount", 0);
+        }
+
+        // Kich thuoc & Trong luong thuc te tu Shipment
+        body.put("weight", shipment.getWeight() != null && shipment.getWeight() > 0 ? shipment.getWeight() : 500);
+        body.put("length", shipment.getLength() != null && shipment.getLength() > 0 ? shipment.getLength() : 20);
+        body.put("width", shipment.getWidth() != null && shipment.getWidth() > 0 ? shipment.getWidth() : 15);
+        body.put("height", shipment.getHeight() != null && shipment.getHeight() > 0 ? shipment.getHeight() : 10);
+        body.put("service_type_id", 2);
+
+        // Danh sach san pham trong kien hang
+        List<Map<String, Object>> items = new ArrayList<>();
+        if (shipment.getItems() != null && !shipment.getItems().isEmpty()) {
+            for (ShipmentItem sItem : shipment.getItems()) {
+                OrderItem oItem = sItem.getOrderItem();
+                String itemName = oItem != null ? resolveItemName(oItem) : "San pham";
+                int qty = sItem.getQuantity() != null ? sItem.getQuantity() : 1;
+                int price = (oItem != null && oItem.getPriceAtOrderTime() != null)
+                        ? oItem.getPriceAtOrderTime().intValue() : 0;
+
+                Map<String, Object> itemMap = new HashMap<>();
+                itemMap.put("name", itemName);
+                itemMap.put("quantity", qty);
+                itemMap.put("price", price);
+                items.add(itemMap);
+            }
+        } else {
+            buildItemList(body, order);
+        }
+
+        if (!items.isEmpty()) {
+            body.put("items", items);
+        }
+
+        return body;
+    }
 
     /**
      * Xay dung request body de tao van don GHN tu doi tuong Order.

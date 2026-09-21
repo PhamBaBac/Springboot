@@ -25,6 +25,7 @@ public class KanbanServiceApplication {
 	}
 
 	@Bean
+	@SuppressWarnings("null")
 	public CommandLineRunner commandLineRunner(UserRepository userRepository, PasswordEncoder passwordEncoder) {
 		return args -> {
 			if (userRepository.findByEmail("admin@mail.com").isEmpty()) {

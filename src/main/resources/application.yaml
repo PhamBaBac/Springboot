@@ -103,3 +103,4 @@ application:
 logging:
   level:
     org.springframework.security: ${LOG_LEVEL_SECURITY:INFO}
+    org.mongodb.driver: ${LOG_LEVEL_MONGODB:WARN}

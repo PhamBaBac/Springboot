@@ -1,7 +1,6 @@
 package com.bacpham.kanban_service.helper.exception;
 
 import lombok.AccessLevel;
-import lombok.Builder;
 import lombok.Getter;
 import lombok.experimental.FieldDefaults;
 import org.springframework.http.HttpStatus;
@@ -18,6 +17,13 @@ public enum ErrorCode {
     INVALID_KEY(1001, "Khóa hoặc trường dữ liệu không hợp lệ", HttpStatus.BAD_REQUEST),
     INVALID_INPUT(1002, "Dữ liệu đầu vào không hợp lệ", HttpStatus.BAD_REQUEST),
     UNKNOWN(1003, "Đã xảy ra lỗi không xác định", HttpStatus.INTERNAL_SERVER_ERROR),
+    DATABASE_CONNECTION_ERROR(1004, "Không thể kết nối đến cơ sở dữ liệu. Vui lòng kiểm tra lại kết nối mạng hoặc thử lại sau.", HttpStatus.SERVICE_UNAVAILABLE),
+    CONNECTION_TIMEOUT(1005, "Kết nối đến máy chủ hoặc dịch vụ quá thời gian chờ (Timeout). Vui lòng thử lại sau.", HttpStatus.GATEWAY_TIMEOUT),
+    NETWORK_CONNECTION_ERROR(1006, "Lỗi kết nối mạng hoặc máy chủ không phản hồi. Vui lòng thử lại sau.", HttpStatus.SERVICE_UNAVAILABLE),
+    EXTERNAL_SERVICE_ERROR(1007, "Lỗi kết nối đến dịch vụ bên thứ ba. Vui lòng thử lại sau.", HttpStatus.BAD_GATEWAY),
+    FILE_TOO_LARGE(1008, "Kích thước tập tin tải lên vượt quá giới hạn cho phép", HttpStatus.PAYLOAD_TOO_LARGE),
+    RESOURCE_NOT_FOUND(1009, "Không tìm thấy tài nguyên hoặc đường dẫn yêu cầu", HttpStatus.NOT_FOUND),
+    UNSUPPORTED_MEDIA_TYPE(1010, "Định dạng dữ liệu gửi lên (Content-Type) không được hỗ trợ", HttpStatus.UNSUPPORTED_MEDIA_TYPE),
 
     // ==================================================
     // 2xxx - User / Authentication
@@ -52,6 +58,7 @@ public enum ErrorCode {
     CATEGORY_NOT_FOUND(3003, "Không tìm thấy danh mục", HttpStatus.NOT_FOUND),
     SUPPLIER_NOT_FOUND(3004, "Không tìm thấy nhà cung cấp", HttpStatus.NOT_FOUND),
     PRODUCT_SLUG_NOT_MATCH(3005, "Đường dẫn định danh sản phẩm (slug) không khớp", HttpStatus.BAD_REQUEST),
+    MEDIA_NOT_FOUND(3006, "Không tìm thấy file hình ảnh", HttpStatus.NOT_FOUND),
 
     // ==================================================
     // 4xxx - Promotions
@@ -81,9 +88,12 @@ public enum ErrorCode {
     REVIEW_ALREADY_EXISTS_FOR_ORDER(6004, "Bạn đã gửi đánh giá cho đơn hàng này rồi", HttpStatus.BAD_REQUEST),
     REVIEW_REJECTED_BY_MODERATION(6005, "Nội dung đánh giá bị từ chối do vi phạm tiêu chuẩn cộng đồng", HttpStatus.BAD_REQUEST),
     // ==================================================
-    // 7xxx - Address / Delivery
+    // 7xxx - Address / Delivery / Shipment
     // ==================================================
-    ADDRESS_NOT_FOUND(7001, "Không tìm thấy thông tin địa chỉ", HttpStatus.NOT_FOUND);
+    ADDRESS_NOT_FOUND(7001, "Không tìm thấy thông tin địa chỉ", HttpStatus.NOT_FOUND),
+    SHIPMENT_NOT_FOUND(7002, "Không tìm thấy thông tin kiện hàng", HttpStatus.NOT_FOUND),
+    ORDER_ITEM_NOT_IN_ORDER(7003, "Sản phẩm không thuộc về đơn hàng này", HttpStatus.BAD_REQUEST),
+    INVALID_SHIPMENT_QUANTITY(7004, "Số lượng đóng gói vượt quá số lượng trong đơn hàng", HttpStatus.BAD_REQUEST);
 
     private final int code;
     private final String message;

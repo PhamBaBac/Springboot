@@ -10,6 +10,7 @@ import com.bacpham.kanban_service.dto.response.PageResponse;
 import com.bacpham.kanban_service.entity.*;
 import com.bacpham.kanban_service.enums.OrderStatus;
 import com.bacpham.kanban_service.enums.PaymentType;
+import com.bacpham.kanban_service.enums.Role;
 import com.bacpham.kanban_service.helper.exception.AppException;
 import com.bacpham.kanban_service.helper.exception.ErrorCode;
 import com.bacpham.kanban_service.mapper.OrderMapper;
@@ -276,18 +277,26 @@ public class OrderServiceImpl implements IOrderService {
     @Override
 
     public void deleteOrder(String userId, String orderId) {
-        userRepository.findById(userId)
+        User currentUser = userRepository.findById(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new AppException(ErrorCode.BILL_NOT_FOUND));
 
-        if (!order.getUser().getId().equals(userId)) {
+        boolean isAdmin = currentUser.getRole() == Role.ADMIN;
+
+        if (!isAdmin && !order.getUser().getId().equals(userId)) {
             throw new AppException(ErrorCode.UNAUTHORIZED);
         }
-        // Ẩn đơn hàng phía khách hàng, giữ lại đơn cho Admin và Thống kê
-        order.setCustomerHidden(true);
-        order.setDeleted(false);
+
+        if (isAdmin) {
+            // Admin xóa đơn hàng -> đánh dấu deleted = true để ẩn hoàn toàn khỏi danh sách quản lý
+            order.setDeleted(true);
+        } else {
+            // Khách hàng tự ẩn đơn hàng phía mình, giữ lại đơn cho Admin và Thống kê
+            order.setCustomerHidden(true);
+            order.setDeleted(false);
+        }
         orderRepository.save(order);
     }
 

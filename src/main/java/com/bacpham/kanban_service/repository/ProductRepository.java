@@ -130,6 +130,8 @@ public interface ProductRepository extends JpaRepository<Product, String>, JpaSp
 
     @Query("""
     SELECT new com.bacpham.kanban_service.dto.response.LowQuantityProductResponse(
+        p.id,
+        p.slug,
         p.title,
         SUM(sp.stock),
         p.images
@@ -137,7 +139,7 @@ public interface ProductRepository extends JpaRepository<Product, String>, JpaSp
     FROM Product p
     JOIN p.subProducts sp
     WHERE p.deleted = false
-    GROUP BY p.id, p.title, p.images
+    GROUP BY p.id, p.slug, p.title, p.images
     HAVING SUM(sp.stock) < 30
     ORDER BY SUM(sp.stock) ASC
 """)

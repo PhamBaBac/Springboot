@@ -90,6 +90,9 @@ public class SubProductServiceImpl implements ISubProductService {
                 .orElseThrow(() -> new AppException(ErrorCode.SUB_PRODUCT_NOT_FOUND));
 
         subProductMapper.updateSubProduct(subProduct, request);
+        if (request.getQty() != null) {
+            subProduct.setStock(request.getQty());
+        }
         syncAttributes(subProduct, request);
         subProduct = subProductRepository.save(subProduct);
 

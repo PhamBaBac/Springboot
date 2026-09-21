@@ -36,6 +36,7 @@ public class GhnShippingService implements IGhnShippingService {
     private String ghnShopId;
 
     private final OrderRepository orderRepository;
+    private final com.bacpham.kanban_service.repository.ShipmentRepository shipmentRepository;
     private final RestTemplate restTemplate; // Inject qua Spring DI (bean trong ApplicationConfig)
     private final GhnStatusMapper ghnStatusMapper; // Inject mapper de tuan thu SRP va OCP
     private final GhnOrderRequestBuilder ghnOrderRequestBuilder; // Inject builder de tuan thu SRP
@@ -193,7 +194,112 @@ public class GhnShippingService implements IGhnShippingService {
     }
 
     /**
-     * Xá»­ lÃ½ webhook tá»« GHN gá»­i vá» khi cÃ³ thay Ä‘á»•i tráº¡ng thÃ¡i hoáº·c dá»¯ liá»‡u váº­n Ä‘Æ¡n
+     * Tạo vận đơn trên GHN từ đối tượng Shipment (kê khai cân nặng & kích thước thực tế)
+     */
+    @Override
+    public String createShippingOrderFromShipment(com.bacpham.kanban_service.entity.Shipment shipment) {
+        if (shipment == null || shipment.getOrder() == null) {
+            throw new IllegalArgumentException("Kiện hàng hoặc đơn hàng không hợp lệ");
+        }
+
+        String url = ghnBaseUrl + "/v2/shipping-order/create";
+        HttpHeaders headers = createGhnHeaders();
+
+        Map<String, Object> body = ghnOrderRequestBuilder.buildFromShipment(shipment);
+        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
+
+        try {
+            log.info("Gọi GHN API tạo vận đơn từ Shipment: url={}, shipmentId={}, orderId={}",
+                    url, shipment.getId(), shipment.getOrder().getId());
+            ResponseEntity<Map> response = restTemplate.postForEntity(url, entity, Map.class);
+
+            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+                Map<String, Object> resBody = response.getBody();
+                Object codeObj = resBody.get("code");
+                int code = codeObj instanceof Number ? ((Number) codeObj).intValue() : 200;
+
+                if (code == 200 && resBody.get("data") instanceof Map) {
+                    Map<String, Object> data = (Map<String, Object>) resBody.get("data");
+                    String orderCode = data.get("order_code") != null ? data.get("order_code").toString() : null;
+
+                    // Cập nhật phí ship trả về từ GHN nếu có
+                    if (data.get("total_fee") != null) {
+                        shipment.setShippingFee(((Number) data.get("total_fee")).doubleValue());
+                    }
+
+                    log.info("GHN tạo vận đơn thành công từ Shipment! Mã vận đơn: {}", orderCode);
+                    return orderCode;
+                } else {
+                    String msg = resBody.get("message") != null ? resBody.get("message").toString() : "Lỗi phản hồi từ GHN";
+                    log.warn("GHN từ chối tạo vận đơn: {}", msg);
+                    throw new RuntimeException("GHN: " + msg);
+                }
+            }
+        } catch (RestClientResponseException e) {
+            log.error("GHN create order error HTTP {}: {}", e.getStatusCode(), e.getResponseBodyAsString());
+            throw new RuntimeException("Lỗi kết nối GHN (" + e.getStatusCode() + "): " + e.getResponseBodyAsString(), e);
+        } catch (Exception e) {
+            log.error("Lỗi khi tạo vận đơn GHN từ Shipment {}: {}", shipment.getId(), e.getMessage());
+            throw new RuntimeException("Lỗi khi tạo vận đơn GHN: " + e.getMessage(), e);
+        }
+
+        return null;
+    }
+
+    /**
+     * Tính cước phí giao hàng dự kiến từ GHN dựa vào cân nặng & kích thước
+     */
+    @Override
+    public Double calculateShippingFee(com.bacpham.kanban_service.dto.request.CalculateShippingFeeRequest request) {
+        String url = ghnBaseUrl + "/v2/shipping-order/fee";
+        HttpHeaders headers = createGhnHeaders();
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("from_district_id", 1482); // Kho Cầu Giấy Hà Nội
+        body.put("from_ward_code", "1A0101");
+        body.put("service_type_id", 2); // Chuẩn
+
+        if (request.getToDistrictId() != null) {
+            body.put("to_district_id", request.getToDistrictId());
+        }
+        if (request.getToWardCode() != null) {
+            body.put("to_ward_code", request.getToWardCode());
+        }
+
+        body.put("weight", request.getWeight() != null ? request.getWeight() : 500);
+        body.put("length", request.getLength() != null ? request.getLength() : 20);
+        body.put("width", request.getWidth() != null ? request.getWidth() : 15);
+        body.put("height", request.getHeight() != null ? request.getHeight() : 10);
+
+        if (request.getInsuranceValue() != null && request.getInsuranceValue() > 0) {
+            body.put("insurance_value", request.getInsuranceValue().intValue());
+        }
+
+        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
+
+        try {
+            log.info("Gọi GHN tính phí vận chuyển: url={}, request={}", url, body);
+            ResponseEntity<Map> response = restTemplate.postForEntity(url, entity, Map.class);
+
+            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+                Map<String, Object> resBody = response.getBody();
+                if (resBody.get("data") instanceof Map) {
+                    Map<String, Object> data = (Map<String, Object>) resBody.get("data");
+                    Object totalObj = data.get("total");
+                    if (totalObj instanceof Number) {
+                        return ((Number) totalObj).doubleValue();
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Không tính được phí GHN online, fallback về phí mặc định 30000: {}", e.getMessage());
+        }
+
+        return 30000.0;
+    }
+
+    /**
+     * Xá»­ lÃ½ webhook tá»« GHN gá»­i vá»  khi cÃ³ thay Ä‘á»•i tráº¡ng thÃ¡i hoáº·c dá»¯ liá»‡u váº­n Ä‘Æ¡n
      * @param payload Dá»¯ liá»‡u sá»± kiá»‡n tá»« GHN
      */
     @Override
@@ -230,6 +336,23 @@ public class GhnShippingService implements IGhnShippingService {
         final String trackingCode = orderCode.trim();
         final String finalGhnStatus = ghnStatus != null ? ghnStatus.trim() : null;
 
+        // Cập nhật thực thể Shipment nếu tồn tại
+        shipmentRepository.findByTrackingCode(trackingCode).ifPresent(shipment -> {
+            if (finalGhnStatus != null && !finalGhnStatus.equalsIgnoreCase(shipment.getShippingStatus())) {
+                shipment.setShippingStatus(finalGhnStatus);
+                String lower = finalGhnStatus.toLowerCase();
+                if (lower.equals("delivered")) {
+                    shipment.setDeliveredDate(new Date());
+                } else if (lower.equals("picked") || lower.equals("delivering")) {
+                    if (shipment.getPickedDate() == null) {
+                        shipment.setPickedDate(new Date());
+                    }
+                }
+                shipmentRepository.save(shipment);
+                log.info("GHN Webhook: Đã cập nhật Shipment {} sang trạng thái {}", shipment.getShipmentCode(), finalGhnStatus);
+            }
+        });
+
         orderRepository.findByTrackingCode(trackingCode).ifPresentOrElse(order -> {
             boolean updated = false;
 
@@ -241,13 +364,13 @@ public class GhnShippingService implements IGhnShippingService {
                 String lowerStatus = finalGhnStatus.toLowerCase();
                 if (lowerStatus.equals("delivered")) {
                     order.setOrderStatus(OrderStatus.COMPLETED);
-                    log.info("GHN Webhook: ÄÆ¡n hÃ ng {} Ä‘Ã£ giao thÃ nh cÃ´ng (COMPLETED)", order.getId());
+                    log.info("GHN Webhook: Ä Æ¡n hÃ ng {} Ä‘Ã£ giao thÃ nh cÃ´ng (COMPLETED)", order.getId());
                 } else if (lowerStatus.equals("cancel")) {
                     order.setOrderStatus(OrderStatus.CANCELLED);
                     if (order.getCancelReason() == null || order.getCancelReason().isBlank()) {
                         order.setCancelReason("Há»§y váº­n Ä‘Æ¡n tá»« GHN");
                     }
-                    log.info("GHN Webhook: ÄÆ¡n hÃ ng {} Ä‘Ã£ bá»‹ há»§y trÃªn GHN", order.getId());
+                    log.info("GHN Webhook: Ä Æ¡n hÃ ng {} Ä‘Ã£ bá»‹ há»§y trÃªn GHN", order.getId());
                 } else if (order.getOrderStatus() == OrderStatus.PENDING) {
                     order.setOrderStatus(OrderStatus.PROCESSING);
                 }
