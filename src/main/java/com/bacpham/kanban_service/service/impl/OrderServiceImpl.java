@@ -21,6 +21,8 @@ import com.bacpham.kanban_service.strategy.discount.DiscountCalculationResult;
 import com.bacpham.kanban_service.strategy.discount.DiscountCalculator;
 import com.bacpham.kanban_service.strategy.order.InventoryRestocker;
 import com.bacpham.kanban_service.strategy.order.OrderStatusHandlerRegistry;
+import com.bacpham.kanban_service.repository.specification.OrderSpecification;
+import org.springframework.data.jpa.domain.Specification;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -206,11 +208,30 @@ public class OrderServiceImpl implements IOrderService {
 
     @Override
     public PageResponse<OrderDetailResponse> getPagedAllOrders(int page, int pageSize) {
+        return getPagedOrders(null, null, null, null, page, pageSize);
+    }
+
+    @Override
+    public PageResponse<OrderDetailResponse> getPagedOrders(
+            String status,
+            String search,
+            String startDate,
+            String endDate,
+            int page,
+            int pageSize
+    ) {
         Pageable pageable = PageRequest.of(page - 1, pageSize, Sort.by("createdAt").descending());
-        Page<Order> orderPage = orderRepository.findAllByDeletedFalse(pageable);
+        Specification<Order> spec = OrderSpecification.filter(status, search, startDate, endDate);
+        Page<Order> orderPage = orderRepository.findAll(spec, pageable);
 
         if (orderPage.isEmpty()) {
-            throw new AppException(ErrorCode.BILL_NOT_FOUND);
+            return PageResponse.<OrderDetailResponse>builder()
+                    .currentPage(page)
+                    .pageSize(pageSize)
+                    .totalPages(orderPage.getTotalPages())
+                    .totalElements(orderPage.getTotalElements())
+                    .data(Collections.emptyList())
+                    .build();
         }
 
         List<OrderDetailResponse> responses = orderPage.getContent().stream()

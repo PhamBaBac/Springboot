@@ -12,12 +12,13 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import com.bacpham.kanban_service.entity.Order;
 import com.bacpham.kanban_service.entity.User;
 import com.bacpham.kanban_service.enums.OrderStatus;
 
 @Repository
-public interface OrderRepository extends JpaRepository<Order, String> {
+public interface OrderRepository extends JpaRepository<Order, String>, JpaSpecificationExecutor<Order> {
 
     /**
      * Fix A-5: Khôi phục trực tiếp trên database bằng 1 câu UPDATE duy nhất.

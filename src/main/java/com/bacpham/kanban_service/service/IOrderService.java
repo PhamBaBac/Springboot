@@ -11,6 +11,7 @@ public interface IOrderService {
     Order createOrderFromSelectedItems(String userId, String paymentType, OrderCreateRequest request);
     List<OrderResponse> getOrdersByUserId(String userId);
     PageResponse<OrderDetailResponse> getPagedAllOrders(int page, int pageSize);
+    PageResponse<OrderDetailResponse> getPagedOrders(String status, String search, String startDate, String endDate, int page, int pageSize);
     void cancelOrder(String userId, String orderId);
     OrderDetailResponse getOrderById(String userId, String orderId);
     void deleteOrder(String userId, String orderId);

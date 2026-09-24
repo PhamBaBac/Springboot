@@ -52,7 +52,7 @@ public class PublicProductController {
                                 .build();
         }
 
-        @PostMapping("/filter")
+        @RequestMapping(value = "/filter", method = {RequestMethod.GET, RequestMethod.POST})
         public ApiResponse<PageResponse<ProductResponse>> filterProducts(
                         @RequestParam(value = "catIds", required = false) List<String> catIds,
                         @RequestParam(value = "search", required = false) String search,

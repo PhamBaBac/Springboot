@@ -1,16 +1,12 @@
 package com.bacpham.kanban_service.mapper;
 
+import org.mapstruct.Mapper;
+import org.mapstruct.MappingTarget;
+
 import com.bacpham.kanban_service.dto.request.SubProductCreationRequest;
 import com.bacpham.kanban_service.dto.response.FilterSubProductResponse;
 import com.bacpham.kanban_service.dto.response.SubProductResponse;
 import com.bacpham.kanban_service.entity.SubProduct;
-import org.mapstruct.AfterMapping;
-import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
-import org.mapstruct.MappingTarget;
-
-import java.util.HashMap;
-import java.util.Map;
 
 @Mapper(componentModel = "spring")
 public interface SubProductMapper {
