@@ -12,7 +12,7 @@ import java.util.Comparator;
 import java.util.List;
 
 /**
- * Component chuyên trách việc hoàn trả tồn kho (Restock) an toàn dưới khóa Pessimistic Lock.
+ * Component chuyên trách việc hoàn trả tồn kho (Restock) an toàn bằng Atomic SQL Update.
  * Tách biệt khỏi OrderServiceImpl để tuân thủ Single Responsibility Principle (SRP).
  */
 @Slf4j
@@ -28,20 +28,19 @@ public class InventoryRestocker {
         }
 
         List<OrderItem> sortedItems = order.getItems().stream()
-                .filter(item -> item.getSubProduct() != null && item.getSubProduct().getId() != null)
-                .sorted(Comparator.comparing(item -> item.getSubProduct().getId()))
+                .filter(item -> (item.getSubProduct() != null && item.getSubProduct().getId() != null)
+                        || (item.getSkuCode() != null && !item.getSkuCode().isBlank()))
+                .sorted(Comparator.comparing(item -> item.getSubProduct() != null ? item.getSubProduct().getId() : item.getSkuCode()))
                 .toList();
 
         for (OrderItem item : sortedItems) {
-            SubProduct subProduct = subProductRepository.findByIdWithLock(item.getSubProduct().getId())
-                    .orElse(item.getSubProduct());
-            int currentStock = subProduct.getStock() != null ? subProduct.getStock() : 0;
-            int currentQty = subProduct.getQty() != null ? subProduct.getQty() : 0;
-            subProduct.setStock(currentStock + item.getQuantity());
-            subProduct.setQty(currentQty + item.getQuantity());
-            subProductRepository.save(subProduct);
-            log.info("Restocked subProduct {}: +{} (new stock={})",
-                    subProduct.getId(), item.getQuantity(), subProduct.getStock());
+            String subProductId = item.getSubProduct() != null ? item.getSubProduct().getId() : item.getSkuCode();
+            int qty = item.getQuantity() != null ? item.getQuantity() : 0;
+            if (qty > 0 && subProductId != null) {
+                int updated = subProductRepository.directRestock(subProductId, qty);
+                log.info("Restocked subProduct {}: +{} via atomic SQL (rowsAffected={})",
+                        subProductId, qty, updated);
+            }
         }
     }
 }

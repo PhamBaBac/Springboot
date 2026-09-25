@@ -23,9 +23,11 @@ public class PercentageDiscountStrategy implements DiscountStrategy {
             if (percent < 0 || percent > 100) {
                 throw new AppException(ErrorCode.INVALID_PROMOTION_VALUE);
             }
-            double itemTotal = Math.max(0, (unitPrice * quantity) * (1 - (percent / 100.0)));
+            double originalTotal = unitPrice * quantity;
+            double itemTotal = Math.max(0, originalTotal * (1 - (percent / 100.0)));
             double unitPriceAfterDiscount = quantity > 0 ? itemTotal / quantity : 0;
-            return new DiscountCalculationResult(itemTotal, unitPriceAfterDiscount);
+            double appliedDiscount = Math.max(0, originalTotal - itemTotal);
+            return new DiscountCalculationResult(itemTotal, unitPriceAfterDiscount, appliedDiscount);
         } catch (NumberFormatException e) {
             throw new AppException(ErrorCode.INVALID_PROMOTION_VALUE);
         }

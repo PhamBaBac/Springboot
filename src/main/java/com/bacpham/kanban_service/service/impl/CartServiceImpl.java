@@ -44,7 +44,7 @@ public class CartServiceImpl implements ICartService {
             throw new AppException(ErrorCode.SUB_PRODUCT_NOT_FOUND);
         }
 
-        int availableStock = subProduct.getStock(); // kiểm tra stock thay vì qty
+        int availableStock = subProduct.getAvailableStock();
         int requestedCount = request.getCount();
 
         if (requestedCount > availableStock) {
@@ -53,10 +53,6 @@ public class CartServiceImpl implements ICartService {
 
         Cart cart = cartMapper.toEntity(request);
         Cart saved = cartRepository.save(cart);
-
-//        // Trừ stock thực tế sau khi thêm vào giỏ
-//        subProduct.setStock(subProduct.getStock() - requestedCount);
-        subProductRepository.save(subProduct);
 
         return cartMapper.toResponse(saved);
     }
@@ -78,7 +74,7 @@ public class CartServiceImpl implements ICartService {
             throw new AppException(ErrorCode.UNAUTHORIZED);
         }
 
-        if (cart.getCount() > cart.getSubProduct().getStock()) {
+        if (count > (cart.getSubProduct() != null ? cart.getSubProduct().getAvailableStock() : 0)) {
             throw new AppException(ErrorCode.INSUFFICIENT_STOCK);
         }
         cart.setCount(count);
@@ -116,7 +112,7 @@ public class CartServiceImpl implements ICartService {
                         isDel = true;
                         currentStock = 0;
                     } else {
-                        currentStock = subProduct.getStock() != null ? subProduct.getStock() : 0;
+                        currentStock = subProduct.getAvailableStock();
                     }
                     response.setIsDeleted(isDel);
                     response.setStock(currentStock);
@@ -160,17 +156,18 @@ public class CartServiceImpl implements ICartService {
 
 
         int adjustedCount = request.getCount();
-        if (request.getCount() > newSubProduct.getStock()) {
-            adjustedCount = newSubProduct.getStock();
-            log.warn("Số lượng yêu cầu vượt quá tồn kho, đã điều chỉnh còn {}", adjustedCount);
+        int available = newSubProduct.getAvailableStock();
+        if (request.getCount() > available) {
+            adjustedCount = available;
+            log.warn("Số lượng yêu cầu vượt quá tồn kho khả dụng, đã điều chỉnh còn {}", adjustedCount);
         }
 
         if (existingCartOpt.isPresent()) {
             Cart existingCart = existingCartOpt.get();
 
             int totalCount = existingCart.getCount() + adjustedCount;
-            if (totalCount > newSubProduct.getStock()) {
-                totalCount = newSubProduct.getStock();
+            if (totalCount > available) {
+                totalCount = available;
             }
 
             existingCart.setCount(totalCount);

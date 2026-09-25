@@ -29,6 +29,7 @@ class DiscountCalculatorTest {
         DiscountCalculationResult result = discountCalculator.calculate(100_000, 2, null);
         assertEquals(200_000, result.itemTotal());
         assertEquals(100_000, result.unitPriceAfterDiscount());
+        assertEquals(0, result.discountAmount());
     }
 
     @Test
@@ -43,6 +44,7 @@ class DiscountCalculatorTest {
         DiscountCalculationResult result = discountCalculator.calculate(50_000, 2, request);
         assertEquals(70_000, result.itemTotal());
         assertEquals(35_000, result.unitPriceAfterDiscount());
+        assertEquals(30_000, result.discountAmount());
     }
 
     @Test
@@ -56,6 +58,7 @@ class DiscountCalculatorTest {
         DiscountCalculationResult result = discountCalculator.calculate(50_000, 2, request);
         assertEquals(0, result.itemTotal());
         assertEquals(0, result.unitPriceAfterDiscount());
+        assertEquals(100_000, result.discountAmount());
     }
 
     @Test
@@ -70,6 +73,7 @@ class DiscountCalculatorTest {
         DiscountCalculationResult result = discountCalculator.calculate(100_000, 3, request);
         assertEquals(240_000, result.itemTotal());
         assertEquals(80_000, result.unitPriceAfterDiscount());
+        assertEquals(60_000, result.discountAmount());
     }
 
     @Test

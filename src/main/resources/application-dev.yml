@@ -1,0 +1,13 @@
+# ==============================================================================
+# PROFILE: DEV (Môi trường phát triển cục bộ)
+# Tối ưu cho việc chạy local: ẩn log rác, tắt banner
+# ==============================================================================
+spring:
+  main:
+    banner-mode: "off"
+
+logging:
+  level:
+    org.springframework.context.support: ERROR
+    org.springframework.data.repository.config: WARN
+    com.zaxxer.hikari: WARN

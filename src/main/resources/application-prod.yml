@@ -1,0 +1,10 @@
+# ==============================================================================
+# PROFILE: PROD (Môi trường Production / Server)
+# Giữ nguyên mức log chuẩn để giám sát và truy vết lỗi hệ thống
+# ==============================================================================
+logging:
+  level:
+    root: INFO
+    org.springframework.security: ${LOG_LEVEL_SECURITY:WARN}
+    org.mongodb.driver: ${LOG_LEVEL_MONGODB:WARN}
+    org.springframework.web: WARN

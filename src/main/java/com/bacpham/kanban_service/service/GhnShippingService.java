@@ -17,8 +17,12 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.client.RestTemplate;
 
+import com.bacpham.kanban_service.dto.request.UpdateStatusOrder;
+import com.bacpham.kanban_service.strategy.order.OrderStateMachine;
 import com.bacpham.kanban_service.utils.shipping.GhnStatusMapper;
 import com.bacpham.kanban_service.utils.shipping.GhnOrderRequestBuilder;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import java.util.*;
 
 @Service
@@ -40,6 +44,10 @@ public class GhnShippingService implements IGhnShippingService {
     private final RestTemplate restTemplate; // Inject qua Spring DI (bean trong ApplicationConfig)
     private final GhnStatusMapper ghnStatusMapper; // Inject mapper de tuan thu SRP va OCP
     private final GhnOrderRequestBuilder ghnOrderRequestBuilder; // Inject builder de tuan thu SRP
+
+    @Autowired
+    @Lazy
+    private OrderStateMachine orderStateMachine;
 
     /**
      * Tra cá»©u chi tiáº¿t hÃ nh trÃ¬nh váº­n Ä‘Æ¡n tá»« Giao HÃ ng Nhanh (GHN)
@@ -360,19 +368,26 @@ public class GhnShippingService implements IGhnShippingService {
                 order.setShippingStatus(finalGhnStatus);
                 updated = true;
 
-                // Tá»± Ä‘á»™ng Ä‘á»“ng bá»™ sang tráº¡ng thÃ¡i OrderStatus cá»§a há»‡ thá»‘ng
+                // Tự động đồng bộ sang trạng thái OrderStatus qua OrderStateMachine
                 String lowerStatus = finalGhnStatus.toLowerCase();
-                if (lowerStatus.equals("delivered")) {
-                    order.setOrderStatus(OrderStatus.COMPLETED);
-                    log.info("GHN Webhook: Ä Æ¡n hÃ ng {} Ä‘Ã£ giao thÃ nh cÃ´ng (COMPLETED)", order.getId());
-                } else if (lowerStatus.equals("cancel")) {
-                    order.setOrderStatus(OrderStatus.CANCELLED);
-                    if (order.getCancelReason() == null || order.getCancelReason().isBlank()) {
-                        order.setCancelReason("Há»§y váº­n Ä‘Æ¡n tá»« GHN");
+                try {
+                    if (lowerStatus.equals("delivered")) {
+                        orderStateMachine.transition(order, OrderStatus.COMPLETED,
+                                UpdateStatusOrder.builder().orderStatus(OrderStatus.COMPLETED).build());
+                        log.info("GHN Webhook: Đơn hàng {} đã giao thành công (COMPLETED)", order.getId());
+                    } else if (lowerStatus.equals("cancel")) {
+                        String cancelReason = (order.getCancelReason() != null && !order.getCancelReason().isBlank())
+                                ? order.getCancelReason()
+                                : "Hủy vận đơn từ GHN";
+                        orderStateMachine.transition(order, OrderStatus.CANCELLED,
+                                UpdateStatusOrder.builder().orderStatus(OrderStatus.CANCELLED).cancelReason(cancelReason).build());
+                        log.info("GHN Webhook: Đơn hàng {} đã bị hủy trên GHN", order.getId());
+                    } else if (order.getOrderStatus() == OrderStatus.PENDING) {
+                        orderStateMachine.transition(order, OrderStatus.PROCESSING,
+                                UpdateStatusOrder.builder().orderStatus(OrderStatus.PROCESSING).build());
                     }
-                    log.info("GHN Webhook: Ä Æ¡n hÃ ng {} Ä‘Ã£ bá»‹ há»§y trÃªn GHN", order.getId());
-                } else if (order.getOrderStatus() == OrderStatus.PENDING) {
-                    order.setOrderStatus(OrderStatus.PROCESSING);
+                } catch (Exception e) {
+                    log.warn("GHN Webhook: Không thể chuyển trạng thái đơn hàng {} qua State Machine: {}", order.getId(), e.getMessage());
                 }
             }
 

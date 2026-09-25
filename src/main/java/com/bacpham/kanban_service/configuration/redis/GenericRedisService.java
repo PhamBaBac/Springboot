@@ -6,6 +6,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -31,6 +32,14 @@ public class GenericRedisService<K, F, V> {
 
     public void set(K key, V value) {
         redisTemplate.opsForValue().set(key, value);
+    }
+
+    public Boolean setIfAbsent(K key, V value, Duration timeout) {
+        return redisTemplate.opsForValue().setIfAbsent(key, value, timeout);
+    }
+
+    public Boolean setIfAbsent(K key, V value) {
+        return redisTemplate.opsForValue().setIfAbsent(key, value);
     }
 
     public void setTimeToLive(K key, long timeout, TimeUnit timeUnit) {

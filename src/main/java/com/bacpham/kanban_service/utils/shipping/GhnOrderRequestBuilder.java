@@ -179,6 +179,9 @@ public class GhnOrderRequestBuilder {
     }
 
     private String resolveItemName(OrderItem item) {
+        if (item.getProductTitle() != null && !item.getProductTitle().isBlank()) {
+            return item.getProductTitle();
+        }
         if (item.getSubProduct() != null
                 && item.getSubProduct().getProduct() != null
                 && item.getSubProduct().getProduct().getTitle() != null) {

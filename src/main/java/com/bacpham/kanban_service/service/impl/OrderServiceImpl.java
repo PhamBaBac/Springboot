@@ -19,8 +19,7 @@ import com.bacpham.kanban_service.service.IOrderService;
 import com.bacpham.kanban_service.service.IPromotionService;
 import com.bacpham.kanban_service.strategy.discount.DiscountCalculationResult;
 import com.bacpham.kanban_service.strategy.discount.DiscountCalculator;
-import com.bacpham.kanban_service.strategy.order.InventoryRestocker;
-import com.bacpham.kanban_service.strategy.order.OrderStatusHandlerRegistry;
+import com.bacpham.kanban_service.strategy.order.OrderStateMachine;
 import com.bacpham.kanban_service.repository.specification.OrderSpecification;
 import org.springframework.data.jpa.domain.Specification;
 import lombok.RequiredArgsConstructor;
@@ -53,8 +52,7 @@ public class OrderServiceImpl implements IOrderService {
     private final ReviewProductRepository reviewRepository;
     private final IPromotionService promotionService;
     private final DiscountCalculator discountCalculator;
-    private final OrderStatusHandlerRegistry statusHandlerRegistry;
-    private final InventoryRestocker inventoryRestocker;
+    private final OrderStateMachine orderStateMachine;
 
     @Override
     @Transactional
@@ -67,14 +65,17 @@ public class OrderServiceImpl implements IOrderService {
         List<OrderItemRequest> sortedItems = sortItemsForDeadlockPrevention(request.getItems());
 
         double total = 0.0;
+        double discountTotal = 0.0;
         List<OrderItem> orderItems = new ArrayList<>(sortedItems.size());
         for (OrderItemRequest dto : sortedItems) {
             ProcessedItemResult result = processOrderItem(dto);
             orderItems.add(result.item());
             total += result.total();
+            discountTotal += (result.item().getDiscountAmount() != null ? result.item().getDiscountAmount() : 0.0);
         }
+        double subtotal = total + discountTotal;
 
-        Order order = buildAndSaveOrder(user, request.getAddressId(), paymentType, total, orderItems);
+        Order order = buildAndSaveOrder(user, request.getAddressId(), paymentType, total, subtotal, discountTotal, orderItems);
         cleanupCartItems(user, request.getItems());
 
         return order;
@@ -94,7 +95,7 @@ public class OrderServiceImpl implements IOrderService {
     }
 
     private ProcessedItemResult processOrderItem(OrderItemRequest dto) {
-        SubProduct subProduct = subProductRepository.findByIdWithLock(dto.getSubProductId())
+        SubProduct subProduct = subProductRepository.findById(dto.getSubProductId())
                 .orElseThrow(() -> new AppException(ErrorCode.SUB_PRODUCT_NOT_FOUND));
 
         if (Boolean.TRUE.equals(subProduct.getDeleted())
@@ -103,31 +104,42 @@ public class OrderServiceImpl implements IOrderService {
             throw new AppException(ErrorCode.SUB_PRODUCT_NOT_FOUND);
         }
 
-        if (subProduct.getStock() < dto.getCount()) {
+        // Cập nhật tồn kho an toàn bằng Atomic SQL Update (Chống Race Condition & Over-selling triệt để)
+        int updatedRows = subProductRepository.directDeductStock(dto.getSubProductId(), dto.getCount());
+        if (updatedRows == 0) {
             throw new AppException(ErrorCode.INSUFFICIENT_STOCK);
         }
-
-        // Cập nhật tồn kho an toàn dưới khóa bi quan
-        int currentStock = subProduct.getStock() != null ? subProduct.getStock() : 0;
-        int currentQty = subProduct.getQty() != null ? subProduct.getQty() : 0;
-        subProduct.setStock(currentStock - dto.getCount());
-        subProduct.setQty(Math.max(0, currentQty - dto.getCount()));
-        subProductRepository.save(subProduct);
 
         // Strategy Pattern: Tính giảm giá độc lập bằng DiscountCalculator
         DiscountCalculationResult discountResult = discountCalculator.calculate(
                 dto.getPrice(), dto.getCount(), dto.getDiscountValue());
 
+        String productTitle = (subProduct.getProduct() != null) ? subProduct.getProduct().getTitle() : null;
+        String firstImage = (subProduct.getImages() != null && !subProduct.getImages().isEmpty())
+                ? subProduct.getImages().get(0)
+                : null;
+
         OrderItem orderItem = OrderItem.builder()
                 .subProduct(subProduct)
                 .quantity(dto.getCount())
                 .priceAtOrderTime(discountResult.unitPriceAfterDiscount())
+                // --- SNAPSHOT DATA (Bảo toàn dữ liệu lịch sử) ---
+                .productTitle(productTitle)
+                .skuCode(subProduct.getId())
+                .size(subProduct.getSize())
+                .color(subProduct.getColor())
+                .image(firstImage)
+                .originalPrice(dto.getPrice())
+                .cost(subProduct.getCost())
+                .discountAmount(discountResult.discountAmount())
+                .totalPrice(discountResult.itemTotal())
+                .attributesSnapshot(subProduct.getAttributes())
                 .build();
 
         return new ProcessedItemResult(orderItem, discountResult.itemTotal());
     }
 
-    private Order buildAndSaveOrder(User user, String addressId, String paymentTypeStr, double total, List<OrderItem> items) {
+    private Order buildAndSaveOrder(User user, String addressId, String paymentTypeStr, double total, double subtotal, double discountAmount, List<OrderItem> items) {
         PaymentType paymentType;
         try {
             paymentType = PaymentType.valueOf(paymentTypeStr.toUpperCase());
@@ -142,9 +154,18 @@ public class OrderServiceImpl implements IOrderService {
                 .user(user)
                 .address(address)
                 .total(total)
+                .subtotal(subtotal)
+                .discountAmount(discountAmount)
                 .orderStatus(OrderStatus.PENDING)
                 .paymentType(paymentType)
                 .customerHidden(false)
+                // --- SNAPSHOT SHIPPING ADDRESS ---
+                .recipientName(address.getName())
+                .recipientPhone(address.getPhoneNumber())
+                .shippingAddress(address.getAddress())
+                .shippingProvince(address.getProvince())
+                .shippingDistrict(address.getDistrict())
+                .shippingWard(address.getWard())
                 .items(new ArrayList<>())
                 .build();
 
@@ -182,7 +203,8 @@ public class OrderServiceImpl implements IOrderService {
         List<String> orderIds = orders.stream().map(Order::getId).toList();
         List<String> subProductIds = orders.stream()
                 .flatMap(o -> o.getItems().stream())
-                .map(item -> item.getSubProduct().getId())
+                .map(item -> item.getSubProduct() != null ? item.getSubProduct().getId() : item.getSkuCode())
+                .filter(java.util.Objects::nonNull)
                 .distinct()
                 .toList();
 
@@ -190,6 +212,7 @@ public class OrderServiceImpl implements IOrderService {
         Set<String> reviewedKeys = reviewRepository
                 .findByCreatedByIdAndSubProductIdInAndOrderIdIn(userId, subProductIds, orderIds)
                 .stream()
+                .filter(r -> r.getSubProduct() != null && r.getOrder() != null)
                 .map(r -> r.getSubProduct().getId() + "::" + r.getOrder().getId())
                 .collect(java.util.stream.Collectors.toSet());
 
@@ -197,7 +220,8 @@ public class OrderServiceImpl implements IOrderService {
         for (Order order : orders) {
             for (OrderItem item : order.getItems()) {
                 OrderResponse response = orderMapper.toOrderResponse(item);
-                String key = item.getSubProduct().getId() + "::" + order.getId();
+                String spId = item.getSubProduct() != null ? item.getSubProduct().getId() : item.getSkuCode();
+                String key = (spId != null ? spId : "") + "::" + order.getId();
                 response.setIsReviewed(reviewedKeys.contains(key));
                 responses.add(response);
             }
@@ -266,15 +290,18 @@ public class OrderServiceImpl implements IOrderService {
             return;
         }
 
-        if (order.getOrderStatus() != OrderStatus.PENDING) {
-            log.warn("Không thể hủy đơn hàng {}: trạng thái hiện tại là {}", orderId, order.getOrderStatus());
+        if (!orderStateMachine.canCustomerCancel(order)) {
+            log.warn("Không thể hủy đơn hàng {}: trạng thái hiện tại là {}, trackingCode: {}",
+                    orderId, order.getOrderStatus(), order.getTrackingCode());
             throw new AppException(ErrorCode.CANNOT_CANCEL_ORDER);
         }
 
-        order.setOrderStatus(OrderStatus.CANCELLED);
-        order.setCancelReason("Khách hàng tự hủy đơn");
+        UpdateStatusOrder cancelRequest = UpdateStatusOrder.builder()
+                .orderStatus(OrderStatus.CANCELLED)
+                .cancelReason("Khách hàng tự hủy đơn")
+                .build();
 
-        inventoryRestocker.restockOrderItems(order);
+        orderStateMachine.transition(order, OrderStatus.CANCELLED, cancelRequest);
 
         orderRepository.save(order);
         log.info("Đơn hàng {} đã được hủy thành công bởi người dùng {}", orderId, userId);
@@ -341,30 +368,11 @@ public class OrderServiceImpl implements IOrderService {
         }
 
         if (newStatus != oldStatus) {
-            if (!isValidStatusTransition(oldStatus, newStatus)) {
-                log.warn("Chuyển đổi trạng thái đơn hàng không hợp lệ từ {} sang {} cho đơn hàng: {}", oldStatus, newStatus, orderId);
-                throw new AppException(ErrorCode.INVALID_ORDER_STATUS_TRANSITION);
-            }
-
-            // Strategy Pattern: Ủy quyền xử lý side-effects cho handler tương ứng (GHN, restock kho, reason)
-            statusHandlerRegistry.executeTransition(order, newStatus, status);
-            order.setOrderStatus(newStatus);
+            orderStateMachine.transition(order, newStatus, status);
         }
 
         orderRepository.save(order);
         log.info("Cập nhật đơn hàng {} thành công. Trạng thái: {}, Mã vận đơn: {}", orderId, order.getOrderStatus(), order.getTrackingCode());
-    }
-
-    private boolean isValidStatusTransition(OrderStatus from, OrderStatus to) {
-        if (from == to) {
-            return true;
-        }
-        return switch (from) {
-            case PENDING -> to == OrderStatus.PROCESSING || to == OrderStatus.CANCELLED;
-            case PROCESSING -> to == OrderStatus.COMPLETED || to == OrderStatus.CANCELLED;
-            case COMPLETED -> to == OrderStatus.REFUNDED;
-            case CANCELLED, REFUNDED -> false;
-        };
     }
 
     @PostConstruct

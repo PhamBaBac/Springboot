@@ -51,6 +51,34 @@ public class Order extends BaseModel {
     @Column(name = "customer_hidden", columnDefinition = "boolean default false")
     private Boolean customerHidden = false;
 
+    // --- RECIPIENT & FINANCIAL SNAPSHOT ---
+    @Column(name = "recipient_name")
+    private String recipientName;
+
+    @Column(name = "recipient_phone")
+    private String recipientPhone;
+
+    @Column(name = "shipping_address", length = 500)
+    private String shippingAddress;
+
+    @Column(name = "shipping_province")
+    private String shippingProvince;
+
+    @Column(name = "shipping_district")
+    private String shippingDistrict;
+
+    @Column(name = "shipping_ward")
+    private String shippingWard;
+
+    @Column(name = "subtotal")
+    private Double subtotal;
+
+    @Column(name = "shipping_fee")
+    private Double shippingFee;
+
+    @Column(name = "discount_amount")
+    private Double discountAmount;
+
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL)
     private List<OrderItem> items;
 

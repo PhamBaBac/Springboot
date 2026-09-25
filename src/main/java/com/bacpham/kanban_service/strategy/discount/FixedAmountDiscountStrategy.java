@@ -20,9 +20,11 @@ public class FixedAmountDiscountStrategy implements DiscountStrategy {
     public DiscountCalculationResult calculate(double unitPrice, int quantity, String discountValue) {
         try {
             double discountAmount = Double.parseDouble(discountValue);
-            double itemTotal = Math.max(0, (unitPrice * quantity) - discountAmount);
+            double originalTotal = unitPrice * quantity;
+            double itemTotal = Math.max(0, originalTotal - discountAmount);
             double unitPriceAfterDiscount = quantity > 0 ? itemTotal / quantity : 0;
-            return new DiscountCalculationResult(itemTotal, unitPriceAfterDiscount);
+            double appliedDiscount = Math.max(0, originalTotal - itemTotal);
+            return new DiscountCalculationResult(itemTotal, unitPriceAfterDiscount, appliedDiscount);
         } catch (NumberFormatException e) {
             throw new AppException(ErrorCode.INVALID_PROMOTION_VALUE);
         }

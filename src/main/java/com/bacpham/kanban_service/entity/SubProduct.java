@@ -28,6 +28,10 @@ public class SubProduct extends BaseModel {
     Double cost;
     Double discount;
 
+    @Builder.Default
+    @Column(name = "reserved_stock", columnDefinition = "int default 0")
+    Integer reservedStock = 0;
+
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "JSON")
     Map<String, String> attributes;
@@ -45,6 +49,12 @@ public class SubProduct extends BaseModel {
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "JSON")
     List<String> images;
+
+    public int getAvailableStock() {
+        int s = stock != null ? stock : 0;
+        int r = reservedStock != null ? reservedStock : 0;
+        return Math.max(0, s - r);
+    }
 
 }
 

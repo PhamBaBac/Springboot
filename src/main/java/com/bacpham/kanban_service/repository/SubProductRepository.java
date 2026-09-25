@@ -5,6 +5,7 @@ import com.bacpham.kanban_service.entity.SubProduct;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -16,13 +17,69 @@ import java.util.Optional;
 public interface SubProductRepository extends JpaRepository<SubProduct, String> {
 
     /**
-     * Fix Concurrency: Khóa bi quan (Pessimistic Write Lock - SELECT ... FOR UPDATE)
-     * Đảm bảo khi nhiều transaction cùng trừ tồn kho, chỉ 1 transaction được xử lý tại 1 thời điểm.
-     * Tránh triệt để Race Condition, Lost Update và Overselling.
+     * Khóa bi quan (Pessimistic Write Lock - SELECT ... FOR UPDATE)
      */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT sp FROM SubProduct sp WHERE sp.id = :id")
     Optional<SubProduct> findByIdWithLock(@Param("id") String id);
+
+    /**
+     * Atomic Stock Reservation: Tạm giữ tồn kho nguyên tử.
+     * Tăng reservedStock trong 1 câu UPDATE nguyên tử.
+     * Điều kiện: (stock - reservedStock) >= :quantity.
+     * Trả về 1 nếu thành công, 0 nếu không đủ hàng hoặc bị xóa.
+     */
+    @Modifying(clearAutomatically = true)
+    @Query("UPDATE SubProduct sp " +
+           "SET sp.reservedStock = COALESCE(sp.reservedStock, 0) + :quantity " +
+           "WHERE sp.id = :id AND sp.deleted = false " +
+           "AND (COALESCE(sp.stock, 0) - COALESCE(sp.reservedStock, 0)) >= :quantity")
+    int reserveStock(@Param("id") String id, @Param("quantity") int quantity);
+
+    /**
+     * Atomic Release Reserved Stock: Giải phóng tồn kho giữ chân.
+     */
+    @Modifying(clearAutomatically = true)
+    @Query("UPDATE SubProduct sp " +
+           "SET sp.reservedStock = CASE WHEN COALESCE(sp.reservedStock, 0) < :quantity THEN 0 " +
+           "                           ELSE COALESCE(sp.reservedStock, 0) - :quantity END " +
+           "WHERE sp.id = :id")
+    int releaseReservedStock(@Param("id") String id, @Param("quantity") int quantity);
+
+    /**
+     * Atomic Deduct Stock on Shipment: Trừ tồn kho vật lý và tồn kho giữ chân khi xuất kho giao shipper.
+     */
+    @Modifying(clearAutomatically = true)
+    @Query("UPDATE SubProduct sp " +
+           "SET sp.stock = CASE WHEN COALESCE(sp.stock, 0) < :quantity THEN 0 " +
+           "                    ELSE COALESCE(sp.stock, 0) - :quantity END, " +
+           "    sp.qty = CASE WHEN COALESCE(sp.qty, 0) < :quantity THEN 0 " +
+           "                  ELSE COALESCE(sp.qty, 0) - :quantity END, " +
+           "    sp.reservedStock = CASE WHEN COALESCE(sp.reservedStock, 0) < :quantity THEN 0 " +
+           "                           ELSE COALESCE(sp.reservedStock, 0) - :quantity END " +
+           "WHERE sp.id = :id")
+    int deductStockOnShipment(@Param("id") String id, @Param("quantity") int quantity);
+
+    /**
+     * Atomic Direct Deduct: Khấu trừ trực tiếp tồn kho (Stock & Qty) nguyên tử.
+     * Tránh triệt để Race Condition / Over-selling mà không cần giữ connection lock dài.
+     */
+    @Modifying(clearAutomatically = true)
+    @Query("UPDATE SubProduct sp " +
+           "SET sp.stock = sp.stock - :quantity, " +
+           "    sp.qty = CASE WHEN (COALESCE(sp.qty, 0) - :quantity) < 0 THEN 0 ELSE (COALESCE(sp.qty, 0) - :quantity) END " +
+           "WHERE sp.id = :id AND sp.deleted = false AND COALESCE(sp.stock, 0) >= :quantity")
+    int directDeductStock(@Param("id") String id, @Param("quantity") int quantity);
+
+    /**
+     * Atomic Direct Restock: Hoàn trả số lượng tồn kho nguyên tử.
+     */
+    @Modifying(clearAutomatically = true)
+    @Query("UPDATE SubProduct sp " +
+           "SET sp.stock = COALESCE(sp.stock, 0) + :quantity, " +
+           "    sp.qty = COALESCE(sp.qty, 0) + :quantity " +
+           "WHERE sp.id = :id")
+    int directRestock(@Param("id") String id, @Param("quantity") int quantity);
 
     List<SubProduct> findAllByProductAndDeletedFalse(Product product);
     @Query("SELECT SUM(sp.stock) FROM SubProduct sp WHERE sp.product.id = :productId")

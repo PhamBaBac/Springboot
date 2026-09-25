@@ -37,7 +37,7 @@ public class DiscountCalculator {
     public DiscountCalculationResult calculate(double unitPrice, int quantity, DiscountRequest discount) {
         if (discount == null || discount.getValue() == null || discount.getType() == null) {
             double rawTotal = Math.max(0, unitPrice * quantity);
-            return new DiscountCalculationResult(rawTotal, unitPrice);
+            return new DiscountCalculationResult(rawTotal, unitPrice, 0.0);
         }
 
         DiscountStrategy strategy = strategies.get(discount.getType());

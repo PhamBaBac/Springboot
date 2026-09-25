@@ -45,7 +45,7 @@ public class RedisCartServiceImpl implements IRedisCartService {
         SubProduct subProduct = subProductRepository.findById(request.getSubProductId())
                 .orElseThrow(() -> new RuntimeException("Sub-product not found"));
 
-        int stockQty = subProduct.getStock();
+        int stockQty = subProduct.getAvailableStock();
 
         // 2. Lấy toàn bộ giỏ hàng từ Redis
         Map<String, CartCreateRequest> currentCart = redisService.getField(key);
@@ -82,7 +82,7 @@ public class RedisCartServiceImpl implements IRedisCartService {
                         isDel = true;
                         currentStock = 0;
                     } else {
-                        currentStock = spOpt.get().getStock() != null ? spOpt.get().getStock() : 0;
+                        currentStock = spOpt.get().getAvailableStock();
                     }
                     response.setIsDeleted(isDel);
                     response.setStock(currentStock);
@@ -112,7 +112,7 @@ public class RedisCartServiceImpl implements IRedisCartService {
             // Lấy thông tin subProduct và tồn kho
             SubProduct subProduct = subProductRepository.findById(request.getSubProductId())
                     .orElseThrow(() -> new AppException(ErrorCode.SUB_PRODUCT_NOT_FOUND));
-            int stockQty = subProduct.getStock();
+            int stockQty = subProduct.getAvailableStock();
 
             // Lấy số lượng đã có trong DB cart
             Optional<Cart> dbCartOpt = cartService.findByUserIdAndSubProductId(userId, request.getSubProductId());
@@ -123,7 +123,7 @@ public class RedisCartServiceImpl implements IRedisCartService {
             // Nếu vượt tồn kho thì cảnh báo và giới hạn lại
             int totalQty = Math.min(combinedQty, stockQty);
             if (combinedQty > stockQty) {
-                log.warn("Sản phẩm [{}] vượt tồn kho: {}. Đã reset về tồn kho tối đa: {}",
+                log.warn("Sản phẩm [{}] vượt tồn kho khả dụng: {}. Đã reset về tồn kho tối đa: {}",
                         request.getSubProductId(), combinedQty, stockQty);
             }
 
@@ -172,7 +172,7 @@ public class RedisCartServiceImpl implements IRedisCartService {
 
         SubProduct subProduct = subProductRepository.findById(request.getSubProductId())
                 .orElseThrow(() -> new AppException(ErrorCode.SUB_PRODUCT_NOT_FOUND));
-        int stockQty = subProduct.getStock();
+        int stockQty = subProduct.getAvailableStock();
 
         Map<String, CartCreateRequest> currentCart = redisService.getField(key);
         Optional<CartCreateRequest> existingOpt = Optional.ofNullable(currentCart.get(request.getSubProductId()));

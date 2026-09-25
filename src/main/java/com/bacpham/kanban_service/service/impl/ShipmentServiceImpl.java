@@ -17,6 +17,8 @@ import com.bacpham.kanban_service.repository.ShipmentItemRepository;
 import com.bacpham.kanban_service.repository.ShipmentRepository;
 import com.bacpham.kanban_service.service.IGhnShippingService;
 import com.bacpham.kanban_service.service.IShipmentService;
+import com.bacpham.kanban_service.dto.request.UpdateStatusOrder;
+import com.bacpham.kanban_service.strategy.order.OrderStateMachine;
 import com.bacpham.kanban_service.utils.shipping.GhnStatusMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -38,6 +40,7 @@ public class ShipmentServiceImpl implements IShipmentService {
     private final OrderItemRepository orderItemRepository;
     private final IGhnShippingService ghnShippingService;
     private final GhnStatusMapper ghnStatusMapper;
+    private final OrderStateMachine orderStateMachine;
 
     @Override
     @Transactional
@@ -107,7 +110,8 @@ public class ShipmentServiceImpl implements IShipmentService {
                 order.setTrackingCode(trackingCode);
                 order.setShippingStatus("ready_to_pick");
                 if (order.getOrderStatus() == OrderStatus.PENDING) {
-                    order.setOrderStatus(OrderStatus.PROCESSING);
+                    orderStateMachine.transition(order, OrderStatus.PROCESSING,
+                            UpdateStatusOrder.builder().orderStatus(OrderStatus.PROCESSING).trackingCode(trackingCode).build());
                 }
                 orderRepository.save(order);
                 shipment = shipmentRepository.save(shipment);

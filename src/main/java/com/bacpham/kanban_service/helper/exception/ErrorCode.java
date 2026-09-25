@@ -78,6 +78,9 @@ public enum ErrorCode {
     BILL_NOT_FOUND(5003, "Không tìm thấy hóa đơn", HttpStatus.NOT_FOUND),
     CANNOT_CANCEL_ORDER(5004, "Không thể hủy đơn hàng ở trạng thái hiện tại", HttpStatus.BAD_REQUEST),
     INVALID_ORDER_STATUS_TRANSITION(5005, "Chuyển trạng thái đơn hàng không hợp lệ", HttpStatus.BAD_REQUEST),
+    ORDER_PROCESSING_IN_PROGRESS(5006, "Đơn hàng đang được xử lý, vui lòng không gửi lại liên tục", HttpStatus.CONFLICT),
+    ORDER_ALREADY_PROCESSED(5007, "Đơn hàng đã được tạo thành công trước đó", HttpStatus.OK),
+    CANNOT_CANCEL_SHIPPED_ORDER(5008, "Đơn hàng đã được đóng gói hoặc đang vận chuyển, không thể tự hủy", HttpStatus.BAD_REQUEST),
 
     // ==================================================
     // 6xxx - Reviews / Chat / Messages

@@ -30,6 +30,9 @@ public class CancelledStatusHandler implements OrderStatusHandler {
             reason = "Hủy bởi Quản trị viên";
         }
         order.setCancelReason(reason);
+        if (order.getShippingStatus() != null && !order.getShippingStatus().isBlank()) {
+            order.setShippingStatus("cancel");
+        }
         inventoryRestocker.restockOrderItems(order);
         log.info("Handled order cancellation for orderId: {}, reason: {}", order.getId(), reason);
     }

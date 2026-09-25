@@ -4,10 +4,12 @@ import com.bacpham.kanban_service.dto.request.ApiResponse;
 import com.bacpham.kanban_service.dto.request.OrderCreateRequest;
 import com.bacpham.kanban_service.dto.request.UpdateStatusOrder;
 import com.bacpham.kanban_service.dto.response.*;
+import com.bacpham.kanban_service.entity.Order;
 import com.bacpham.kanban_service.entity.User;
 import com.bacpham.kanban_service.helper.exception.AppException;
 import com.bacpham.kanban_service.helper.exception.ErrorCode;
 import com.bacpham.kanban_service.repository.UserRepository;
+import com.bacpham.kanban_service.service.IIdempotencyService;
 import com.bacpham.kanban_service.service.IOrderService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -16,6 +18,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.Duration;
 import java.util.List;
 
 @RestController
@@ -25,9 +28,11 @@ import java.util.List;
 public class OrderController {
     private final IOrderService oderService;
     private final UserRepository userRepository;
+    private final IIdempotencyService idempotencyService;
 
     @PostMapping("/create")
     public ApiResponse<?> createBill(
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
             @AuthenticationPrincipal UserDetails userDetails,
             @RequestParam String paymentType,
             @RequestBody OrderCreateRequest request
@@ -36,10 +41,37 @@ public class OrderController {
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
         String userId = user.getId();
 
-        oderService.createOrderFromSelectedItems(userId, paymentType, request);
-       return  ApiResponse.builder()
-               .message("Tạo đơn hàng thành công")
-               .build();
+        // 1. Xác định Idempotency Key (Sử dụng Header nếu client truyền, hoặc sinh fingerprint hash tự động)
+        String effectiveKey = (idempotencyKey != null && !idempotencyKey.isBlank())
+                ? idempotencyKey.trim()
+                : idempotencyService.generateFingerprint(userId, paymentType, request);
+
+        // 2. Kiểm tra và lấy khóa Idempotency (Atomic SETNX trong Redis)
+        IdempotencyLockResult lockResult = idempotencyService.tryAcquire(effectiveKey, "order_create", Duration.ofMinutes(2));
+        if (lockResult.isAlreadyCompleted()) {
+            log.info("Idempotent checkout request detected for user {} with key {}. Returning existing success.", userId, effectiveKey);
+            return ApiResponse.builder()
+                    .message("Đơn hàng đã được tạo thành công trước đó")
+                    .data(lockResult.getResultData())
+                    .build();
+        }
+
+        try {
+            // 3. Thực thi tạo đơn hàng an toàn
+            Order order = oderService.createOrderFromSelectedItems(userId, paymentType, request);
+
+            // 4. Đánh dấu đã hoàn thành và lưu kết quả trong 24 giờ
+            idempotencyService.markCompleted(effectiveKey, "order_create", order.getId(), Duration.ofHours(24));
+
+            return ApiResponse.builder()
+                    .message("Tạo đơn hàng thành công")
+                    .data(order.getId())
+                    .build();
+        } catch (Exception e) {
+            // 5. Nếu gặp exception ở business logic hoặc database, giải phóng key để user có thể thử lại
+            idempotencyService.release(effectiveKey, "order_create");
+            throw e;
+        }
     }
     @GetMapping("/listOrders")
     public ApiResponse<List<OrderResponse>> getBillById(
