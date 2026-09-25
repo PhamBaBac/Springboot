@@ -6,8 +6,8 @@ import com.bacpham.kanban_service.enums.OrderStatus;
 import com.bacpham.kanban_service.enums.TransactionStatus;
 import com.bacpham.kanban_service.enums.TransactionType;
 import com.bacpham.kanban_service.service.IPaymentTransactionService;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /**
@@ -17,13 +17,20 @@ import org.springframework.stereotype.Component;
  */
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class RefundedStatusHandler implements OrderStatusHandler {
 
     private final InventoryRestocker inventoryRestocker;
     private final IPaymentTransactionService paymentTransactionService;
 
+    @Autowired
+    public RefundedStatusHandler(InventoryRestocker inventoryRestocker,
+                                 IPaymentTransactionService paymentTransactionService) {
+        this.inventoryRestocker = inventoryRestocker;
+        this.paymentTransactionService = paymentTransactionService;
+    }
+
     @Override
+
     public OrderStatus getTargetStatus() {
         return OrderStatus.REFUNDED;
     }

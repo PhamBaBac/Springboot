@@ -35,7 +35,9 @@ import jakarta.annotation.PostConstruct;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import com.bacpham.kanban_service.enums.TransactionStatus;
@@ -150,7 +152,7 @@ public class OrderServiceImpl implements IOrderService {
                 .priceAtOrderTime(discountResult.unitPriceAfterDiscount())
                 // --- SNAPSHOT DATA (Bảo toàn dữ liệu lịch sử) ---
                 .productTitle(productTitle)
-                .skuCode(subProduct.getId())
+                .skuCode((subProduct.getSku() != null && !subProduct.getSku().isBlank()) ? subProduct.getSku() : subProduct.getId())
                 .size(subProduct.getSize())
                 .color(subProduct.getColor())
                 .image(firstImage)
@@ -398,6 +400,26 @@ public class OrderServiceImpl implements IOrderService {
 
         orderRepository.save(order);
         log.info("Cập nhật đơn hàng {} thành công. Trạng thái: {}, Mã vận đơn: {}", orderId, order.getOrderStatus(), order.getTrackingCode());
+    }
+
+    @Override
+    public Map<String, Long> getOrderStatusCounts() {
+        List<Object[]> rows = orderRepository.countOrdersByStatus();
+        Map<String, Long> counts = new HashMap<>();
+        for (OrderStatus status : OrderStatus.values()) {
+            counts.put(status.name(), 0L);
+        }
+        long allCount = 0;
+        for (Object[] row : rows) {
+            OrderStatus status = (OrderStatus) row[0];
+            Long count = ((Number) row[1]).longValue();
+            if (status != null) {
+                counts.put(status.name(), count);
+                allCount += count;
+            }
+        }
+        counts.put("ALL", allCount);
+        return counts;
     }
 
     @PostConstruct

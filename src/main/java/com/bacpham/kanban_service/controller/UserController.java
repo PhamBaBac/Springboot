@@ -1,16 +1,23 @@
 package com.bacpham.kanban_service.controller;
 
+import com.bacpham.kanban_service.dto.request.AdminCreateUserRequest;
 import com.bacpham.kanban_service.dto.request.ApiResponse;
 import com.bacpham.kanban_service.dto.request.ChangePasswordRequest;
 import com.bacpham.kanban_service.dto.request.ResetPasswordRequest;
+import com.bacpham.kanban_service.dto.request.UpdateUserRoleRequest;
 import com.bacpham.kanban_service.dto.request.UserActiveRequest;
+import com.bacpham.kanban_service.dto.response.PageResponse;
+import com.bacpham.kanban_service.dto.response.UserAuditLogResponse;
 import com.bacpham.kanban_service.dto.response.UserResponse;
+import com.bacpham.kanban_service.enums.Role;
 import com.bacpham.kanban_service.service.IUserService;
 import com.bacpham.kanban_service.service.UserActivityService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import com.bacpham.kanban_service.helper.exception.AppException;
 import com.bacpham.kanban_service.helper.exception.ErrorCode;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
@@ -108,4 +115,61 @@ public class UserController {
                 .build();
     }
 
+    @GetMapping("/admin/list")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<PageResponse<UserResponse>> getAdminUsers(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) Role role,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int pageSize
+    ) {
+        PageResponse<UserResponse> result = service.getAdminUsers(search, role, page, pageSize);
+        return ApiResponse.<PageResponse<UserResponse>>builder()
+                .data(result)
+                .message("Lấy danh sách người dùng thành công")
+                .build();
+    }
+
+    @PostMapping("/admin/create")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<UserResponse> adminCreateUser(
+            @Valid @RequestBody AdminCreateUserRequest request,
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        String adminEmail = userDetails != null ? userDetails.getUsername() : "ADMIN";
+        UserResponse user = service.adminCreateUser(request, adminEmail);
+        return ApiResponse.<UserResponse>builder()
+                .data(user)
+                .message("Tạo tài khoản và phân quyền thành công")
+                .build();
+    }
+
+    @PatchMapping("/admin/{userId}/role")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<UserResponse> updateUserRole(
+            @PathVariable String userId,
+            @Valid @RequestBody UpdateUserRoleRequest request,
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        String adminEmail = userDetails != null ? userDetails.getUsername() : "ADMIN";
+        UserResponse user = service.updateUserRole(userId, request.getRole(), adminEmail);
+        return ApiResponse.<UserResponse>builder()
+                .data(user)
+                .message("Cập nhật vai trò người dùng thành công")
+                .build();
+    }
+
+    @GetMapping("/admin/logs")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<PageResponse<UserAuditLogResponse>> getAuditLogs(
+            @RequestParam(required = false) String search,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int pageSize
+    ) {
+        PageResponse<UserAuditLogResponse> logs = service.getAuditLogs(search, page, pageSize);
+        return ApiResponse.<PageResponse<UserAuditLogResponse>>builder()
+                .data(logs)
+                .message("Lấy nhật ký hoạt động hệ thống thành công")
+                .build();
+    }
 }

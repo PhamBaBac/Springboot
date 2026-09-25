@@ -14,6 +14,7 @@ import java.util.Set;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class SubProductResponse {
     String id;
+    String sku;
     String size;
     String color;
     Double price;

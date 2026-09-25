@@ -6,6 +6,7 @@ import com.bacpham.kanban_service.dto.response.*;
 import com.bacpham.kanban_service.entity.Order;
 
 import java.util.List;
+import java.util.Map;
 
 public interface IOrderService {
     Order createOrderFromSelectedItems(String userId, String paymentType, OrderCreateRequest request);
@@ -16,4 +17,5 @@ public interface IOrderService {
     OrderDetailResponse getOrderById(String userId, String orderId);
     void deleteOrder(String userId, String orderId);
     void updateOrderStatus(String orderId, UpdateStatusOrder status);
+    Map<String, Long> getOrderStatusCounts();
 }

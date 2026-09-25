@@ -6,6 +6,7 @@ import com.bacpham.kanban_service.entity.Shipment;
 import com.bacpham.kanban_service.enums.OrderStatus;
 import com.bacpham.kanban_service.helper.exception.AppException;
 import com.bacpham.kanban_service.helper.exception.ErrorCode;
+import com.bacpham.kanban_service.service.IOrderStatusHistoryService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -20,13 +21,16 @@ import static org.mockito.Mockito.*;
 class OrderStateMachineTest {
 
     private OrderStatusHandlerRegistry handlerRegistry;
+    private IOrderStatusHistoryService statusHistoryService;
     private OrderStateMachine stateMachine;
 
     @BeforeEach
     void setUp() {
         handlerRegistry = Mockito.mock(OrderStatusHandlerRegistry.class);
-        stateMachine = new OrderStateMachine(handlerRegistry);
+        statusHistoryService = Mockito.mock(IOrderStatusHistoryService.class);
+        stateMachine = new OrderStateMachine(handlerRegistry, statusHistoryService);
     }
+
 
     @Test
     @DisplayName("Ma trận chuyển đổi hợp lệ: PENDING -> PROCESSING hoặc CANCELLED")

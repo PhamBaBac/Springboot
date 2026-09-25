@@ -35,18 +35,34 @@ public class SubProductServiceImpl implements ISubProductService {
     public SubProductResponse createSubProduct(SubProductCreationRequest request) {
         SubProduct subProduct = subProductMapper.toSubProduct(request);
 
+        Product product = null;
         if (request.getProductId() != null && !request.getProductId().isEmpty()) {
-            Product product = productRepository.findById(request.getProductId())
+            product = productRepository.findById(request.getProductId())
                     .orElseThrow(() -> new AppException(ErrorCode.PRODUCT_NOT_FOUND));
             subProduct.setProduct(product);
         }
-        subProduct.setStock(request.getQty());
+        if (request.getQty() != null) {
+            subProduct.setStock(request.getQty());
+            subProduct.setQty(request.getQty());
+        }
         syncAttributes(subProduct, request);
+
+        // Tự sinh SKU thông minh nếu chưa có
+        if (subProduct.getSku() == null || subProduct.getSku().trim().isEmpty()) {
+            String pPrefix = (product != null && product.getTitle() != null)
+                    ? product.getTitle().replaceAll("[^a-zA-Z0-9]", "").toUpperCase()
+                    : "SP";
+            if (pPrefix.length() > 6) pPrefix = pPrefix.substring(0, 6);
+            String sizePart = (subProduct.getSize() != null && !subProduct.getSize().isBlank())
+                    ? "-" + subProduct.getSize().replaceAll("[^a-zA-Z0-9]", "").toUpperCase()
+                    : "";
+            String randomPart = java.util.UUID.randomUUID().toString().substring(0, 4).toUpperCase();
+            subProduct.setSku(pPrefix + sizePart + "-" + randomPart);
+        }
 
         subProduct = subProductRepository.save(subProduct);
 
         return subProductMapper.toSubProductResponse(subProduct);
-
     }
 
     @Override
@@ -92,6 +108,10 @@ public class SubProductServiceImpl implements ISubProductService {
         subProductMapper.updateSubProduct(subProduct, request);
         if (request.getQty() != null) {
             subProduct.setStock(request.getQty());
+            subProduct.setQty(request.getQty());
+        }
+        if (request.getSku() != null && !request.getSku().trim().isEmpty()) {
+            subProduct.setSku(request.getSku().trim());
         }
         syncAttributes(subProduct, request);
         subProduct = subProductRepository.save(subProduct);

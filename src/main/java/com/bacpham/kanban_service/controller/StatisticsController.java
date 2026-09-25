@@ -17,13 +17,12 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/statistics")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN')")
+@PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
 public class StatisticsController {
 
     private final IStatisticsService statisticsService;
 
     @GetMapping
-    @PreAuthorize("hasAuthority('admin:read')")
     public ApiResponse<StatisticsResponse> getStatistics() {
         StatisticsResponse statistics = statisticsService.getStatistics();
         return ApiResponse.<StatisticsResponse>builder()
@@ -33,7 +32,6 @@ public class StatisticsController {
     }
 
     @GetMapping("/orderPurchase")
-    @PreAuthorize("hasAuthority('admin:read')")
     public ApiResponse<?> getOrderPurchaseStatistics(
             @RequestParam(defaultValue = "monthly") String timeType) {
 
@@ -45,7 +43,6 @@ public class StatisticsController {
     }
 
     @GetMapping("/topSellingAndLowQuantity")
-    @PreAuthorize("hasAuthority('admin:read')")
     public ApiResponse<?> getTopSellingAndLowQuantity() {
         return ApiResponse.<StatisticsTopSellingLowQuantityResponse>builder()
                 .data(statisticsService.getTopSellingAndLowQuantity())

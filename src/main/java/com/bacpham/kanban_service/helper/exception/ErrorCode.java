@@ -50,6 +50,7 @@ public enum ErrorCode {
     INVALID_EXCHANGE_CODE(2020, "Mã trao đổi xác thực không hợp lệ hoặc đã hết hạn", HttpStatus.BAD_REQUEST),
     OAUTH2_ACCOUNT_CANNOT_RESET_PASSWORD(2021, "Tài khoản này được đăng nhập bằng mạng xã hội (Google/GitHub). Vui lòng sử dụng tính năng Đăng nhập mạng xã hội thay vì đặt lại mật khẩu.", HttpStatus.BAD_REQUEST),
     OAUTH2_ACCOUNT_CANNOT_CHANGE_PASSWORD(2022, "Tài khoản đăng nhập mạng xã hội không có mật khẩu nội bộ. Vui lòng quản lý bảo mật trên tài khoản mạng xã hội của bạn.", HttpStatus.BAD_REQUEST),
+    CANNOT_DOWNGRADE_SELF(2023, "Không thể tự thay đổi vai trò của tài khoản đang đăng nhập", HttpStatus.BAD_REQUEST),
     // ==================================================
     // 3xxx - Product / Category / Supplier
     // ==================================================

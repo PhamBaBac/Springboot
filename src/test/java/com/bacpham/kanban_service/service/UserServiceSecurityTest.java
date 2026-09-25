@@ -5,8 +5,11 @@ import com.bacpham.kanban_service.dto.request.ResetPasswordRequest;
 import com.bacpham.kanban_service.entity.User;
 import com.bacpham.kanban_service.helper.exception.AppException;
 import com.bacpham.kanban_service.helper.exception.ErrorCode;
+import com.bacpham.kanban_service.mapper.UserMapper;
+import com.bacpham.kanban_service.repository.UserAuditLogRepository;
 import com.bacpham.kanban_service.repository.UserRepository;
 import com.bacpham.kanban_service.tfa.TwoFactorAuthenticationService;
+import com.bacpham.kanban_service.utils.email.EmailService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -31,6 +34,15 @@ class UserServiceSecurityTest {
 
     @Mock
     private UserRepository repository;
+
+    @Mock
+    private UserMapper userMapper;
+
+    @Mock
+    private EmailService emailService;
+
+    @Mock
+    private UserAuditLogRepository auditLogRepository;
 
     private FakeRedisService fakeRedisService;
 
@@ -74,10 +86,11 @@ class UserServiceSecurityTest {
                 passwordEncoder,
                 repository,
                 new TwoFactorAuthenticationService(),
-                null,
-                null,
+                userMapper,
+                emailService,
                 fakeRedisService,
-                new UserCacheService(repository)
+                new UserCacheService(repository),
+                auditLogRepository
         );
 
         sampleUser = User.builder()

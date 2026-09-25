@@ -30,7 +30,7 @@ import java.util.List;
 public class SupplierController {
      ISupplierService supplierService;
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     @GetMapping("/get-form")
     public SupplierFormDTO getSupplierForm() {
         List<FormItem> formItems = Arrays.asList(
@@ -54,7 +54,7 @@ public class SupplierController {
         return form;
     }
 
-     @PreAuthorize("hasRole('ADMIN')")
+     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
      @PostMapping("/add-new")
      ApiResponse<SupplierResponse> createSupplier(@RequestBody @Validated SupplierRequest request) {
          return ApiResponse.<SupplierResponse>builder()
@@ -62,7 +62,7 @@ public class SupplierController {
                  .build();
      }
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     @GetMapping("/page")
     ApiResponse<PageResponse<SupplierResponse>> productPage(
             @RequestParam(value = "page", required = false, defaultValue = "1") int page,
@@ -73,14 +73,14 @@ public class SupplierController {
                 .build();
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     @DeleteMapping("/remove")
     ApiResponse<Void> deleteSupplier(@RequestParam (value = "id", required = false) String id) {
         supplierService.deleteSupplier(id);
         return ApiResponse.<Void>builder().build();
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     @PutMapping("/update/{id}")
     ApiResponse<SupplierResponse> updateSupplier(@PathVariable String id, @RequestBody SupplierRequest request) {
         return ApiResponse.<SupplierResponse>builder()
@@ -88,7 +88,7 @@ public class SupplierController {
                 .build();
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     @GetMapping("/export")
     public void exportSuppliersToExcel(
             HttpServletResponse response,

@@ -16,12 +16,11 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 @FieldDefaults(makeFinal = true, level = lombok.AccessLevel.PRIVATE)
 @Slf4j
-@PreAuthorize("hasRole('ADMIN')")
+@PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
 public class CategoryController {
     ICategoryService categoryService;
 
     @PostMapping
-    @PreAuthorize("hasAuthority('admin:create')")
     public ApiResponse<CategoryResponse> createCategory(@RequestBody @Validated CategoryRequest request) {
         return ApiResponse.<CategoryResponse>builder()
                 .data(categoryService.createCategory(request))
@@ -29,14 +28,12 @@ public class CategoryController {
     }
 
     @DeleteMapping("/{categoryId}")
-    @PreAuthorize("hasAuthority('admin:delete')")
     ApiResponse<Void> deleteCategory(@PathVariable String categoryId) {
         categoryService.deleteCategory(categoryId);
         return ApiResponse.<Void>builder().build();
     }
 
     @PutMapping("/{categoryId}")
-    @PreAuthorize("hasAuthority('admin:update')")
     ApiResponse<CategoryResponse> updateCategory(
             @PathVariable String categoryId,
             @RequestBody @Validated CategoryRequest request) {

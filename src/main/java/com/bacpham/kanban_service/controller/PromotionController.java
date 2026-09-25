@@ -24,7 +24,7 @@ public class PromotionController {
     IPromotionService promotionService;
 
     @PostMapping("/addNew")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public ApiResponse<PromotionResponse> createPromotion(
             @RequestBody @Validated PromotionRequest request
     ) {
@@ -35,7 +35,7 @@ public class PromotionController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public ApiResponse<PromotionResponse> updatePromotion(
             @PathVariable String id,
             @RequestBody @Validated PromotionRequest request
@@ -70,7 +70,7 @@ public class PromotionController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public ApiResponse<Void> deletePromotion(@PathVariable String id) {
         promotionService.deletePromotion(id);
         return ApiResponse.<Void>builder().message("Xóa mã khuyến mãi thành công").build();

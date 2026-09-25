@@ -20,6 +20,7 @@ import java.util.Set;
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class SubProduct extends BaseModel {
+    String sku;
     String size;
     String color;
     Double price;

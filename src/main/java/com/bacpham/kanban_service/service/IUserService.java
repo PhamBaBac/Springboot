@@ -1,8 +1,12 @@
 package com.bacpham.kanban_service.service;
 
+import com.bacpham.kanban_service.dto.request.AdminCreateUserRequest;
 import com.bacpham.kanban_service.dto.request.ChangePasswordRequest;
 import com.bacpham.kanban_service.dto.request.ResetPasswordRequest;
+import com.bacpham.kanban_service.dto.response.PageResponse;
+import com.bacpham.kanban_service.dto.response.UserAuditLogResponse;
 import com.bacpham.kanban_service.dto.response.UserResponse;
+import com.bacpham.kanban_service.enums.Role;
 
 import java.security.Principal;
 
@@ -37,4 +41,24 @@ public interface IUserService {
      * Dat lai mat khau nguoi dung (forgot password flow).
      */
     void resetPassword(ResetPasswordRequest request);
+
+    /**
+     * Lấy danh sách tài khoản phân trang cho Admin.
+     */
+    PageResponse<UserResponse> getAdminUsers(String search, Role role, int page, int pageSize);
+
+    /**
+     * Admin tạo tài khoản mới và gán Role.
+     */
+    UserResponse adminCreateUser(AdminCreateUserRequest request, String adminEmail);
+
+    /**
+     * Admin cập nhật Role cho tài khoản.
+     */
+    UserResponse updateUserRole(String userId, Role newRole, String adminEmail);
+
+    /**
+     * Lấy danh sách nhật ký hoạt động (Audit Logs) phân trang.
+     */
+    PageResponse<UserAuditLogResponse> getAuditLogs(String search, int page, int pageSize);
 }

@@ -14,12 +14,13 @@ import java.util.Set;
 public class SubProductCreationRequest {
     String id;
     String productId;
+    String sku;
     String size;
     String color;
     Double price;
     Double discount;
     Integer qty;
-    Integer cost;
+    Double cost;
     Map<String, String> attributes;
     Set<String> images;
 }

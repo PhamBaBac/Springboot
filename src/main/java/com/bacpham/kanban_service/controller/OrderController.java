@@ -11,6 +11,8 @@ import com.bacpham.kanban_service.helper.exception.ErrorCode;
 import com.bacpham.kanban_service.repository.UserRepository;
 import com.bacpham.kanban_service.service.IIdempotencyService;
 import com.bacpham.kanban_service.service.IOrderService;
+import com.bacpham.kanban_service.service.IOrderStatusHistoryService;
+import com.bacpham.kanban_service.service.IPaymentTransactionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -20,6 +22,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/orders")
@@ -29,8 +32,9 @@ public class OrderController {
     private final IOrderService oderService;
     private final UserRepository userRepository;
     private final IIdempotencyService idempotencyService;
-    private final com.bacpham.kanban_service.service.IOrderStatusHistoryService orderStatusHistoryService;
-    private final com.bacpham.kanban_service.service.IPaymentTransactionService paymentTransactionService;
+    private final IOrderStatusHistoryService orderStatusHistoryService;
+    private final IPaymentTransactionService paymentTransactionService;
+
 
     @PostMapping("/create")
     public ApiResponse<?> createBill(
@@ -88,7 +92,7 @@ public class OrderController {
                 .build();
     }
     @GetMapping("/all")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public ApiResponse<?> getAllBills(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int pageSize,
@@ -104,7 +108,7 @@ public class OrderController {
     }
 
     @GetMapping("/filter")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public ApiResponse<?> filterBills(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int pageSize,
@@ -131,6 +135,28 @@ public class OrderController {
         oderService.cancelOrder(userId, orderId);
         return ApiResponse.builder()
                 .message("Hủy đơn hàng thành công")
+                .build();
+    }
+
+    @GetMapping("/admin/transactions")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<PageResponse<PaymentTransactionResponse>> getAdminTransactions(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int pageSize
+    ) {
+        PageResponse<PaymentTransactionResponse> pagedResult = paymentTransactionService.getPagedTransactions(page, pageSize);
+        return ApiResponse.<PageResponse<PaymentTransactionResponse>>builder()
+                .data(pagedResult)
+                .message("Lấy danh sách giao dịch tài chính đối soát thành công")
+                .build();
+    }
+
+    @GetMapping("/status-counts")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    public ApiResponse<Map<String, Long>> getOrderStatusCounts() {
+        return ApiResponse.<Map<String, Long>>builder()
+                .data(oderService.getOrderStatusCounts())
+                .message("Lấy thống kê số lượng đơn hàng theo trạng thái thành công")
                 .build();
     }
 
@@ -166,7 +192,7 @@ public class OrderController {
     }
 
     @PatchMapping("/{orderId}/status")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public ApiResponse<?> updateOrderStatus(
             @PathVariable String orderId,
             @RequestBody UpdateStatusOrder status
@@ -195,18 +221,6 @@ public class OrderController {
                 .message("Lấy sổ cái giao dịch của đơn hàng thành công")
                 .build();
     }
-
-    @GetMapping("/admin/transactions")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ApiResponse<PageResponse<PaymentTransactionResponse>> getAdminTransactions(
-            @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "10") int pageSize
-    ) {
-        PageResponse<PaymentTransactionResponse> pagedResult = paymentTransactionService.getPagedTransactions(page, pageSize);
-        return ApiResponse.<PageResponse<PaymentTransactionResponse>>builder()
-                .data(pagedResult)
-                .message("Lấy danh sách giao dịch tài chính đối soát thành công")
-                .build();
-    }
 }
+
 

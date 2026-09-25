@@ -24,7 +24,7 @@ public class ShipmentController {
     /**
      * Kê khai cân nặng, kích thước và tạo vận đơn bắn sang GHN
      */
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     @PostMapping("/create")
     public ApiResponse<ShipmentResponse> createShipment(@Valid @RequestBody CreateShipmentRequest request) {
         ShipmentResponse response = shipmentService.createShipment(request);
@@ -37,7 +37,7 @@ public class ShipmentController {
     /**
      * Phân trang và tìm kiếm danh sách kiện hàng cho trang quản lý vận đơn
      */
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     @GetMapping("/page")
     public ApiResponse<com.bacpham.kanban_service.dto.response.PageResponse<ShipmentResponse>> getShipmentsPage(
             @RequestParam(defaultValue = "1") int page,
@@ -54,7 +54,7 @@ public class ShipmentController {
     /**
      * Lấy danh sách các kiện hàng thuộc về một đơn hàng
      */
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     @GetMapping("/order/{orderId}")
     public ApiResponse<List<ShipmentResponse>> getShipmentsByOrderId(@PathVariable String orderId) {
         List<ShipmentResponse> response = shipmentService.getShipmentsByOrderId(orderId);
@@ -66,7 +66,7 @@ public class ShipmentController {
     /**
      * Lấy thông tin chi tiết một kiện hàng
      */
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     @GetMapping("/{id}")
     public ApiResponse<ShipmentResponse> getShipmentById(@PathVariable String id) {
         ShipmentResponse response = shipmentService.getShipmentById(id);
@@ -78,7 +78,7 @@ public class ShipmentController {
     /**
      * Tính cước phí giao hàng dự kiến từ GHN khi thay đổi cân nặng/kích thước
      */
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     @PostMapping("/calculate-fee")
     public ApiResponse<Double> calculateFee(@Valid @RequestBody CalculateShippingFeeRequest request) {
         Double fee = shipmentService.calculateShippingFee(request);

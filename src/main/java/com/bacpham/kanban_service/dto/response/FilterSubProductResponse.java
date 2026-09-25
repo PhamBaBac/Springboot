@@ -11,9 +11,11 @@ import lombok.experimental.FieldDefaults;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @ToString
 public class FilterSubProductResponse {
+    String sku;
     String size;
     String color;
     double price;
+    Double cost;
     double discount;
     Integer stock;
     java.util.Map<String, String> attributes;

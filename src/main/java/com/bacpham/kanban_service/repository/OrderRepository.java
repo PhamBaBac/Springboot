@@ -89,6 +89,9 @@ public interface OrderRepository extends JpaRepository<Order, String>, JpaSpecif
     @Query("SELECT COUNT(o) FROM Order o WHERE o.deleted = false OR o.deleted IS NULL")
     long countByDeletedFalse();
 
+    @Query("SELECT o.orderStatus, COUNT(o) FROM Order o WHERE o.deleted = false OR o.deleted IS NULL GROUP BY o.orderStatus")
+    List<Object[]> countOrdersByStatus();
+
     /**
      * Fix RAM-4: Tìm order theo id với eager fetch để tránh lazy N+1 khi truy cập items.
      */

@@ -9,8 +9,9 @@ import com.bacpham.kanban_service.enums.TransactionStatus;
 import com.bacpham.kanban_service.enums.TransactionType;
 import com.bacpham.kanban_service.repository.PaymentTransactionRepository;
 import com.bacpham.kanban_service.service.IPaymentTransactionService;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -22,13 +23,18 @@ import java.util.List;
 import java.util.UUID;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class PaymentTransactionServiceImpl implements IPaymentTransactionService {
 
     private final PaymentTransactionRepository transactionRepository;
 
+    @Autowired
+    public PaymentTransactionServiceImpl(PaymentTransactionRepository transactionRepository) {
+        this.transactionRepository = transactionRepository;
+    }
+
     @Override
+
     @Transactional(propagation = Propagation.REQUIRED)
     public PaymentTransactionResponse recordTransaction(
             Order order,

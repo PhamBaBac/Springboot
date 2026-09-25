@@ -28,7 +28,7 @@ public class MediaController {
     IMediaService mediaService;
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public ApiResponse<MediaResponse> saveMedia(@RequestBody @Validated MediaRequest request) {
         return ApiResponse.<MediaResponse>builder()
                 .data(mediaService.saveMedia(request))
@@ -36,7 +36,7 @@ public class MediaController {
     }
 
     @PostMapping("/batch")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public ApiResponse<List<MediaResponse>> saveAllMedias(@RequestBody List<MediaRequest> requests) {
         return ApiResponse.<List<MediaResponse>>builder()
                 .data(mediaService.saveAllMedias(requests))
@@ -44,7 +44,7 @@ public class MediaController {
     }
 
     @GetMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public ApiResponse<PageResponse<MediaResponse>> getAllMedias(
             @RequestParam(value = "search", required = false) String search,
             @RequestParam(value = "page", defaultValue = "1") int page,
@@ -58,7 +58,7 @@ public class MediaController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public ApiResponse<Void> deleteMedia(@PathVariable String id) {
         mediaService.deleteMedia(id);
         return ApiResponse.<Void>builder().build();

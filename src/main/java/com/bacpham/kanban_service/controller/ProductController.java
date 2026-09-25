@@ -16,12 +16,11 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 @FieldDefaults(makeFinal = true, level = lombok.AccessLevel.PRIVATE)
 @Slf4j
-@PreAuthorize("hasRole('ADMIN')")
+@PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
 public class ProductController {
     IProductService productService;
 
     @PostMapping
-    @PreAuthorize("hasAuthority('admin:create')")
     ApiResponse<ProductResponse> createProduct(@RequestBody @Validated ProductCreationRequest request) {
         return ApiResponse.<ProductResponse>builder()
                 .data(productService.createProduct(request))
@@ -29,14 +28,12 @@ public class ProductController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAuthority('admin:delete')")
     ApiResponse<Void> deleteProduct(@PathVariable String id) {
         productService.deleteProduct(id);
         return ApiResponse.<Void>builder().build();
     }
 
     @PutMapping("/{slug}/{id}")
-    @PreAuthorize("hasAuthority('admin:update')")
     ApiResponse<ProductResponse> updateProduct(@PathVariable String id, @RequestBody ProductCreationRequest request) {
         return ApiResponse.<ProductResponse>builder()
                 .data(productService.updateProduct(id, request))

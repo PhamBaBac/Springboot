@@ -23,7 +23,7 @@ public class SubProductController {
     ISubProductService subProductService;
 
     @PostMapping("/create")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     ApiResponse<SubProductResponse> createProduct(@RequestBody @Validated SubProductCreationRequest request) {
         return ApiResponse.<SubProductResponse>builder()
                 .data(subProductService.createSubProduct(request))
@@ -41,14 +41,14 @@ public class SubProductController {
     }
 
     @DeleteMapping("/remove-sub-product/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     ApiResponse<Void> deleteProduct(@PathVariable String id) {
         subProductService.delete(id);
         return ApiResponse.<Void>builder().build();
     }
 
     @PutMapping("/update")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     ApiResponse<SubProductResponse> updateProduct(@RequestBody @Validated SubProductCreationRequest request) {
         return ApiResponse.<SubProductResponse>builder()
                 .data(subProductService.updateSubProduct(request))
