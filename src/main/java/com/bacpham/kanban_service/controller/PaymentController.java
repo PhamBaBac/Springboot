@@ -10,6 +10,9 @@ import com.bacpham.kanban_service.helper.exception.ErrorCode;
 import com.bacpham.kanban_service.repository.UserRepository;
 import com.bacpham.kanban_service.entity.User;
 import com.bacpham.kanban_service.service.IOrderService;
+import com.bacpham.kanban_service.entity.Order;
+import com.bacpham.kanban_service.enums.TransactionStatus;
+import com.bacpham.kanban_service.enums.TransactionType;
 import com.bacpham.kanban_service.strategy.payment.PaymentCallbackResult;
 import com.bacpham.kanban_service.strategy.payment.PaymentStrategy;
 import com.bacpham.kanban_service.strategy.payment.PaymentStrategyRegistry;
@@ -44,6 +47,7 @@ public class PaymentController {
     private final PaymentStrategyRegistry paymentStrategyRegistry;
     private final GenericRedisService<String, String, OrderCreateRequest> redisServiceOrder;
     private final GenericRedisService<String, String, String> redisService;
+    private final com.bacpham.kanban_service.service.IPaymentTransactionService paymentTransactionService;
 
     @PostMapping("/create")
     @ResponseBody
@@ -127,8 +131,21 @@ public class PaymentController {
 
             // Tạo đơn hàng an toàn từ payload đã được validate bởi Strategy
             if (result.orderRequest() != null && result.userId() != null) {
-                orderService.createOrderFromSelectedItems(result.userId(), paymentType.name(), result.orderRequest());
+                Order order = orderService.createOrderFromSelectedItems(result.userId(), paymentType.name(), result.orderRequest());
                 log.info("Đã tạo đơn hàng thành công cho cổng thanh toán {}, mã giao dịch: {}, người dùng: {}", paymentType, result.txnRef(), result.userId());
+
+                // Financial Ledger: Ghi nhận giao dịch thanh toán trực tuyến thành công
+                paymentTransactionService.recordTransaction(
+                        order,
+                        result.txnRef(),
+                        result.transactionNo(),
+                        paymentType,
+                        TransactionType.PAYMENT,
+                        order.getTotal(),
+                        TransactionStatus.SUCCESS,
+                        params.toString(),
+                        result.message() != null ? result.message() : "Thanh toán trực tuyến thành công qua " + paymentType
+                );
 
                 // Đánh dấu đã xử lý thành công (Idempotency key lưu trong 24h)
                 redisService.set("payment:processed:" + result.txnRef(), "COMPLETED");

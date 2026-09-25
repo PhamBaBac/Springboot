@@ -29,6 +29,8 @@ public class OrderController {
     private final IOrderService oderService;
     private final UserRepository userRepository;
     private final IIdempotencyService idempotencyService;
+    private final com.bacpham.kanban_service.service.IOrderStatusHistoryService orderStatusHistoryService;
+    private final com.bacpham.kanban_service.service.IPaymentTransactionService paymentTransactionService;
 
     @PostMapping("/create")
     public ApiResponse<?> createBill(
@@ -176,4 +178,35 @@ public class OrderController {
                 .build();
     }
 
+    @GetMapping("/{orderId}/status-history")
+    public ApiResponse<List<OrderStatusHistoryResponse>> getOrderStatusHistory(@PathVariable String orderId) {
+        List<OrderStatusHistoryResponse> histories = orderStatusHistoryService.getHistoriesByOrderId(orderId);
+        return ApiResponse.<List<OrderStatusHistoryResponse>>builder()
+                .data(histories)
+                .message("Lấy lịch sử trạng thái đơn hàng thành công")
+                .build();
+    }
+
+    @GetMapping("/{orderId}/transactions")
+    public ApiResponse<List<PaymentTransactionResponse>> getOrderTransactions(@PathVariable String orderId) {
+        List<PaymentTransactionResponse> transactions = paymentTransactionService.getTransactionsByOrderId(orderId);
+        return ApiResponse.<List<PaymentTransactionResponse>>builder()
+                .data(transactions)
+                .message("Lấy sổ cái giao dịch của đơn hàng thành công")
+                .build();
+    }
+
+    @GetMapping("/admin/transactions")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<PageResponse<PaymentTransactionResponse>> getAdminTransactions(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int pageSize
+    ) {
+        PageResponse<PaymentTransactionResponse> pagedResult = paymentTransactionService.getPagedTransactions(page, pageSize);
+        return ApiResponse.<PageResponse<PaymentTransactionResponse>>builder()
+                .data(pagedResult)
+                .message("Lấy danh sách giao dịch tài chính đối soát thành công")
+                .build();
+    }
 }
+

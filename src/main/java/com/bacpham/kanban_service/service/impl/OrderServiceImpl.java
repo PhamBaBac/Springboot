@@ -38,6 +38,11 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 
+import com.bacpham.kanban_service.enums.TransactionStatus;
+import com.bacpham.kanban_service.enums.TransactionType;
+import com.bacpham.kanban_service.service.IOrderStatusHistoryService;
+import com.bacpham.kanban_service.service.IPaymentTransactionService;
+
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -53,6 +58,8 @@ public class OrderServiceImpl implements IOrderService {
     private final IPromotionService promotionService;
     private final DiscountCalculator discountCalculator;
     private final OrderStateMachine orderStateMachine;
+    private final IOrderStatusHistoryService orderStatusHistoryService;
+    private final IPaymentTransactionService paymentTransactionService;
 
     @Override
     @Transactional
@@ -77,6 +84,24 @@ public class OrderServiceImpl implements IOrderService {
 
         Order order = buildAndSaveOrder(user, request.getAddressId(), paymentType, total, subtotal, discountTotal, orderItems);
         cleanupCartItems(user, request.getItems());
+
+        // Audit Trail: Ghi nhận sự kiện tạo mới đơn hàng
+        orderStatusHistoryService.logStatusChange(order, null, OrderStatus.PENDING, "Tạo mới đơn hàng thành công", "Hình thức thanh toán: " + paymentType);
+
+        // Transaction Ledger: Nếu là COD, ghi nhận giao dịch đang chờ thanh toán
+        if (order.getPaymentType() == PaymentType.COD) {
+            paymentTransactionService.recordTransaction(
+                    order,
+                    "COD-" + order.getId(),
+                    null,
+                    PaymentType.COD,
+                    TransactionType.PAYMENT,
+                    order.getTotal(),
+                    TransactionStatus.PENDING,
+                    null,
+                    "Đơn hàng COD - Chờ thanh toán khi giao hàng"
+            );
+        }
 
         return order;
     }

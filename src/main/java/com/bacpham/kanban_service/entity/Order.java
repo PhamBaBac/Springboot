@@ -87,4 +87,10 @@ public class Order extends BaseModel {
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL)
     private List<Shipment> shipments;
+
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL)
+    private List<PaymentTransaction> paymentTransactions;
+
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL)
+    private List<OrderStatusHistory> statusHistories;
 }

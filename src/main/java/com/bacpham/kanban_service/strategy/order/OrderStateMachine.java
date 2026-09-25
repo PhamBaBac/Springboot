@@ -27,6 +27,7 @@ import java.util.Set;
 public class OrderStateMachine {
 
     private final OrderStatusHandlerRegistry statusHandlerRegistry;
+    private final com.bacpham.kanban_service.service.IOrderStatusHistoryService orderStatusHistoryService;
 
     // Transition Matrix: Định nghĩa các trạng thái kế tiếp được phép từ trạng thái hiện tại
     private static final Map<OrderStatus, Set<OrderStatus>> VALID_TRANSITIONS = new EnumMap<>(OrderStatus.class);
@@ -123,5 +124,10 @@ public class OrderStateMachine {
 
         // 4. Cập nhật trạng thái mới cho Order
         order.setOrderStatus(targetStatus);
+
+        // 5. Tự động ghi vết kiểm toán (Audit Trail) cho mọi lần đổi trạng thái
+        String reason = (request != null && request.getCancelReason() != null) ? request.getCancelReason() : null;
+        String metadata = (request != null && request.getTrackingCode() != null) ? "trackingCode: " + request.getTrackingCode() : null;
+        orderStatusHistoryService.logStatusChange(order, currentStatus, targetStatus, reason, metadata);
     }
 }
