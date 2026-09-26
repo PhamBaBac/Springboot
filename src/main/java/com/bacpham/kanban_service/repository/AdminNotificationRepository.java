@@ -11,6 +11,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -25,6 +26,38 @@ public interface AdminNotificationRepository extends JpaRepository<AdminNotifica
     Page<AdminNotification> findAllByDeletedFalseAndType(NotificationType type, Pageable pageable);
 
     Page<AdminNotification> findAllByDeletedFalseAndTypeAndIsRead(NotificationType type, Boolean isRead, Pageable pageable);
+
+    @Query(
+        value = """
+            SELECT n FROM AdminNotification n
+            WHERE (n.deleted = false OR n.deleted IS NULL)
+              AND (:type IS NULL OR n.type = :type)
+              AND (:isRead IS NULL OR n.isRead = :isRead)
+              AND (:search IS NULL OR :search = '' OR LOWER(n.title) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(n.content) LIKE LOWER(CONCAT('%', :search, '%')))
+        """,
+        countQuery = """
+            SELECT COUNT(n) FROM AdminNotification n
+            WHERE (n.deleted = false OR n.deleted IS NULL)
+              AND (:type IS NULL OR n.type = :type)
+              AND (:isRead IS NULL OR n.isRead = :isRead)
+              AND (:search IS NULL OR :search = '' OR LOWER(n.title) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(n.content) LIKE LOWER(CONCAT('%', :search, '%')))
+        """
+    )
+    Page<AdminNotification> filterNotifications(
+            @Param("type") NotificationType type,
+            @Param("isRead") Boolean isRead,
+            @Param("search") String search,
+            Pageable pageable
+    );
+
+    @Query("SELECT COUNT(n) FROM AdminNotification n WHERE (n.deleted = false OR n.deleted IS NULL)")
+    long countTotal();
+
+    @Query("SELECT COUNT(n) FROM AdminNotification n WHERE (n.deleted = false OR n.deleted IS NULL) AND n.isRead = false")
+    long countUnread();
+
+    @Query("SELECT COUNT(n) FROM AdminNotification n WHERE (n.deleted = false OR n.deleted IS NULL) AND n.type IN :types")
+    long countByTypes(@Param("types") List<NotificationType> types);
 
     long countByIsReadFalseAndDeletedFalse();
 

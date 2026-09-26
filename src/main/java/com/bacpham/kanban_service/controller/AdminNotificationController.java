@@ -3,6 +3,7 @@ package com.bacpham.kanban_service.controller;
 import com.bacpham.kanban_service.dto.request.AdminNotificationRequest;
 import com.bacpham.kanban_service.dto.request.ApiResponse;
 import com.bacpham.kanban_service.dto.response.AdminNotificationResponse;
+import com.bacpham.kanban_service.dto.response.AdminNotificationStatsResponse;
 import com.bacpham.kanban_service.dto.response.PageResponse;
 import com.bacpham.kanban_service.enums.NotificationType;
 import com.bacpham.kanban_service.service.IAdminNotificationService;
@@ -29,12 +30,27 @@ public class AdminNotificationController {
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) NotificationType type,
-            @RequestParam(required = false, defaultValue = "false") Boolean unreadOnly
+            @RequestParam(required = false) Boolean isRead,
+            @RequestParam(required = false) Boolean unreadOnly,
+            @RequestParam(required = false) String search
     ) {
-        PageResponse<AdminNotificationResponse> response = notificationService.getNotifications(page, size, type, unreadOnly);
+        Boolean resolvedIsRead = isRead;
+        if (resolvedIsRead == null && Boolean.TRUE.equals(unreadOnly)) {
+            resolvedIsRead = false;
+        }
+        PageResponse<AdminNotificationResponse> response = notificationService.getNotifications(page, size, type, resolvedIsRead, search);
         return ApiResponse.<PageResponse<AdminNotificationResponse>>builder()
                 .data(response)
                 .message("Lấy danh sách thông báo thành công")
+                .build();
+    }
+
+    @GetMapping("/stats")
+    public ApiResponse<AdminNotificationStatsResponse> getNotificationStats() {
+        AdminNotificationStatsResponse stats = notificationService.getNotificationStats();
+        return ApiResponse.<AdminNotificationStatsResponse>builder()
+                .data(stats)
+                .message("Lấy thống kê thông báo thành công")
                 .build();
     }
 

@@ -2,12 +2,15 @@ package com.bacpham.kanban_service.service;
 
 import com.bacpham.kanban_service.dto.request.AdminNotificationRequest;
 import com.bacpham.kanban_service.dto.response.AdminNotificationResponse;
+import com.bacpham.kanban_service.dto.response.AdminNotificationStatsResponse;
 import com.bacpham.kanban_service.dto.response.PageResponse;
 import com.bacpham.kanban_service.enums.NotificationType;
 
 public interface IAdminNotificationService {
 
-    PageResponse<AdminNotificationResponse> getNotifications(int page, int size, NotificationType type, Boolean unreadOnly);
+    PageResponse<AdminNotificationResponse> getNotifications(int page, int size, NotificationType type, Boolean isRead, String search);
+
+    AdminNotificationStatsResponse getNotificationStats();
 
     long getUnreadCount();
 

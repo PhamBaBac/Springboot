@@ -2,6 +2,7 @@ package com.bacpham.kanban_service.service.impl;
 
 import com.bacpham.kanban_service.dto.request.AdminNotificationRequest;
 import com.bacpham.kanban_service.dto.response.AdminNotificationResponse;
+import com.bacpham.kanban_service.dto.response.AdminNotificationStatsResponse;
 import com.bacpham.kanban_service.dto.response.PageResponse;
 import com.bacpham.kanban_service.entity.AdminNotification;
 import com.bacpham.kanban_service.enums.NotificationType;
@@ -35,19 +36,11 @@ public class AdminNotificationServiceImpl implements IAdminNotificationService {
     AdminNotificationMapper mapper;
 
     @Override
-    public PageResponse<AdminNotificationResponse> getNotifications(int page, int size, NotificationType type, Boolean unreadOnly) {
+    public PageResponse<AdminNotificationResponse> getNotifications(int page, int size, NotificationType type, Boolean isRead, String search) {
         Pageable pageable = PageRequest.of(Math.max(0, page - 1), size, Sort.by(Sort.Direction.DESC, "createdAt"));
-        Page<AdminNotification> pageResult;
+        String cleanSearch = (search != null && !search.trim().isEmpty()) ? search.trim() : null;
 
-        if (type != null && Boolean.TRUE.equals(unreadOnly)) {
-            pageResult = repository.findAllByDeletedFalseAndTypeAndIsRead(type, false, pageable);
-        } else if (type != null) {
-            pageResult = repository.findAllByDeletedFalseAndType(type, pageable);
-        } else if (Boolean.TRUE.equals(unreadOnly)) {
-            pageResult = repository.findAllByDeletedFalseAndIsRead(false, pageable);
-        } else {
-            pageResult = repository.findAllByDeletedFalse(pageable);
-        }
+        Page<AdminNotification> pageResult = repository.filterNotifications(type, isRead, cleanSearch, pageable);
 
         List<AdminNotificationResponse> items = pageResult.getContent().stream()
                 .map(mapper::toAdminNotificationResponse)
@@ -59,6 +52,21 @@ public class AdminNotificationServiceImpl implements IAdminNotificationService {
                 .totalPages(pageResult.getTotalPages())
                 .totalElements(pageResult.getTotalElements())
                 .data(items)
+                .build();
+    }
+
+    @Override
+    public AdminNotificationStatsResponse getNotificationStats() {
+        long total = repository.countTotal();
+        long unread = repository.countUnread();
+        long orders = repository.countByTypes(List.of(NotificationType.ORDER_NEW, NotificationType.ORDER_CANCEL));
+        long stock = repository.countByTypes(List.of(NotificationType.LOW_STOCK, NotificationType.OUT_OF_STOCK));
+
+        return AdminNotificationStatsResponse.builder()
+                .total(total)
+                .unread(unread)
+                .orders(orders)
+                .stock(stock)
                 .build();
     }
 
