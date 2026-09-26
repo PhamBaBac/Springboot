@@ -22,6 +22,10 @@ import com.bacpham.kanban_service.repository.SubProductRepository;
 import com.bacpham.kanban_service.repository.UserRepository;
 import com.bacpham.kanban_service.service.IReviewProductService;
 
+import com.bacpham.kanban_service.enums.NotificationPriority;
+import com.bacpham.kanban_service.enums.NotificationType;
+import com.bacpham.kanban_service.event.NotificationEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -36,6 +40,7 @@ public class ReviewProductServiceImpl implements IReviewProductService {
     private final ReviewProductMapper reviewProductMapper;
     private final OrderRepository orderRepository;
     private final ReviewModerationService reviewModerationService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     public void createReview(ReviewProductRequest request) {
@@ -79,7 +84,20 @@ public class ReviewProductServiceImpl implements IReviewProductService {
         review.setCreatedBy(user);
         review.setOrder(order);
 
-        reviewRepository.save(review);
+        Review saved = reviewRepository.save(review);
+
+        // Realtime Admin Notification: Đánh giá mới
+        String prodTitle = (subProduct.getProduct() != null) ? subProduct.getProduct().getTitle() : "Sản phẩm";
+        String customerName = user.getFirstname() != null ? (user.getFirstname() + (user.getLastname() != null ? " " + user.getLastname() : "")) : "Khách hàng";
+        eventPublisher.publishEvent(NotificationEvent.of(
+                this,
+                NotificationType.NEW_REVIEW,
+                "Đánh giá mới từ khách hàng",
+                String.format("%s đã gửi đánh giá (%d⭐) cho '%s'", customerName, request.getStar(), prodTitle),
+                NotificationPriority.NORMAL,
+                "/inventory",
+                saved.getId()
+        ));
     }
 
 

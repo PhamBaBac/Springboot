@@ -40,6 +40,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.bacpham.kanban_service.enums.NotificationPriority;
+import com.bacpham.kanban_service.enums.NotificationType;
+import com.bacpham.kanban_service.event.NotificationEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import com.bacpham.kanban_service.enums.TransactionStatus;
 import com.bacpham.kanban_service.enums.TransactionType;
 import com.bacpham.kanban_service.service.IOrderStatusHistoryService;
@@ -62,6 +66,7 @@ public class OrderServiceImpl implements IOrderService {
     private final OrderStateMachine orderStateMachine;
     private final IOrderStatusHistoryService orderStatusHistoryService;
     private final IPaymentTransactionService paymentTransactionService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional
@@ -106,6 +111,19 @@ public class OrderServiceImpl implements IOrderService {
                     "Đơn hàng COD - Chờ thanh toán khi giao hàng");
         }
 
+        // Realtime Admin Notification: Đơn hàng mới
+        String shortOrderId = order.getId().length() > 8 ? order.getId().substring(0, 8).toUpperCase() : order.getId();
+        String customerName = user.getFirstname() != null ? (user.getFirstname() + (user.getLastname() != null ? " " + user.getLastname() : "")) : "Khách hàng";
+        eventPublisher.publishEvent(NotificationEvent.of(
+                this,
+                NotificationType.ORDER_NEW,
+                "Đơn hàng mới #" + shortOrderId,
+                String.format("%s vừa đặt đơn hàng #%s trị giá %,.0f đ", customerName, shortOrderId, order.getTotal()),
+                NotificationPriority.HIGH,
+                "/orders?id=" + order.getId(),
+                order.getId()
+        ));
+
         return order;
     }
 
@@ -139,6 +157,36 @@ public class OrderServiceImpl implements IOrderService {
         int updatedRows = subProductRepository.directDeductStock(dto.getSubProductId(), dto.getCount());
         if (updatedRows == 0) {
             throw new AppException(ErrorCode.INSUFFICIENT_STOCK);
+        }
+
+        // Cảnh báo tồn kho nếu số lượng sau khi trừ xuống thấp hoặc hết hàng
+        int currentStock = subProduct.getStock() != null ? subProduct.getStock() : 0;
+        int remainingStock = currentStock - dto.getCount();
+        String prodTitle = (subProduct.getProduct() != null) ? subProduct.getProduct().getTitle() : "Sản phẩm";
+        String variantInfo = String.format("%s (%s / %s)", prodTitle,
+                subProduct.getColor() != null ? subProduct.getColor() : "-",
+                subProduct.getSize() != null ? subProduct.getSize() : "-");
+
+        if (remainingStock <= 0) {
+            eventPublisher.publishEvent(NotificationEvent.of(
+                    this,
+                    NotificationType.OUT_OF_STOCK,
+                    "Sản phẩm đã hết hàng!",
+                    "Biến thể " + variantInfo + " đã hết hàng trong kho.",
+                    NotificationPriority.URGENT,
+                    "/inventory",
+                    subProduct.getId()
+            ));
+        } else if (remainingStock <= 5) {
+            eventPublisher.publishEvent(NotificationEvent.of(
+                    this,
+                    NotificationType.LOW_STOCK,
+                    "Cảnh báo sắp hết hàng",
+                    "Biến thể " + variantInfo + " chỉ còn lại " + remainingStock + " sản phẩm trong kho.",
+                    NotificationPriority.HIGH,
+                    "/inventory",
+                    subProduct.getId()
+            ));
         }
 
         // Strategy Pattern: Tính giảm giá độc lập bằng DiscountCalculator
@@ -355,6 +403,20 @@ public class OrderServiceImpl implements IOrderService {
 
         orderRepository.save(order);
         log.info("Đơn hàng {} đã được hủy thành công bởi người dùng {}", orderId, userId);
+
+        // Realtime Admin Notification: Hủy đơn hàng
+        String shortOrderId = order.getId().length() > 8 ? order.getId().substring(0, 8).toUpperCase() : order.getId();
+        eventPublisher.publishEvent(NotificationEvent.of(
+                this,
+                NotificationType.ORDER_CANCEL,
+                "Đơn hàng đã bị hủy #" + shortOrderId,
+                String.format("Đơn hàng #%s đã bị khách hàng hủy. Lý do: %s",
+                        shortOrderId,
+                        order.getCancelReason() != null ? order.getCancelReason() : "Khách hàng tự hủy đơn"),
+                NotificationPriority.URGENT,
+                "/orders?id=" + order.getId(),
+                order.getId()
+        ));
     }
 
     @Override

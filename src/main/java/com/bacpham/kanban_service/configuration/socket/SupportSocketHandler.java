@@ -11,6 +11,10 @@ import com.corundumstudio.socketio.SocketIOServer;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import com.bacpham.kanban_service.enums.NotificationPriority;
+import com.bacpham.kanban_service.enums.NotificationType;
+import com.bacpham.kanban_service.event.NotificationEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
 import java.util.Date;
@@ -24,6 +28,7 @@ public class SupportSocketHandler {
     private final SocketIOServer socketIOServer;
     private final ISupportMessageService supportMessageService;
     private final SupportMessageMapper supportMessageMapper;
+    private final ApplicationEventPublisher eventPublisher;
 
     public static final String ADMIN_CHANNEL = "admin_support_channel";
 
@@ -95,6 +100,25 @@ public class SupportSocketHandler {
 
             // 2. Broadcast to all admins so any connected admin receives updates in real time
             socketIOServer.getRoomOperations(ADMIN_CHANNEL).sendEvent("admin_channel_message", response);
+
+            // 3. Nếu là khách hàng gửi tin nhắn, phát sinh thông báo Realtime cho Admin
+            if (role == Role.USER) {
+                String senderName = messageData.getUsername() != null && !messageData.getUsername().isBlank()
+                        ? messageData.getUsername() : "Khách hàng";
+                String snippet = messageData.getContent() != null && messageData.getContent().length() > 60
+                        ? messageData.getContent().substring(0, 57) + "..."
+                        : messageData.getContent();
+
+                eventPublisher.publishEvent(NotificationEvent.of(
+                        this,
+                        NotificationType.SUPPORT_MESSAGE,
+                        "Tin nhắn hỗ trợ từ " + senderName,
+                        snippet,
+                        NotificationPriority.NORMAL,
+                        "/support",
+                        messageData.getConversationId()
+                ));
+            }
         });
 
         // Event: Typing indicator
