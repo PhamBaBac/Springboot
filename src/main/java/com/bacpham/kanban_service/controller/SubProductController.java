@@ -61,4 +61,17 @@ public class SubProductController {
                 .build();
     }
 
+    @GetMapping("/detail/{id}")
+    ApiResponse<Map<String, Object>> getSubProductDetail(@PathVariable String id) {
+        com.bacpham.kanban_service.entity.SubProduct sub = subProductService.findById(id);
+        com.bacpham.kanban_service.entity.Product product = sub.getProduct();
+        Map<String, Object> result = new java.util.HashMap<>();
+        result.put("subProductId", sub.getId());
+        result.put("productId", product != null ? product.getId() : null);
+        result.put("productSlug", product != null ? product.getSlug() : null);
+        result.put("productTitle", product != null ? product.getTitle() : null);
+        return ApiResponse.<Map<String, Object>>builder()
+                .data(result)
+                .build();
+    }
 }

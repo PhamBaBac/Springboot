@@ -161,6 +161,13 @@ public class OrderServiceImpl implements IOrderService {
                 subProduct.getColor() != null ? subProduct.getColor() : "-",
                 subProduct.getSize() != null ? subProduct.getSize() : "-");
 
+        String productSlug = (subProduct.getProduct() != null && subProduct.getProduct().getSlug() != null)
+                ? subProduct.getProduct().getSlug() : "product";
+        String productId = (subProduct.getProduct() != null) ? subProduct.getProduct().getId() : "";
+        String stockTargetUrl = (productId != null && !productId.isBlank())
+                ? ("/inventory/detail/" + productSlug + "?id=" + productId + "&subId=" + subProduct.getId())
+                : "/inventory";
+
         if (remainingStock <= 0) {
             eventPublisher.publishEvent(NotificationEvent.of(
                     this,
@@ -168,7 +175,7 @@ public class OrderServiceImpl implements IOrderService {
                     "Sản phẩm đã hết hàng!",
                     "Biến thể " + variantInfo + " đã hết hàng trong kho.",
                     NotificationPriority.URGENT,
-                    "/inventory",
+                    stockTargetUrl,
                     subProduct.getId()
             ));
         } else if (remainingStock <= 5) {
@@ -178,7 +185,7 @@ public class OrderServiceImpl implements IOrderService {
                     "Cảnh báo sắp hết hàng",
                     "Biến thể " + variantInfo + " chỉ còn lại " + remainingStock + " sản phẩm trong kho.",
                     NotificationPriority.HIGH,
-                    "/inventory",
+                    stockTargetUrl,
                     subProduct.getId()
             ));
         }
