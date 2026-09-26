@@ -1,6 +1,7 @@
 package com.bacpham.kanban_service.gemini.tools;
 
 import com.bacpham.kanban_service.dto.response.ProductResponse;
+import com.bacpham.kanban_service.entity.Category;
 import com.bacpham.kanban_service.entity.Product;
 import com.bacpham.kanban_service.mapper.ProductMapper;
 import com.bacpham.kanban_service.repository.ProductRepository;
@@ -23,8 +24,14 @@ public class ProductSearchTools {
     private static final int MAX_LIMIT = 10;
     private static final Pattern SPLIT_SPACES_PATTERN = Pattern.compile("\\s+");
     private static final Set<String> STOP_WORDS = Set.of(
-            "and", "the", "for", "with", "from", "cua", "cho", "va", "cac",
-            "nhung", "mot", "hai", "ba", "bon", "loai", "chiec", "cai", "bo", "la"
+            "and", "the", "for", "with", "from",
+            "cua", "của", "cho", "va", "và", "cac", "các",
+            "nhung", "những", "mot", "một", "hai", "ba", "bon", "bốn",
+            "loai", "loại", "chiec", "chiếc", "cai", "cái", "bo", "bộ",
+            "la", "là", "hay", "hoac", "hoặc", "con", "còn",
+            "khong", "không", "co", "có", "shop", "hoi", "hỏi",
+            "tim", "tìm", "mua", "xem", "nao", "nào", "nay", "này",
+            "minh", "mình", "em", "anh", "chi", "chị", "ban", "bạn"
     );
 
     private static final ThreadLocal<List<ProductResponse>> CURRENT_PRODUCTS = new ThreadLocal<>();
@@ -88,11 +95,30 @@ public class ProductSearchTools {
         if (cleanColors != null && cleanColors.isEmpty()) cleanColors = null;
 
         int pageSize = (limit != null && limit > 0) ? Math.min(limit, MAX_LIMIT) : DEFAULT_LIMIT;
-        Pageable pageable = PageRequest.of(0, pageSize);
+        int fetchSize = (cleanKeyword != null) ? Math.min(pageSize * 3, 20) : pageSize;
+        Pageable pageable = PageRequest.of(0, fetchSize);
 
         List<Product> products = new ArrayList<>(productRepository.searchProductsForAi(
                 cleanKeyword, cleanCategory, cleanSizes, cleanColors, minPrice, maxPrice, pageable
         ));
+
+        // Nếu có keyword, chấm điểm độ liên quan (ưu tiên Title > Category > Description)
+        if (cleanKeyword != null && !products.isEmpty()) {
+            final String kw = cleanKeyword;
+            products.sort((p1, p2) -> Integer.compare(calculateRelevance(p2, kw), calculateRelevance(p1, kw)));
+
+            // Nếu có các sản phẩm khớp Title hoặc Category (score >= 100), loại bỏ các sản phẩm chỉ khớp trong description
+            boolean hasHighRelevance = products.stream().anyMatch(p -> calculateRelevance(p, kw) >= 100);
+            if (hasHighRelevance) {
+                products = products.stream()
+                        .filter(p -> calculateRelevance(p, kw) >= 100)
+                        .collect(Collectors.toCollection(ArrayList::new));
+            }
+
+            if (products.size() > pageSize) {
+                products = new ArrayList<>(products.subList(0, pageSize));
+            }
+        }
 
         Set<String> seenIds = new HashSet<>();
         for (Product p : products) {
@@ -101,25 +127,59 @@ public class ProductSearchTools {
             }
         }
 
-        // Fallback: nếu tìm cả cụm từ khóa không ra kết quả (do từ không liền nhau), thử tìm theo các từ khóa có nghĩa nhất
+        // Fallback: nếu tìm cả cụm từ khóa không ra kết quả (do từ không liền nhau hoặc hỏi nhiều loại đồ),
+        // thử tìm theo các từ khóa có nghĩa nhất (hỗ trợ từ tiếng Việt >= 2 ký tự như "áo", "ví", "mũ")
         if (products.isEmpty() && cleanKeyword != null && cleanKeyword.contains(" ")) {
             String[] words = SPLIT_SPACES_PATTERN.split(cleanKeyword);
             List<String> candidateWords = Arrays.stream(words)
                     .map(String::trim)
-                    .filter(w -> w.length() >= 3 && !STOP_WORDS.contains(w.toLowerCase()))
+                    .filter(w -> w.length() >= 2 && !STOP_WORDS.contains(w.toLowerCase()))
+                    .distinct()
                     .sorted((a, b) -> Integer.compare(b.length(), a.length()))
-                    .limit(2)
+                    .limit(3)
                     .toList();
 
-            for (String word : candidateWords) {
-                if (products.size() >= pageSize) break;
-                List<Product> partial = productRepository.searchProductsForAi(
-                        word, cleanCategory, cleanSizes, cleanColors, minPrice, maxPrice, pageable
-                );
-                for (Product p : partial) {
-                    if (p.getId() != null && seenIds.add(p.getId())) {
-                        products.add(p);
+            if (!candidateWords.isEmpty()) {
+                int perWordQuota = Math.max(2, pageSize / candidateWords.size());
+                for (String word : candidateWords) {
+                    if (products.size() >= pageSize) break;
+                    List<Product> partial = productRepository.searchProductsForAi(
+                            word, cleanCategory, cleanSizes, cleanColors, minPrice, maxPrice, PageRequest.of(0, Math.min(perWordQuota * 2, 10))
+                    );
+                    partial.sort((p1, p2) -> Integer.compare(calculateRelevance(p2, word), calculateRelevance(p1, word)));
+
+                    boolean hasHigh = partial.stream().anyMatch(p -> calculateRelevance(p, word) >= 100);
+                    if (hasHigh) {
+                        partial = partial.stream()
+                                .filter(p -> calculateRelevance(p, word) >= 100)
+                                .toList();
+                    }
+
+                    int addedForWord = 0;
+                    for (Product p : partial) {
+                        if (p.getId() != null && seenIds.add(p.getId())) {
+                            products.add(p);
+                            addedForWord++;
+                            if (addedForWord >= perWordQuota || products.size() >= pageSize) {
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                // Nếu vẫn chưa đủ pageSize, bù thêm từ các kết quả còn lại
+                if (products.size() < pageSize) {
+                    for (String word : candidateWords) {
                         if (products.size() >= pageSize) break;
+                        List<Product> partial = productRepository.searchProductsForAi(
+                                word, cleanCategory, cleanSizes, cleanColors, minPrice, maxPrice, pageable
+                        );
+                        for (Product p : partial) {
+                            if (p.getId() != null && seenIds.add(p.getId())) {
+                                products.add(p);
+                                if (products.size() >= pageSize) break;
+                            }
+                        }
                     }
                 }
             }
@@ -164,5 +224,49 @@ public class ProductSearchTools {
         }
 
         return result;
+    }
+
+    /**
+     * Chấm điểm độ liên quan giữa sản phẩm và từ khóa:
+     * - Khớp tiêu đề sản phẩm (Title): 200 - 1000 điểm
+     * - Khớp danh mục sản phẩm (Category): 100 điểm
+     * - Khớp mô tả chi tiết (Description): 10 điểm
+     */
+    private int calculateRelevance(Product product, String keyword) {
+        if (keyword == null || keyword.isBlank() || product == null) {
+            return 0;
+        }
+        String kw = keyword.toLowerCase().trim();
+        int score = 0;
+
+        String title = product.getTitle();
+        if (title != null) {
+            String lowerTitle = title.toLowerCase();
+            if (lowerTitle.equals(kw)) {
+                score += 1000;
+            } else if (lowerTitle.startsWith(kw + " ") || lowerTitle.contains(" " + kw + " ") || lowerTitle.endsWith(" " + kw)) {
+                score += 500;
+            } else if (lowerTitle.contains(kw)) {
+                score += 200;
+            }
+        }
+
+        if (product.getCategories() != null) {
+            for (Category c : product.getCategories()) {
+                if (c != null && c.getTitle() != null) {
+                    String lowerCat = c.getTitle().toLowerCase();
+                    if (lowerCat.contains(kw)) {
+                        score += 100;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (product.getDescription() != null && product.getDescription().toLowerCase().contains(kw)) {
+            score += 10;
+        }
+
+        return score;
     }
 }

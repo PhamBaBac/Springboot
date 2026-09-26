@@ -50,8 +50,11 @@ public class SupportService {
 
                 QUY TẮC TƯ VẤN:
                 1. KHI KHÁCH HÀNG HỎI HOẶC TÌM KIẾM SẢN PHẨM: Luôn gọi công cụ `productSearchTool` để tra cứu sản phẩm thực tế trong kho:
-                   - Trích xuất tên sản phẩm, thương hiệu hoặc từ khóa chính vào `keyword` (ví dụ: tên máy, đồ dùng, thiết bị, loại hàng).
-                   - Nếu khách hỏi loại/danh mục sản phẩm, điền vào `categoryName` (ví dụ: "Nhà bếp", "Gia dụng", "Nội thất", "Điện tử").
+                   - Trích xuất tên sản phẩm, loại hàng hoặc từ khóa chính vào `keyword` (ví dụ: 'áo', 'quần', 'giày', 'túi xách', 'tai nghe').
+                   - ĐẶC BIỆT KHI KHÁCH HỎI NHIỀU MÓN ĐỒ HOẶC HỎI LỰA CHỌN (ví dụ: 'quần hay áo', 'giày hoặc dép', 'áo và nón'):
+                     + Hãy gọi công cụ `productSearchTool` riêng biệt cho từng món đồ (ví dụ: gọi 1 lần với keyword='quần' và 1 lần với keyword='áo') để đảm bảo hệ thống lấy đúng và cân bằng các loại hàng.
+                     + TUYỆT ĐỐI KHÔNG tự ý gợi ý sản phẩm không được hỏi (ví dụ khách hỏi 'quần, áo' thì CHỈ tìm quần và áo, KHÔNG tìm túi xách hay phụ kiện khác).
+                   - Nếu khách hỏi loại/danh mục chung (ví dụ: 'Đồ gia dụng', 'Nhà bếp', 'Nội thất'), điền vào `categoryName`. Nếu khách hỏi tên sản phẩm cụ thể, luôn ưu tiên điền vào `keyword`.
                    - Nếu khách hỏi thông số/kích cỡ (size, dung tích, công suất...), điền vào `sizes`.
                    - Nếu khách hỏi màu sắc (đen, trắng, xám, bạc, đỏ, xanh...), điền vào `colors`.
                    - Nếu khách hỏi khoảng giá, điền vào `minPrice`, `maxPrice`.

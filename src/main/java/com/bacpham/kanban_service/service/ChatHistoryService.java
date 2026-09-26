@@ -1,6 +1,7 @@
 package com.bacpham.kanban_service.service;
 
 import com.bacpham.kanban_service.dto.response.ChatHistoryResponse;
+import com.bacpham.kanban_service.dto.response.ProductResponse;
 import com.bacpham.kanban_service.entity.ChatHistory;
 import com.bacpham.kanban_service.entity.User;
 import com.bacpham.kanban_service.helper.exception.AppException;
@@ -26,15 +27,21 @@ public class ChatHistoryService {
                         .role(chat.getRole())
                         .message(chat.getMessage())
                         .createdAt(chat.getCreatedAt())
+                        .products(chat.getProducts())
                         .build())
                 .collect(Collectors.toList());
     }
 
     public void saveNewMessage(User user, String message, String role) {
+        saveNewMessage(user, message, role, null);
+    }
+
+    public void saveNewMessage(User user, String message, String role, List<ProductResponse> products) {
         ChatHistory chatHistory = ChatHistory.builder()
                 .user(user)
                 .message(message)
                 .role(role)
+                .products(products)
                 .build();
         chatHistoryRepository.save(chatHistory);
     }

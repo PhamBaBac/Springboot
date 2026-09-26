@@ -74,7 +74,7 @@ public class ChatController {
 
         User user = (currentUser != null) ? currentUser : (User) principal.getPrincipal();
         chatHistoryService.saveNewMessage(user, newMessageContent, "USER");
-        chatHistoryService.saveNewMessage(user, aiResponse.getMessage(), "ASSISTANT");
+        chatHistoryService.saveNewMessage(user, aiResponse.getMessage(), "ASSISTANT", aiResponse.getProducts());
 
         return ApiResponse.<AiChatResponse>builder()
                 .data(aiResponse)
