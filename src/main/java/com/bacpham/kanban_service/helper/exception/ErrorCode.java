@@ -97,7 +97,12 @@ public enum ErrorCode {
     ADDRESS_NOT_FOUND(7001, "Không tìm thấy thông tin địa chỉ", HttpStatus.NOT_FOUND),
     SHIPMENT_NOT_FOUND(7002, "Không tìm thấy thông tin kiện hàng", HttpStatus.NOT_FOUND),
     ORDER_ITEM_NOT_IN_ORDER(7003, "Sản phẩm không thuộc về đơn hàng này", HttpStatus.BAD_REQUEST),
-    INVALID_SHIPMENT_QUANTITY(7004, "Số lượng đóng gói vượt quá số lượng trong đơn hàng", HttpStatus.BAD_REQUEST);
+    INVALID_SHIPMENT_QUANTITY(7004, "Số lượng đóng gói vượt quá số lượng trong đơn hàng", HttpStatus.BAD_REQUEST),
+
+    // ==================================================
+    // 8xxx - Notification
+    // ==================================================
+    NOTIFICATION_NOT_FOUND(8001, "Không tìm thấy thông tin thông báo", HttpStatus.NOT_FOUND);
 
     private final int code;
     private final String message;
