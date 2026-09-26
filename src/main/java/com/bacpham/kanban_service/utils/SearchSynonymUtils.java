@@ -8,7 +8,6 @@ public class SearchSynonymUtils {
 
     private static final Pattern DIACRITICS_PATTERN = Pattern.compile("\\p{InCombiningDiacriticalMarks}+");
 
-    // Nhóm các từ đồng nghĩa trong ngành thời trang
     private static final List<List<String>> SYNONYM_GROUPS = List.of(
             List.of("ao polo", "ao coc tay", "ao phong", "ao thun", "ao thun coc tay", "ao ngan tay", "t-shirt", "polo"),
             List.of("ao so mi", "so mi", "ao dai tay", "so mi dai tay"),

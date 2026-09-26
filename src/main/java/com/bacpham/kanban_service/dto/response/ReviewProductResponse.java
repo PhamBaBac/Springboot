@@ -14,7 +14,7 @@ import java.util.List;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class ReviewProductResponse {
     String id;
-    String createdBy; // userId
+    String createdBy; 
     String userFirstname;
     String userLastname;
     String userAvatar;

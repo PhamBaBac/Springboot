@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.bacpham.kanban_service.dto.request.ApiResponse;
-import com.bacpham.kanban_service.dto.request.ChatRequest; // Import DTO mới
+import com.bacpham.kanban_service.dto.request.ChatRequest;
 import com.bacpham.kanban_service.dto.response.AiChatResponse;
 import com.bacpham.kanban_service.dto.response.ChatHistoryResponse;
 import com.bacpham.kanban_service.entity.User;

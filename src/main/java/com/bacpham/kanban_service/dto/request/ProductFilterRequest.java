@@ -1,6 +1,6 @@
 package com.bacpham.kanban_service.dto.request;
 
-import com.fasterxml.jackson.annotation.JsonPropertyDescription; // <-- THAY ĐỔI Ở ĐÂY
+import com.fasterxml.jackson.annotation.JsonPropertyDescription; 
 import lombok.*;
 
 import java.util.List;

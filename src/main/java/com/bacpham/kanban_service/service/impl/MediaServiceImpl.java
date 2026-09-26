@@ -36,7 +36,6 @@ public class MediaServiceImpl implements IMediaService {
     @Override
     @Transactional
     public MediaResponse saveMedia(MediaRequest request) {
-        // Kiểm tra xem URL đã tồn tại chưa để tránh tạo bản ghi trùng lặp
         Optional<Media> existing = mediaRepository.findByUrlAndDeletedFalse(request.getUrl());
         if (existing.isPresent()) {
             return mediaMapper.toMediaResponse(existing.get());

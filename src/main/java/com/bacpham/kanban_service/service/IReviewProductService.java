@@ -7,6 +7,5 @@ import java.util.List;
 
 public interface IReviewProductService {
     void createReview(ReviewProductRequest request);
-//    List<ReviewProductResponse> getReviewsBySubProductId(String subProductId);
     List<ReviewProductResponse> getReviewsBySubProductIds(List<String> subProductIds);
 }

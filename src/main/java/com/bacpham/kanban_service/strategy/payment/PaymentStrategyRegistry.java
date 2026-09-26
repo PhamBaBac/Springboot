@@ -55,10 +55,8 @@ public class PaymentStrategyRegistry {
                 return strategy;
             }
         } catch (IllegalArgumentException ignored) {
-            // Không khớp với enum, tiếp tục kiểm tra fallback
         }
 
-        // Fallback mặc định về VNPay để bảo đảm tương thích ngược
         log.warn("Payment type '{}' not recognized or registered. Falling back to VNPAY.", paymentTypeStr);
         return getStrategy(PaymentType.VNPAY);
     }

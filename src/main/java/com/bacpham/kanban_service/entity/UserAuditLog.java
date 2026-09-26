@@ -29,7 +29,7 @@ public class UserAuditLog extends BaseModel {
     String performedByRole;
 
     @Column(name = "action", nullable = false, length = 50)
-    String action; // CREATE_USER, UPDATE_ROLE, etc.
+    String action;
 
     @Column(name = "target_user_id", length = 100)
     String targetUserId;

@@ -39,11 +39,11 @@ public class OrderStatusHistory extends BaseModel {
     String changedById;
 
     @Column(name = "changed_by_role", length = 50)
-    String changedByRole; // CUSTOMER, ADMIN, SHIPPER, SYSTEM
+    String changedByRole; 
 
     @Column(name = "reason", length = 500)
     String reason;
 
     @Column(name = "metadata", columnDefinition = "TEXT")
-    String metadata; // Lưu thông tin bổ trợ như mã vận đơn, thông báo hệ thống, tracking code
+    String metadata; 
 }

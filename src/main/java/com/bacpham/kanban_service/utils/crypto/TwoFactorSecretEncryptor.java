@@ -72,7 +72,6 @@ public class TwoFactorSecretEncryptor implements AttributeConverter<String, Stri
             return null;
         }
 
-        // Tương thích ngược: Nếu dữ liệu trong database chưa được mã hóa
         if (!dbData.startsWith(PREFIX)) {
             return dbData;
         }

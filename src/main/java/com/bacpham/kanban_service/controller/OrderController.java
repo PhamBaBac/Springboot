@@ -47,12 +47,9 @@ public class OrderController {
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
         String userId = user.getId();
 
-        // 1. Xác định Idempotency Key (Sử dụng Header nếu client truyền, hoặc sinh fingerprint hash tự động)
         String effectiveKey = (idempotencyKey != null && !idempotencyKey.isBlank())
                 ? idempotencyKey.trim()
                 : idempotencyService.generateFingerprint(userId, paymentType, request);
-
-        // 2. Kiểm tra và lấy khóa Idempotency (Atomic SETNX trong Redis)
         IdempotencyLockResult lockResult = idempotencyService.tryAcquire(effectiveKey, "order_create", Duration.ofMinutes(2));
         if (lockResult.isAlreadyCompleted()) {
             log.info("Idempotent checkout request detected for user {} with key {}. Returning existing success.", userId, effectiveKey);
@@ -63,10 +60,8 @@ public class OrderController {
         }
 
         try {
-            // 3. Thực thi tạo đơn hàng an toàn
             Order order = oderService.createOrderFromSelectedItems(userId, paymentType, request);
 
-            // 4. Đánh dấu đã hoàn thành và lưu kết quả trong 24 giờ
             idempotencyService.markCompleted(effectiveKey, "order_create", order.getId(), Duration.ofHours(24));
 
             return ApiResponse.builder()
@@ -74,7 +69,6 @@ public class OrderController {
                     .data(order.getId())
                     .build();
         } catch (Exception e) {
-            // 5. Nếu gặp exception ở business logic hoặc database, giải phóng key để user có thể thử lại
             idempotencyService.release(effectiveKey, "order_create");
             throw e;
         }

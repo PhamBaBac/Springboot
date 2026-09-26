@@ -228,7 +228,7 @@ public class RecommendationService {
 
     @Cacheable(value = "related_products", key = "#productId + '_' + #limit", unless = "#result == null || #result.isEmpty()")
     public List<ProductResponse> getRelatedProductsByAi(String productId, int limit) {
-        int maxLimit = Math.min(Math.max(limit, 1), 4); // Đảm bảo luôn < 5 (tối đa 4)
+        int maxLimit = Math.min(Math.max(limit, 1), 4);
         try {
             Product currentProduct = productRepository.findById(productId).orElse(null);
             if (currentProduct == null) {
@@ -237,7 +237,6 @@ public class RecommendationService {
 
             Map<String, Product> candidateMap = new LinkedHashMap<>();
 
-            // 1. Truy vấn database theo THỂ LOẠI (Category)
             Set<Category> categories = currentProduct.getCategories();
             if (categories != null && !categories.isEmpty()) {
                 Set<String> categoryIds = categories.stream()
@@ -252,7 +251,6 @@ public class RecommendationService {
                 }
             }
 
-            // 2. Truy vấn database theo TỪ KHÓA TIÊU ĐỀ (chỉ truy vấn khi ứng viên từ Category chưa đủ và giới hạn tối đa 3 keywords)
             if (candidateMap.size() < 10) {
                 List<String> keywords = extractKeywords(currentProduct.getTitle());
                 int kwCount = 0;
@@ -268,7 +266,6 @@ public class RecommendationService {
                 }
             }
 
-            // Nếu truy vấn dữ liệu không tìm thấy sản phẩm ứng viên nào -> Không hiển thị
             if (candidateMap.isEmpty()) {
                 log.info("Không có sản phẩm ứng viên nào theo thể loại và tiêu đề cho: {}", currentProduct.getTitle());
                 return Collections.emptyList();
@@ -276,7 +273,6 @@ public class RecommendationService {
 
             List<Product> candidates = new ArrayList<>(candidateMap.values());
 
-            // 3. Đưa cho AI phân tích theo thể loại và tiêu đề
             try {
                 String prompt = buildRelatedPrompt(currentProduct, candidates, maxLimit);
                 String raw = callGeminiWithFallback(prompt);
@@ -299,13 +295,11 @@ public class RecommendationService {
                     }
                 }
 
-                // AI phân tích và thấy không có sản phẩm nào thực sự liên quan -> Không hiển thị
                 log.info("AI phân tích không có sản phẩm nào phù hợp cho: {}", currentProduct.getTitle());
                 return Collections.emptyList();
 
             } catch (Exception e) {
                 log.error("Lỗi khi AI phân tích sản phẩm liên quan: {}", e.getMessage());
-                // Dự phòng khi AI lỗi kết nối: Chỉ lấy sản phẩm cùng thể loại chuẩn xác
                 return candidates.stream()
                         .filter(p -> p.getCategories() != null && currentProduct.getCategories() != null
                                 && p.getCategories().stream().anyMatch(c -> currentProduct.getCategories().contains(c)))

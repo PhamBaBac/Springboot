@@ -121,7 +121,6 @@ public class PaymentController {
         }
 
         if (result.success()) {
-            // Idempotency & Concurrency check: Tránh duplicate order khi người dùng F5 hoặc callback kép
             if (result.alreadyProcessed()) {
                 log.info("Giao dịch {} cho mã tham chiếu {} đã được xử lý trước đó", paymentType, result.txnRef());
                 model.addAttribute("message", "Đơn hàng đã được ghi nhận và tạo thành công trước đó.");
@@ -129,12 +128,10 @@ public class PaymentController {
                 return "payment-result.html";
             }
 
-            // Tạo đơn hàng an toàn từ payload đã được validate bởi Strategy
             if (result.orderRequest() != null && result.userId() != null) {
                 Order order = orderService.createOrderFromSelectedItems(result.userId(), paymentType.name(), result.orderRequest());
                 log.info("Đã tạo đơn hàng thành công cho cổng thanh toán {}, mã giao dịch: {}, người dùng: {}", paymentType, result.txnRef(), result.userId());
 
-                // Financial Ledger: Ghi nhận giao dịch thanh toán trực tuyến thành công
                 paymentTransactionService.recordTransaction(
                         order,
                         result.txnRef(),
@@ -147,11 +144,9 @@ public class PaymentController {
                         result.message() != null ? result.message() : "Thanh toán trực tuyến thành công qua " + paymentType
                 );
 
-                // Đánh dấu đã xử lý thành công (Idempotency key lưu trong 24h)
                 redisService.set("payment:processed:" + result.txnRef(), "COMPLETED");
                 redisService.setTimeToLive("payment:processed:" + result.txnRef(), 24, TimeUnit.HOURS);
 
-                // Dọn dẹp dữ liệu tạm sau khi đơn hàng đã được tạo và lưu trữ bền vững
                 redisServiceOrder.delete("payment:order:" + result.txnRef());
                 redisServiceOrder.delete("payment:items:" + result.userId());
                 redisService.delete("payment:txnRef:" + result.txnRef() + ":userId");

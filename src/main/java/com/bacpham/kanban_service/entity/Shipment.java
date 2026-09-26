@@ -42,16 +42,16 @@ public class Shipment extends BaseModel {
     private String shippingStatus;
 
     @Column(name = "weight")
-    private Integer weight; // gram
+    private Integer weight;
 
     @Column(name = "length")
-    private Integer length; // cm
+    private Integer length;
 
     @Column(name = "width")
-    private Integer width; // cm
+    private Integer width;
 
     @Column(name = "height")
-    private Integer height; // cm
+    private Integer height;
 
     @Column(name = "cod_amount")
     private Double codAmount;

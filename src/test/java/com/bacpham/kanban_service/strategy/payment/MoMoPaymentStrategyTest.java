@@ -35,7 +35,6 @@ class MoMoPaymentStrategyTest {
     private final String accessKey = "F8BBA842ECF85";
     private final String secretKey = "K951B6PE1waDMi640xX0huTrY0hs6AHQ";
 
-    // Test double in-memory để tránh ByteBuddy instrumentation issue trên Java 25
     static class InMemoryRedisService<V> extends GenericRedisService<String, String, V> {
         private final Map<String, V> store = new ConcurrentHashMap<>();
 
@@ -51,7 +50,6 @@ class MoMoPaymentStrategyTest {
 
         @Override
         public void setTimeToLive(String key, long timeout, TimeUnit timeUnit) {
-            // No-op trong unit test
         }
 
         @Override

@@ -14,7 +14,7 @@ import java.util.List;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class ConversationResponse {
     String id;
-    String type; // GROUP, DIRECT
+    String type; 
     String participantsHash;
     String conversationAvatar;
     String conversationName;

@@ -37,7 +37,6 @@ public class StatisticsService implements IStatisticsService {
 
     @Override
     public StatisticsResponse getStatistics() {
-        // Fix RAM-4: Dùng aggregate queries trực tiếp trên DB thay vì findAll() vào memory
         long supplierCount = supplierRepository.count();
         long productCount = productRepository.count();
         long orderCount = orderRepository.countByDeletedFalse();
@@ -46,10 +45,8 @@ public class StatisticsService implements IStatisticsService {
         long totalSubProductQty = subProductRepository.getTotalQty();
         double totalSubProductAmount = subProductRepository.getTotalSubProductAmount();
 
-        // Fix RAM-4: Tính tổng doanh thu bằng @Query aggregate, không cần load toàn bộ Order vào memory
         double totalOrderAmount = orderRepository.sumTotalByStatusAndDeletedFalse(OrderStatus.COMPLETED);
 
-        // Recent sales: chỉ cần vài order gần nhất, không phải toàn bộ
         List<OrderItem> recentItems = orderItemRepository.findRecentOrderItems(20);
         List<StatisticsOrderResponse> recentSales = recentItems.stream()
                 .map(statisticsMapper::toStatisticsOrderResponse)
@@ -69,15 +66,12 @@ public class StatisticsService implements IStatisticsService {
 
     @Override
     public StatisticsTopSellingLowQuantityResponse getTopSellingAndLowQuantity() {
-        // 1) Lấy top 5 sản phẩm con bán chạy nhất (đã gộp từ JPQL)
         List<SubProductSellingInfo> topSelling =
                 orderItemRepository.findTopSellingSubProducts();
 
-        // 2) Lấy top 5 sản phẩm có tồn kho thấp nhất (đã gộp từ JPQL)
         List<LowQuantityProductResponse> lowQuantity =
                 productRepository.findLowQuantityProducts();
 
-        // Trả về kết quả tổng hợp
         return StatisticsTopSellingLowQuantityResponse.builder()
                 .topSelling(topSelling)
                 .lowQuantity(lowQuantity)
@@ -108,7 +102,7 @@ public class StatisticsService implements IStatisticsService {
                 key = createdAt.getYear() + "-W" + weekNumber;
             } else if ("yearly".equalsIgnoreCase(timeType)) {
                 key = String.valueOf(createdAt.getYear());
-            } else { // default monthly
+            } else {
                 key = createdAt.getYear() + "-" + String.format("%02d", createdAt.getMonthValue());
             }
             groupedOrders.computeIfAbsent(key, k -> new ArrayList<>()).add(order);

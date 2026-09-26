@@ -50,7 +50,7 @@ public class AuthenticationController {
             HttpServletResponse response
     ) {
 
-        AuthenticationResponse authResponse = service.authenticate(request, response); //
+        AuthenticationResponse authResponse = service.authenticate(request, response);
         if (sessionId != null) {
             redisCartService.syncToDatabase(sessionId, authResponse.getUserId());
         }
@@ -118,11 +118,6 @@ public class AuthenticationController {
                 .build();
     }
 
-
-//    @GetMapping("/user")
-//    public Map<String, Object> user(@AuthenticationPrincipal OAuth2User principal) {
-//        return Collections.singletonMap("name", principal.getAttribute("name"));
-//    }
     @GetMapping("/failure")
     public ApiResponse<?> fail() {
         return ApiResponse.builder()

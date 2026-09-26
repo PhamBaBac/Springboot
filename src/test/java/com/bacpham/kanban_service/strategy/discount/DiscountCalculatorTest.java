@@ -40,7 +40,6 @@ class DiscountCalculatorTest {
                 .value("30000")
                 .build();
 
-        // Đơn giá 50.000, mua 2 chiếc = 100.000, giảm 30.000 -> còn 70.000 (đơn vị 35.000/chiếc)
         DiscountCalculationResult result = discountCalculator.calculate(50_000, 2, request);
         assertEquals(70_000, result.itemTotal());
         assertEquals(35_000, result.unitPriceAfterDiscount());
@@ -69,7 +68,6 @@ class DiscountCalculatorTest {
                 .value("20")
                 .build();
 
-        // 100.000 * 3 = 300.000, giảm 20% = 240.000 (đơn vị 80.000/chiếc)
         DiscountCalculationResult result = discountCalculator.calculate(100_000, 3, request);
         assertEquals(240_000, result.itemTotal());
         assertEquals(80_000, result.unitPriceAfterDiscount());

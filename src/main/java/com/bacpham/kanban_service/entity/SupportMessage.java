@@ -16,13 +16,13 @@ import lombok.*;
 @ToString
 public class SupportMessage extends BaseModel {
     private String conversationId;
-    private String senderId;    // ai gửi
-    private String receiverId;  // gửi cho ai (có thể null nếu admin offline)
-    private String username;    // tên người gửi (user hoặc admin)
-    private String avatar;      // avatar người gửi
+    private String senderId;
+    private String receiverId;
+    private String username;
+    private String avatar;
 
     @Enumerated(EnumType.STRING)
-    private Role role;          // USER / ADMIN / MANAGER
+    private Role role;
 
     @Column(columnDefinition = "TEXT")
     private String content;

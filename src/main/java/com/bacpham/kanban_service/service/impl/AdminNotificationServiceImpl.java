@@ -19,6 +19,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Date;
@@ -103,10 +104,16 @@ public class AdminNotificationServiceImpl implements IAdminNotificationService {
     }
 
     @Override
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public AdminNotificationResponse createNotification(AdminNotificationRequest request) {
         AdminNotification notification = mapper.toAdminNotification(request);
-        AdminNotification saved = repository.save(notification);
+        if (notification.getDeleted() == null) {
+            notification.setDeleted(false);
+        }
+        if (notification.getIsRead() == null) {
+            notification.setIsRead(false);
+        }
+        AdminNotification saved = repository.saveAndFlush(notification);
         log.info("Đã tạo thông báo admin mới: id={}, type={}, title={}", saved.getId(), saved.getType(), saved.getTitle());
         return mapper.toAdminNotificationResponse(saved);
     }

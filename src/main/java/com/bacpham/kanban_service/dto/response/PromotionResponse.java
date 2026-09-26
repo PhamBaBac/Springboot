@@ -17,7 +17,7 @@ public class PromotionResponse {
     private String code;
     private Double value;
     private Integer numOfAvailable;
-    private String type; // "discount" | "percent"
+    private String type; 
     private String imageURL;
     private LocalDateTime startAt;
     private LocalDateTime endAt;

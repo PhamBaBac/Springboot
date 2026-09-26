@@ -48,16 +48,13 @@ public class ShipmentServiceImpl implements IShipmentService {
         Order order = orderRepository.findById(request.getOrderId())
                 .orElseThrow(() -> new AppException(ErrorCode.BILL_NOT_FOUND));
 
-        // 1. Tạo mã kiện hàng nội bộ
         String shipmentCode = generateShipmentCode(order.getId());
 
-        // 2. Tính toán tiền thu hộ COD
         Double codAmount = request.getCodAmount();
         if (codAmount == null) {
             codAmount = order.getPaymentType() == PaymentType.COD ? order.getTotal() : 0.0;
         }
 
-        // 3. Khởi tạo đối tượng Shipment
         Shipment shipment = Shipment.builder()
                 .order(order)
                 .shipmentCode(shipmentCode)
@@ -74,7 +71,6 @@ public class ShipmentServiceImpl implements IShipmentService {
                 .items(new ArrayList<>())
                 .build();
 
-        // 4. Gắn các sản phẩm được đóng gói trong kiện hàng
         Map<String, OrderItem> orderItemMap = order.getItems().stream()
                 .collect(Collectors.toMap(OrderItem::getId, item -> item));
 
@@ -96,17 +92,14 @@ public class ShipmentServiceImpl implements IShipmentService {
             shipment.getItems().add(shipmentItem);
         }
 
-        // Lưu Shipment trước khi gửi sang GHN để có ID
         shipment = shipmentRepository.save(shipment);
 
-        // 5. Bắn vận đơn sang GHN Open API
         try {
             String trackingCode = ghnShippingService.createShippingOrderFromShipment(shipment);
             if (trackingCode != null && !trackingCode.isBlank()) {
                 shipment.setTrackingCode(trackingCode);
                 shipment.setShippingStatus("ready_to_pick");
 
-                // Cập nhật ngược lại cho Order để đảm bảo tương thích ngược
                 order.setTrackingCode(trackingCode);
                 order.setShippingStatus("ready_to_pick");
                 if (order.getOrderStatus() == OrderStatus.PENDING) {
@@ -173,7 +166,6 @@ public class ShipmentServiceImpl implements IShipmentService {
         if (request.getOrderId() != null && !request.getOrderId().isBlank()) {
             Order order = orderRepository.findById(request.getOrderId()).orElse(null);
             if (order != null && order.getAddress() != null) {
-                // Nếu chưa truyền districtId/wardCode thì có thể dùng từ địa chỉ đơn hàng
             }
         }
         return ghnShippingService.calculateShippingFee(request);

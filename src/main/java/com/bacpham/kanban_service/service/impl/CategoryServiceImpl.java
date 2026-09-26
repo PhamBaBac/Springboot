@@ -94,7 +94,6 @@ public class CategoryServiceImpl implements ICategoryService {
 
         Optional<Category> optCategory = categoryRepository.findById(categoryId.trim());
         if (optCategory.isEmpty() || Boolean.TRUE.equals(optCategory.get().getDeleted())) {
-            // Thử tìm theo slug nếu không tìm thấy theo id
             optCategory = categoryRepository.findAllByDeletedFalse().stream()
                     .filter(c -> categoryId.trim().equalsIgnoreCase(c.getSlug()) || categoryId.trim().equalsIgnoreCase(c.getTitle()))
                     .findFirst();
@@ -103,7 +102,6 @@ public class CategoryServiceImpl implements ICategoryService {
             }
         }
 
-        // Truy ngược lên để tìm danh mục cha cao nhất (Root Parent)
         Category current = optCategory.get();
         Set<String> visited = new HashSet<>();
         visited.add(current.getId());
@@ -111,7 +109,7 @@ public class CategoryServiceImpl implements ICategoryService {
         while (current.getParentId() != null && !current.getParentId().trim().isEmpty()) {
             String parentId = current.getParentId().trim();
             if (visited.contains(parentId)) {
-                break; // Tránh loop vô tận nếu data bị circular
+                break;
             }
             visited.add(parentId);
             Optional<Category> parentOpt = categoryRepository.findById(parentId);
@@ -123,7 +121,6 @@ public class CategoryServiceImpl implements ICategoryService {
         }
         Category rootCategory = current;
 
-        // Lấy danh mục cha gốc và tất cả các danh mục con cháu của nó
         List<Category> branch = new ArrayList<>();
         branch.add(rootCategory);
         Set<String> visitedChildren = new HashSet<>();
@@ -155,7 +152,6 @@ public class CategoryServiceImpl implements ICategoryService {
         category.setDeleted(true);
         categoryRepository.save(category);
         
-        // Remove from cache
         redisService.delete("categories");
     }
 
@@ -168,7 +164,6 @@ public class CategoryServiceImpl implements ICategoryService {
         
         CategoryResponse response = categoryMapper.toCategoryResponse(category);
         
-        // Invalidate cache
         redisService.delete("categories");
         
         return response;

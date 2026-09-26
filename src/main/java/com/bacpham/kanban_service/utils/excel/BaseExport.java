@@ -69,7 +69,6 @@ public class BaseExport<T> {
         } else if (value instanceof Date) {
             cell.setCellValue(value.toString());
         } else if (value instanceof List<?>) {
-            // Convert list to comma-separated string
             String listString = ((List<?>) value).stream()
                     .map(Object::toString)
                     .collect(Collectors.joining(", "));

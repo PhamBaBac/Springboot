@@ -39,7 +39,6 @@ public class ProductServiceImpl implements IProductService {
     CategoryRepository categoryRepository;
     SupplierRepository supplierRepository;
     OrderItemRepository orderItemRepository;
-    // Change the redisService declaration
     GenericRedisService<String, String, PageResponse<ProductResponse>> redisService;
 
     @Override
@@ -99,20 +98,16 @@ public class ProductServiceImpl implements IProductService {
 
         log.info("Fetching product page from database for key");
 
-        // Fix N+1-3: 2-query pattern
-        // Query 1: Lấy IDs (với đúng offset/limit — không bị HHH90003004)
         long totalElements = productRepository.countByDeletedFalse();
         int totalPages = (int) Math.ceil((double) totalElements / pageSize);
 
         Pageable idPageable = PageRequest.of(page - 1, pageSize);
         List<String> ids = productRepository.findIdsByDeletedFalseOrdered(idPageable);
 
-        // Query 2: Batch fetch đầy đủ associations (JOIN FETCH) chỉ cho page hiện tại
         List<Product> products = ids.isEmpty()
                 ? Collections.emptyList()
                 : productRepository.findByIdsWithAssociations(ids);
 
-        // Giữ thứ tự theo ids (vì JOIN FETCH có thể đổi thứ tự)
         Map<String, Product> productMap = products.stream()
                 .collect(Collectors.toMap(Product::getId, p -> p));
         List<ProductResponse> productResponses = ids.stream()
@@ -143,7 +138,6 @@ public class ProductServiceImpl implements IProductService {
         product.setDeleted(true);
         productRepository.save(product);
 
-        // Clear all product page caches
         redisService.deleteKeysMatching("product:page:*");
     }
 
@@ -212,11 +206,6 @@ public class ProductServiceImpl implements IProductService {
             colors = null;
         }
 
-        // Bước 1: Expand tất cả ID con cháu của các danh mục được chọn.
-        // Đảm bảo khi chọn danh mục cha, sản phẩm của tất cả danh mục con cũng được trả
-        // về.
-        // Bước 2: Khi người dùng nhập từ khóa tìm kiếm (search), không bị giới hạn bởi
-        // category nữa (tìm kiếm toàn sàn).
         List<String> resolvedCategoryIds = (search != null && !search.trim().isEmpty())
                 ? null
                 : resolveAllCategoryIds(categoryIds);

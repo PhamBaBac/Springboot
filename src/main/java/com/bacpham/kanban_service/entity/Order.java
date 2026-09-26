@@ -1,4 +1,3 @@
-// src/main/java/com/bacpham/kanban_service/entity/Bill.java
 package com.bacpham.kanban_service.entity;
 
 import com.bacpham.kanban_service.enums.OrderStatus;
@@ -42,16 +41,15 @@ public class Order extends BaseModel {
     private String cancelReason;
 
     @Column(name = "tracking_code")
-    private String trackingCode;     // Mã vận đơn GHN (vd: "L5G7S1")
+    private String trackingCode;  
 
     @Column(name = "shipping_status")
-    private String shippingStatus;   // Trạng thái vận chuyển GHN
+    private String shippingStatus;   
 
     @Builder.Default
     @Column(name = "customer_hidden", columnDefinition = "boolean default false")
     private Boolean customerHidden = false;
 
-    // --- RECIPIENT & FINANCIAL SNAPSHOT ---
     @Column(name = "recipient_name")
     private String recipientName;
 

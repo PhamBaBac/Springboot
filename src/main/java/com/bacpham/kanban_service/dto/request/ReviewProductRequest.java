@@ -13,7 +13,7 @@ import java.util.List;
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class ReviewProductRequest {
-    String createdBy; // userId
+    String createdBy; 
     String subProductId;
     String OrderId;
     String comment;

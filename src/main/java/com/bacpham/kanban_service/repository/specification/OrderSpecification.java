@@ -26,23 +26,19 @@ public class OrderSpecification {
             query.distinct(true);
             List<Predicate> predicates = new ArrayList<>();
 
-            // 1. Chỉ lấy các đơn chưa bị xóa mềm
             predicates.add(cb.or(
                     cb.isNull(root.get("deleted")),
                     cb.isFalse(root.get("deleted"))
             ));
 
-            // 2. Lọc theo trạng thái đơn hàng (orderStatus)
             if (status != null && !status.trim().isEmpty() && !status.equalsIgnoreCase("ALL")) {
                 try {
                     OrderStatus orderStatusEnum = OrderStatus.valueOf(status.trim().toUpperCase());
                     predicates.add(cb.equal(root.get("orderStatus"), orderStatusEnum));
                 } catch (IllegalArgumentException ignored) {
-                    // Nếu status không hợp lệ trong enum thì bỏ qua
                 }
             }
 
-            // 3. Tìm kiếm theo từ khóa: mã đơn, mã vận đơn, khách hàng, và tên sản phẩm trong đơn
             if (search != null && !search.trim().isEmpty()) {
                 String cleanKw = search.trim().toLowerCase()
                         .replace("\\", "\\\\")
@@ -57,24 +53,18 @@ public class OrderSpecification {
                 Join<SubProduct, Product> productJoin = subProductJoin.join("product", JoinType.LEFT);
 
                 List<Predicate> searchPredicates = new ArrayList<>();
-                // Khớp mã đơn
                 searchPredicates.add(cb.like(cb.lower(root.get("id")), pattern, '\\'));
-                // Khớp mã vận đơn GHN
                 searchPredicates.add(cb.like(cb.lower(root.get("trackingCode")), pattern, '\\'));
-                // Khớp thông tin user
                 searchPredicates.add(cb.like(cb.lower(userJoin.get("email")), pattern, '\\'));
                 searchPredicates.add(cb.like(cb.lower(userJoin.get("firstname")), pattern, '\\'));
                 searchPredicates.add(cb.like(cb.lower(userJoin.get("lastname")), pattern, '\\'));
-                // Khớp người nhận & SĐT
                 searchPredicates.add(cb.like(cb.lower(addressJoin.get("name")), pattern, '\\'));
                 searchPredicates.add(cb.like(cb.lower(addressJoin.get("phoneNumber")), pattern, '\\'));
-                // Khớp tên sản phẩm đặt trong đơn
                 searchPredicates.add(cb.like(cb.lower(productJoin.get("title")), pattern, '\\'));
 
                 predicates.add(cb.or(searchPredicates.toArray(new Predicate[0])));
             }
 
-            // 4. Lọc theo khoảng ngày tạo đơn (createdAt)
             if (startDate != null && !startDate.trim().isEmpty()) {
                 try {
                     LocalDate start = LocalDate.parse(startDate.trim());

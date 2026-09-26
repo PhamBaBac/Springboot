@@ -9,7 +9,7 @@ import java.util.List;
 @Data
 @Builder
 public class AiProductSearchResponse {
-    private String message; // AI trả lời
+    private String message; 
     private LocalDateTime aiCreatedAt;
     private List<ProductAiResponse> result;
 }

@@ -40,16 +40,6 @@ public class ReviewProductController {
                 .build();
     }
 
-//    @GetMapping("/{subProductId}")
-//    public ApiResponse<?> getReviewsBySubProductId(
-//            @PathVariable String subProductId
-//    ) {
-//        return ApiResponse.builder()
-//                .data(reviewProductService.getReviewsBySubProductId(subProductId))
-//                .message("Get reviews by sub product id successfully")
-//                .build();
-//    }
-
     @GetMapping("/subProducts")
     public ApiResponse<List<ReviewProductResponse> >getReviewsBySubProductIds(
             @RequestParam List<String> subProductIds

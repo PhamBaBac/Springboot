@@ -69,7 +69,6 @@ public class VNPayPaymentStrategy implements PaymentStrategy {
 
         String paymentUrl = buildPaymentUrl(vnp_Params);
 
-        // Lưu thông tin giao dịch tạm vào Redis
         redisService.set("payment:txnRef:" + vnp_TxnRef + ":userId", userId);
         redisService.setTimeToLive("payment:txnRef:" + vnp_TxnRef + ":userId", 15, TimeUnit.MINUTES);
         redisServiceOrder.set("payment:order:" + vnp_TxnRef, request);
@@ -93,7 +92,6 @@ public class VNPayPaymentStrategy implements PaymentStrategy {
             return new PaymentCallbackResult(false, false, "Không tìm thấy mã tham chiếu giao dịch từ VNPAY", null, null, null, null, null, false);
         }
 
-        // Verify chữ ký SHA512
         Map<String, String> fields = new HashMap<>();
         for (Map.Entry<String, String> entry : params.entrySet()) {
             if (entry.getValue() != null && !entry.getValue().isEmpty()) {
@@ -128,14 +126,12 @@ public class VNPayPaymentStrategy implements PaymentStrategy {
         OrderCreateRequest orderRequest = null;
 
         if (success) {
-            // Kiểm tra Idempotency: chống duplicate callback
             String processed = redisService.get("payment:processed:" + vnp_TxnRef);
             if ("COMPLETED".equals(processed)) {
                 log.info("Giao dịch VNPay {} đã được xử lý trước đó", vnp_TxnRef);
                 return new PaymentCallbackResult(true, true, "Giao dịch đã được hoàn tất trước đó", vnp_TransactionNo, vnp_PayDate, vnp_TxnRef, null, null, true);
             }
 
-            // Lấy thông tin order từ Redis
             userId = redisService.get("payment:txnRef:" + vnp_TxnRef + ":userId");
             if (userId == null) {
                 return new PaymentCallbackResult(false, true, "Không tìm thấy thông tin người dùng cho giao dịch: " + vnp_TxnRef, vnp_TransactionNo, vnp_PayDate, vnp_TxnRef, null, null, false);

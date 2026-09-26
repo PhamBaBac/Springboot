@@ -23,7 +23,6 @@ public class NotificationSocketPublisher {
         if (notification == null) return;
 
         try {
-            // 1. Gửi tới room admin_support_channel (nơi các admin/manager đang join)
             socketIOServer.getRoomOperations(SupportSocketHandler.ADMIN_CHANNEL)
                     .sendEvent(NOTIFICATION_EVENT, notification);
 

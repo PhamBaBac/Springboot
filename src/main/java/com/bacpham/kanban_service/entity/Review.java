@@ -29,7 +29,7 @@ public class Review extends BaseModel {
     List<String> images;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "order_id", nullable = false) // thêm nullable=false để bắt buộc phải gắn order
+    @JoinColumn(name = "order_id", nullable = false)
     private Order order;
 
 

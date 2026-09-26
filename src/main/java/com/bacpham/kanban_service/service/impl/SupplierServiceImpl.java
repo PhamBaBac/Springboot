@@ -118,7 +118,6 @@ public class SupplierServiceImpl implements ISupplierService {
         return supplierMapper.toSupplierResponse(supplier);
     }
 
-    //findAllSupplier
     public List<SupplierResponse> findAllSupplier() {
         List<Supplier> suppliers = supplierRepository.findAll();
         return suppliers.stream()

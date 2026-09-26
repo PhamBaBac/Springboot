@@ -33,7 +33,6 @@ public class OrderItem extends BaseModel {
     @JoinColumn(name = "sub_product_id")
     SubProduct subProduct;
 
-    // --- SNAPSHOT DATA (Bảo toàn dữ liệu lịch sử tại thời điểm đặt hàng) ---
     @Column(name = "product_title")
     String productTitle;
 

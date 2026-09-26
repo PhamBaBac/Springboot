@@ -78,7 +78,6 @@ public class User extends BaseModel implements UserDetails {
     @OneToMany(mappedBy = "createdBy", cascade = CascadeType.ALL, orphanRemoval = true)
     List<Address> addresses;
 
-    // Spring Security
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {

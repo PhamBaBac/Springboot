@@ -47,7 +47,6 @@ public class SubProductServiceImpl implements ISubProductService {
         }
         syncAttributes(subProduct, request);
 
-        // Tự sinh SKU thông minh nếu chưa có
         if (subProduct.getSku() == null || subProduct.getSku().trim().isEmpty()) {
             String pPrefix = (product != null && product.getTitle() != null)
                     ? product.getTitle().replaceAll("[^a-zA-Z0-9]", "").toUpperCase()
@@ -123,7 +122,6 @@ public class SubProductServiceImpl implements ISubProductService {
         Map<String, String> attrs = request.getAttributes();
         if (attrs != null && !attrs.isEmpty()) {
             subProduct.setAttributes(attrs);
-            // Sync to legacy color if empty
             if (subProduct.getColor() == null || subProduct.getColor().isEmpty()) {
                 for (Map.Entry<String, String> entry : attrs.entrySet()) {
                     String k = entry.getKey().toLowerCase();
@@ -133,7 +131,6 @@ public class SubProductServiceImpl implements ISubProductService {
                     }
                 }
             }
-            // Sync to legacy size if empty
             if (subProduct.getSize() == null || subProduct.getSize().isEmpty()) {
                 for (Map.Entry<String, String> entry : attrs.entrySet()) {
                     String k = entry.getKey().toLowerCase();

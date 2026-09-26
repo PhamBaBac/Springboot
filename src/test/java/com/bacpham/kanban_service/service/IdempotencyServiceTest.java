@@ -53,7 +53,6 @@ class IdempotencyServiceTest {
 
         @Override
         public void setTimeToLive(String key, long timeout, TimeUnit unit) {
-            // no-op for in-memory test
         }
     }
 
@@ -123,7 +122,6 @@ class IdempotencyServiceTest {
         OrderCreateRequest req2 = OrderCreateRequest.builder()
                 .addressId("addr-1")
                 .items(List.of(
-                        // Khác thứ tự list nhưng cùng nội dung
                         OrderItemRequest.builder().subProductId("sp-2").count(1).price(50.0).build(),
                         OrderItemRequest.builder().subProductId("sp-1").count(2).price(100.0).build()
                 ))

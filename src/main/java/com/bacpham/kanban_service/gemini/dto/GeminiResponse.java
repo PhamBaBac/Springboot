@@ -8,7 +8,6 @@ public record GeminiResponse(List<Candidate> candidates) {
     public record Content(List<Part> parts) {}
     public record Part(String text) {}
 
-    // Phương thức tiện ích để lấy text từ candidate đầu tiên một cách an toàn
     public Optional<String> getFirstCandidateText() {
         return Optional.ofNullable(candidates)
                 .filter(c -> !c.isEmpty())

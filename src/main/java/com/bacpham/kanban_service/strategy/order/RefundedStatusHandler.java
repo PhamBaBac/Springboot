@@ -44,7 +44,6 @@ public class RefundedStatusHandler implements OrderStatusHandler {
         order.setCancelReason(reason);
         inventoryRestocker.restockOrderItems(order);
 
-        // Financial Ledger: Ghi nhận giao dịch hoàn tiền vào sổ cái dòng tiền
         paymentTransactionService.recordTransaction(
                 order,
                 "REFUND-" + order.getId() + "-" + System.currentTimeMillis(),

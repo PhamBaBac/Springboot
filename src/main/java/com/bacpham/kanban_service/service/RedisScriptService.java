@@ -60,7 +60,7 @@ public class RedisScriptService {
         if (result == null) return false;
 
         return switch (result.intValue()) {
-            case 1 -> true; // success
+            case 1 -> true;
             case 0 -> throw new AppException(ErrorCode.PROMOTION_ALREADY_USED);
             case -1 -> throw new AppException(ErrorCode.PROMOTION_OUT_OF_STOCK);
             case -2 -> throw new AppException(ErrorCode.PROMOTION_EXPIRED);

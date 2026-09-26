@@ -41,13 +41,11 @@ public class RedisCartServiceImpl implements IRedisCartService {
         String key = buildKey(sessionId);
         String field = request.getSubProductId();
 
-        // 1. Lấy số lượng tồn kho từ DB
         SubProduct subProduct = subProductRepository.findById(request.getSubProductId())
                 .orElseThrow(() -> new RuntimeException("Sub-product not found"));
 
         int stockQty = subProduct.getAvailableStock();
 
-        // 2. Lấy toàn bộ giỏ hàng từ Redis
         Map<String, CartCreateRequest> currentCart = redisService.getField(key);
 
         int currentCount = currentCart.values().stream()
@@ -57,7 +55,6 @@ public class RedisCartServiceImpl implements IRedisCartService {
 
         int totalAfterAdd = currentCount + request.getCount();
 
-        // 4. Kiểm tra tồn kho
         if (totalAfterAdd > stockQty) {
             throw new RuntimeException("Số lượng vượt quá tồn kho. Hiện tại còn: " + (stockQty - currentCount));
         }
@@ -109,18 +106,15 @@ public class RedisCartServiceImpl implements IRedisCartService {
         for (CartCreateRequest request : redisCartMap.values()) {
             request.setCreatedBy(userId);
 
-            // Lấy thông tin subProduct và tồn kho
             SubProduct subProduct = subProductRepository.findById(request.getSubProductId())
                     .orElseThrow(() -> new AppException(ErrorCode.SUB_PRODUCT_NOT_FOUND));
             int stockQty = subProduct.getAvailableStock();
 
-            // Lấy số lượng đã có trong DB cart
             Optional<Cart> dbCartOpt = cartService.findByUserIdAndSubProductId(userId, request.getSubProductId());
             int redisQty = request.getCount();
             int dbQty = dbCartOpt.map(Cart::getCount).orElse(0);
             int combinedQty = redisQty + dbQty;
 
-            // Nếu vượt tồn kho thì cảnh báo và giới hạn lại
             int totalQty = Math.min(combinedQty, stockQty);
             if (combinedQty > stockQty) {
                 log.warn("Sản phẩm [{}] vượt tồn kho khả dụng: {}. Đã reset về tồn kho tối đa: {}",

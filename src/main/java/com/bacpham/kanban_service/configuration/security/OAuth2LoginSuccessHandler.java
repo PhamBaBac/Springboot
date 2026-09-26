@@ -60,7 +60,6 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
         Map<String, Object> attributes = oauth2User.getAttributes();
         Provider provider = Provider.valueOf(registrationId.toUpperCase());
 
-        // Extract user info from attributes
         String email = (String) attributes.get("email");
         String providerId = "";
         String firstName = "";
@@ -109,7 +108,6 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
         final Provider finalProvider = provider;
         final String finalAvatarUrl = avatarUrl;
 
-        // Get or create user
         User user = userRepository.findByEmail(finalEmail).map(existingUser -> {
             boolean updated = false;
             if (existingUser.getProvider() == null) {
@@ -153,16 +151,12 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
             newUser.setProvider(finalProvider);
             newUser.setProviderId(finalProviderId);
             newUser.setAvatarUrl(finalAvatarUrl);
-            // OAuth2 users don't have a password — set an encoded random placeholder
             newUser.setPassword(passwordEncoder.encode(UUID.randomUUID().toString()));
             return userRepository.save(newUser);
         });
-
-        // Sinh access token và refresh token độc lập cho phiên đăng nhập này
         String accessToken = jwtService.generateAccessToken(user);
         String refreshToken = jwtService.generateRefreshToken(user);
 
-        // Set role-specific cookie
         String cookieName = AuthenticationServiceImpl.getRefreshTokenCookieName(user.getRole());
         ResponseCookie cookie = ResponseCookie.from(cookieName, refreshToken)
                 .httpOnly(true)
@@ -182,7 +176,6 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
                 .build();
         response.addHeader(HttpHeaders.SET_COOKIE, legacyCookie.toString());
 
-        // Sinh exchange code dùng 1 lần (TTL 60s trong Redis)
         String exchangeCode = UUID.randomUUID().toString();
         AuthenticationResponse authResponse = AuthenticationResponse.builder()
                 .accessToken(accessToken)
@@ -193,7 +186,6 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
         redisService.set("oauth2:code:" + exchangeCode, objectMapper.writeValueAsString(authResponse));
         redisService.setTimeToLive("oauth2:code:" + exchangeCode, 60, TimeUnit.SECONDS);
 
-        // Redirect to frontend with code instead of exposing accessToken in URL
         String redirectUrl = UriComponentsBuilder.fromUriString(authorizedRedirectUri)
                 .queryParam("code", exchangeCode)
                 .build().toUriString();

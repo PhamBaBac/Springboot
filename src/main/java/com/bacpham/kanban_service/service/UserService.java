@@ -100,9 +100,8 @@ public class UserService implements IUserService {
         User user = repository.findByEmail(email)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
-        String secretKey = user.getSecret(); // vẫn giữ nguyên secret key
+        String secretKey = user.getSecret();
         if (secretKey == null || secretKey.isBlank()) {
-            // nếu chưa có thì tạo mới
             secretKey = tfaService.generateNewSecret();
             user.setSecret(secretKey);
             repository.save(user);
@@ -140,7 +139,6 @@ public class UserService implements IUserService {
         }
         email = email.trim().toLowerCase();
 
-        // Kiểm tra mã OTP trực tiếp hoặc cờ đã xác thực qua email từ Redis
         String verifiedFlag = redisService.get("pwd_reset_verified:" + email);
         String codeInRedis = redisService.get("code:" + email);
 
@@ -162,7 +160,6 @@ public class UserService implements IUserService {
         repository.save(user);
         userCacheService.evictUser(email);
 
-        // Thu hồi mã OTP và cờ xác thực sau khi đổi mật khẩu thành công
         redisService.delete("pwd_reset_verified:" + email);
         redisService.delete("code:" + email);
     }
@@ -213,7 +210,6 @@ public class UserService implements IUserService {
 
         User savedUser = repository.save(user);
 
-        // Ghi lại Audit Log
         UserAuditLog auditLog = UserAuditLog.builder()
                 .performedByEmail(adminEmail != null ? adminEmail : "SYSTEM")
                 .performedByRole("ADMIN")
@@ -248,7 +244,6 @@ public class UserService implements IUserService {
         User updatedUser = repository.save(user);
         userCacheService.evictUser(user.getEmail());
 
-        // Ghi lại Audit Log
         UserAuditLog auditLog = UserAuditLog.builder()
                 .performedByEmail(adminEmail != null ? adminEmail : "SYSTEM")
                 .performedByRole("ADMIN")

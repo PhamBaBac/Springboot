@@ -74,7 +74,6 @@ class UserServiceSecurityTest {
 
         @Override
         public void setTimeToLive(String key, long timeout, TimeUnit timeUnit) {
-            // no-op for unit test
         }
     }
 

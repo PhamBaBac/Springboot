@@ -102,12 +102,10 @@ public class ProductSearchTools {
                 cleanKeyword, cleanCategory, cleanSizes, cleanColors, minPrice, maxPrice, pageable
         ));
 
-        // Nếu có keyword, chấm điểm độ liên quan (ưu tiên Title > Category > Description)
         if (cleanKeyword != null && !products.isEmpty()) {
             final String kw = cleanKeyword;
             products.sort((p1, p2) -> Integer.compare(calculateRelevance(p2, kw), calculateRelevance(p1, kw)));
 
-            // Nếu có các sản phẩm khớp Title hoặc Category (score >= 100), loại bỏ các sản phẩm chỉ khớp trong description
             boolean hasHighRelevance = products.stream().anyMatch(p -> calculateRelevance(p, kw) >= 100);
             if (hasHighRelevance) {
                 products = products.stream()
@@ -127,8 +125,6 @@ public class ProductSearchTools {
             }
         }
 
-        // Fallback: nếu tìm cả cụm từ khóa không ra kết quả (do từ không liền nhau hoặc hỏi nhiều loại đồ),
-        // thử tìm theo các từ khóa có nghĩa nhất (hỗ trợ từ tiếng Việt >= 2 ký tự như "áo", "ví", "mũ")
         if (products.isEmpty() && cleanKeyword != null && cleanKeyword.contains(" ")) {
             String[] words = SPLIT_SPACES_PATTERN.split(cleanKeyword);
             List<String> candidateWords = Arrays.stream(words)
@@ -167,7 +163,6 @@ public class ProductSearchTools {
                     }
                 }
 
-                // Nếu vẫn chưa đủ pageSize, bù thêm từ các kết quả còn lại
                 if (products.size() < pageSize) {
                     for (String word : candidateWords) {
                         if (products.size() >= pageSize) break;
@@ -197,7 +192,6 @@ public class ProductSearchTools {
         if (productIds.isEmpty()) {
             result = Collections.emptyList();
         } else {
-            // Batch fetch cùng associations để triệt tiêu N+1 queries khi map DTO
             Map<String, Product> productMap = productRepository.findByIdsWithAssociations(productIds).stream()
                     .collect(Collectors.toMap(Product::getId, p -> p, (p1, p2) -> p1));
 

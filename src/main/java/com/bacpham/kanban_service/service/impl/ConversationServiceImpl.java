@@ -42,14 +42,12 @@ public class ConversationServiceImpl implements IConversationService {
             throw new AppException(ErrorCode.INVALID_INPUT);
         }
 
-        // Sort participants để sinh hash đồng nhất
         List<String> sortedIds = new ArrayList<>(participantIds);
         Collections.sort(sortedIds);
         String participantsHash = DigestUtils.md5Hex(String.join(",", sortedIds));
 
         Conversation conversation = conversationRepository.findByParticipantsHash(participantsHash)
                 .orElseGet(() -> {
-                    // Lấy thông tin từng participant từ UserService
                     List<ParticipantInfo> participantInfos = sortedIds.stream().map(id -> {
                         User user = userRepository.findById(id)
                                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
@@ -63,7 +61,7 @@ public class ConversationServiceImpl implements IConversationService {
                     }).toList();
 
                     Conversation newConversation = Conversation.builder()
-                            .participants(participantInfos) // <-- thay vì List<String>, lưu List<ParticipantInfo>
+                            .participants(participantInfos)
                             .participantsHash(participantsHash)
                             .type(request.getType())
                             .createdDate(Instant.now())

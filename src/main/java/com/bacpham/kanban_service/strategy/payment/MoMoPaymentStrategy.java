@@ -61,7 +61,6 @@ public class MoMoPaymentStrategy implements PaymentStrategy {
         String extraData = "";
         String requestType = "captureWallet";
 
-        // Chuỗi dữ liệu raw theo quy định MoMo API v2
         String rawSignature = "accessKey=" + accessKey
                 + "&amount=" + amount
                 + "&extraData=" + extraData
@@ -77,7 +76,6 @@ public class MoMoPaymentStrategy implements PaymentStrategy {
 
         String paymentUrl = null;
 
-        // Thử gọi API MoMo v2 trực tiếp để lấy payUrl chính thức
         try {
             Map<String, Object> requestBody = new LinkedHashMap<>();
             requestBody.put("partnerCode", partnerCode);
@@ -110,7 +108,6 @@ public class MoMoPaymentStrategy implements PaymentStrategy {
             log.warn("Gọi API MoMo thất bại (chuyển sang cơ chế dự phòng sandbox/offline): {}", ex.getMessage());
         }
 
-        // Nếu gọi MoMo API thất bại hoặc test offline, fallback sang redirect URL chứa chữ ký hợp lệ
         if (paymentUrl == null || paymentUrl.isBlank()) {
             paymentUrl = configMoMo.getPayUrl()
                     + "?partnerCode=" + partnerCode
@@ -122,7 +119,6 @@ public class MoMoPaymentStrategy implements PaymentStrategy {
                     + "&signature=" + signature;
         }
 
-        // Lưu thông tin giao dịch tạm vào Redis
         redisService.set("payment:txnRef:" + orderId + ":userId", userId);
         redisService.setTimeToLive("payment:txnRef:" + orderId + ":userId", 15, TimeUnit.MINUTES);
         redisServiceOrder.set("payment:order:" + orderId, request);
@@ -154,7 +150,6 @@ public class MoMoPaymentStrategy implements PaymentStrategy {
             return new PaymentCallbackResult(false, false, "Không tìm thấy mã tham chiếu giao dịch (orderId) từ MoMo", null, null, null, null, null, false);
         }
 
-        // Verify chữ ký HMAC-SHA256 MoMo v2 return
         String rawSignature = "accessKey=" + configMoMo.getAccessKey()
                 + "&amount=" + (amount != null ? amount : "")
                 + "&extraData=" + extraData
@@ -177,13 +172,11 @@ public class MoMoPaymentStrategy implements PaymentStrategy {
             return new PaymentCallbackResult(false, false, "Chữ ký không hợp lệ từ MoMo", transId, responseTime, orderId, null, null, false);
         }
 
-        // Mã "0" trong MoMo đại diện cho giao dịch thành công
         boolean success = "0".equals(resultCode);
         String userId = null;
         OrderCreateRequest orderRequest = null;
 
         if (success) {
-            // Kiểm tra Idempotency chống double callback
             String processed = redisService.get("payment:processed:" + orderId);
             if ("COMPLETED".equals(processed)) {
                 log.info("Giao dịch MoMo {} đã được xử lý trước đó", orderId);

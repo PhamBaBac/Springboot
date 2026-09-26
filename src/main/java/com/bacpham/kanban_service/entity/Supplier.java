@@ -33,7 +33,7 @@ public class Supplier extends BaseModel {
     Double price;
 
     @Column(columnDefinition = "TINYINT DEFAULT 0")
-    Integer isTaking; // 0 or 1
+    Integer isTaking;
 
     Integer active;
 

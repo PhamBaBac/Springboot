@@ -41,17 +41,15 @@ class UserCacheServiceTest {
     void testCacheHit() {
         when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(testUser));
 
-        // First call: should query repository
         User firstResult = userCacheService.getUserByEmail("test@example.com");
         assertNotNull(firstResult);
         assertEquals("John", firstResult.getFirstname());
         verify(userRepository, times(1)).findByEmail("test@example.com");
 
-        // Second call: should hit cache without querying repository again
         User secondResult = userCacheService.getUserByEmail("test@example.com");
         assertNotNull(secondResult);
         assertSame(firstResult, secondResult);
-        verify(userRepository, times(1)).findByEmail("test@example.com"); // Count stays at 1!
+        verify(userRepository, times(1)).findByEmail("test@example.com");
     }
 
     @Test
@@ -62,10 +60,8 @@ class UserCacheServiceTest {
         userCacheService.getUserByEmail("test@example.com");
         verify(userRepository, times(1)).findByEmail("test@example.com");
 
-        // Evict user
         userCacheService.evictUser("test@example.com");
 
-        // Subsequent call should query DB again
         userCacheService.getUserByEmail("test@example.com");
         verify(userRepository, times(2)).findByEmail("test@example.com");
     }

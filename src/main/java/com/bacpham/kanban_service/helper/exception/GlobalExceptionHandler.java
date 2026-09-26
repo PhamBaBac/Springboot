@@ -119,7 +119,6 @@ public class GlobalExceptionHandler {
                 attributes = constraintDescriptor.getAttributes();
                 break;
             } catch (Exception e) {
-                // messageKey is not an ErrorCode enum name, use default or raw message
             }
         }
 
@@ -163,9 +162,6 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).body(response);
     }
 
-    // ==================================================
-    // HTTP Request Parameter, Path, Header & Media Type Handlers
-    // ==================================================
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<ApiResponse<Void>> handleMethodArgumentTypeMismatch(MethodArgumentTypeMismatchException ex) {
@@ -235,9 +231,6 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(errorCode.getStatusCode()).body(response);
     }
 
-    // ==================================================
-    // File Upload / Multipart Handlers
-    // ==================================================
 
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public ResponseEntity<ApiResponse<Void>> handleMaxUploadSizeExceeded(MaxUploadSizeExceededException ex) {
@@ -258,9 +251,6 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(response);
     }
 
-    // ==================================================
-    // General Spring Security Authentication Handler
-    // ==================================================
 
     @ExceptionHandler(AuthenticationException.class)
     public ResponseEntity<ApiResponse<Void>> handleAuthenticationException(AuthenticationException ex) {
@@ -272,9 +262,6 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(errorCode.getStatusCode()).body(response);
     }
 
-    // ==================================================
-    // Database & Connection Exception Handlers
-    // ==================================================
 
     @ExceptionHandler(CannotCreateTransactionException.class)
     public ResponseEntity<ApiResponse<Void>> handleCannotCreateTransaction(CannotCreateTransactionException ex) {

@@ -34,8 +34,6 @@ public class ProductSpecification {
 
             if (categoryIds != null && !categoryIds.isEmpty()) {
                 Join<Product, Category> categoryJoin = root.join("categories", JoinType.INNER);
-                // resolveAllCategoryIds() trong ProductServiceImpl đã expand toàn bộ ID con cháu.
-                // Chỉ cần match chính xác theo id hoặc slug — không cần parentId IN nữa.
                 predicates.add(cb.or(
                         categoryJoin.get("id").in(categoryIds),
                         categoryJoin.get("slug").in(categoryIds)
@@ -52,11 +50,8 @@ public class ProductSpecification {
                             .replace("%", "\\%")
                             .replace("_", "\\_");
 
-                    // Khớp trong tiêu đề (title)
                     searchPredicates.add(cb.like(cb.lower(root.get("title")), "%" + cleanKw + "%", '\\'));
-                    // Khớp trong slug
                     searchPredicates.add(cb.like(cb.lower(root.get("slug")), "%" + cleanKw + "%", '\\'));
-                    // Khớp trong mô tả (description)
                     searchPredicates.add(cb.like(cb.lower(root.get("description")), "%" + cleanKw + "%", '\\'));
                 }
 

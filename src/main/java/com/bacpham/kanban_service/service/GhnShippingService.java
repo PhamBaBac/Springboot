@@ -41,9 +41,9 @@ public class GhnShippingService implements IGhnShippingService {
 
     private final OrderRepository orderRepository;
     private final com.bacpham.kanban_service.repository.ShipmentRepository shipmentRepository;
-    private final RestTemplate restTemplate; // Inject qua Spring DI (bean trong ApplicationConfig)
-    private final GhnStatusMapper ghnStatusMapper; // Inject mapper de tuan thu SRP va OCP
-    private final GhnOrderRequestBuilder ghnOrderRequestBuilder; // Inject builder de tuan thu SRP
+    private final RestTemplate restTemplate;
+    private final GhnStatusMapper ghnStatusMapper;
+    private final GhnOrderRequestBuilder ghnOrderRequestBuilder;
 
     @Autowired
     @Lazy
@@ -79,7 +79,6 @@ public class GhnShippingService implements IGhnShippingService {
                     Map<String, Object> data = (Map<String, Object>) body.get("data");
                     ShippingTrackingResponse tracking = mapToTrackingResponse(data);
 
-                    // Äá»“ng bá»™ vá»›i tráº¡ng thÃ¡i Ä‘Ã£ cáº­p nháº­t trong Database (tá»« Webhook)
                     orderRepository.findByTrackingCode(orderCode.trim()).ifPresent(order -> {
                         if (order.getShippingStatus() != null && !order.getShippingStatus().isBlank()) {
                             String currentGhnStatus = order.getShippingStatus();
@@ -110,7 +109,6 @@ public class GhnShippingService implements IGhnShippingService {
             log.error("Lá»—i khi gá»i API tra cá»©u GHN cho mÃ£ {}: {}", orderCode, e.getMessage());
         }
 
-        // Fallback: náº¿u GHN tráº£ vá» lá»—i hoáº·c khÃ´ng pháº£n há»“i, láº¥y thÃ´ng tin tá»« DB Ä‘á»ƒ tráº£ vá»
         return orderRepository.findByTrackingCode(orderCode.trim())
                 .map(order -> {
                     String st = order.getShippingStatus() != null ? order.getShippingStatus() : "ready_to_pick";
@@ -230,7 +228,6 @@ public class GhnShippingService implements IGhnShippingService {
                     Map<String, Object> data = (Map<String, Object>) resBody.get("data");
                     String orderCode = data.get("order_code") != null ? data.get("order_code").toString() : null;
 
-                    // Cập nhật phí ship trả về từ GHN nếu có
                     if (data.get("total_fee") != null) {
                         shipment.setShippingFee(((Number) data.get("total_fee")).doubleValue());
                     }
@@ -263,9 +260,9 @@ public class GhnShippingService implements IGhnShippingService {
         HttpHeaders headers = createGhnHeaders();
 
         Map<String, Object> body = new HashMap<>();
-        body.put("from_district_id", 1482); // Kho Cầu Giấy Hà Nội
+        body.put("from_district_id", 1482);
         body.put("from_ward_code", "1A0101");
-        body.put("service_type_id", 2); // Chuẩn
+        body.put("service_type_id", 2);
 
         if (request.getToDistrictId() != null) {
             body.put("to_district_id", request.getToDistrictId());
@@ -320,7 +317,6 @@ public class GhnShippingService implements IGhnShippingService {
 
         log.info("Nháº­n GHN Webhook event: {}", payload);
 
-        // GHN cÃ³ thá»ƒ gá»­i OrderCode (PascalCase) hoáº·c order_code (snake_case)
         String orderCode = null;
         if (payload.get("OrderCode") != null) {
             orderCode = payload.get("OrderCode").toString();
@@ -328,7 +324,6 @@ public class GhnShippingService implements IGhnShippingService {
             orderCode = payload.get("order_code").toString();
         }
 
-        // Tráº¡ng thÃ¡i GHN (Status hoáº·c status)
         String ghnStatus = null;
         if (payload.get("Status") != null) {
             ghnStatus = payload.get("Status").toString();
@@ -344,7 +339,6 @@ public class GhnShippingService implements IGhnShippingService {
         final String trackingCode = orderCode.trim();
         final String finalGhnStatus = ghnStatus != null ? ghnStatus.trim() : null;
 
-        // Cập nhật thực thể Shipment nếu tồn tại
         shipmentRepository.findByTrackingCode(trackingCode).ifPresent(shipment -> {
             if (finalGhnStatus != null && !finalGhnStatus.equalsIgnoreCase(shipment.getShippingStatus())) {
                 shipment.setShippingStatus(finalGhnStatus);
@@ -368,7 +362,6 @@ public class GhnShippingService implements IGhnShippingService {
                 order.setShippingStatus(finalGhnStatus);
                 updated = true;
 
-                // Tự động đồng bộ sang trạng thái OrderStatus qua OrderStateMachine
                 String lowerStatus = finalGhnStatus.toLowerCase();
                 try {
                     if (lowerStatus.equals("delivered")) {

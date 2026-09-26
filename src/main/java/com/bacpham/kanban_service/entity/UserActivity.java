@@ -19,7 +19,7 @@ import lombok.experimental.FieldDefaults;
 })
 public class UserActivity extends BaseModel {
 
-    @ManyToOne(fetch = FetchType.LAZY) // Dùng LAZY để tối ưu hiệu năng
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     User user;
 
@@ -27,7 +27,6 @@ public class UserActivity extends BaseModel {
     @Column(name = "action_type", nullable = false)
     ActionType actionType;
 
-    // Lưu ID của Product hoặc SubProduct
     @Column(name = "entity_id")
     String entityId;
 

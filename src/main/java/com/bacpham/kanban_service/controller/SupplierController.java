@@ -104,7 +104,6 @@ public class SupplierController {
         List<SupplierResponse> suppliers = supplierService.findAllSupplier();
         log.info("Exporting suppliers to Excel", suppliers.toString());
 
-        // Nếu có truyền start và end thì lọc
         if (start != null && end != null) {
             suppliers = supplierService.findSuppliersByDateRange( start, end);
         }

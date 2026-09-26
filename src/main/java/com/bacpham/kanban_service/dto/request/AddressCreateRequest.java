@@ -9,12 +9,12 @@ import lombok.*;
 @Builder
 @ToString
 public class AddressCreateRequest {
-    private String createdBy; // ID của người tạo địa chỉ, thường là userId
-    private String name; // tên người nhận
+    private String createdBy; 
+    private String name; 
     private String phoneNumber;
-    private String address; // ví dụ: "Xóm 6, Xã Trù Sơn, Huyện Đô Lương, Nghệ An"
+    private String address; 
     private String province;
     private String district;
     private String ward;
-    private boolean isDefault; // địa chỉ mặc định hay không
+    private boolean isDefault; 
 }

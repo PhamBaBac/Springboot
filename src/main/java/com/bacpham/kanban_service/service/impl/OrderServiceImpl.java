@@ -93,11 +93,9 @@ public class OrderServiceImpl implements IOrderService {
                 orderItems);
         cleanupCartItems(user, request.getItems());
 
-        // Audit Trail: Ghi nhận sự kiện tạo mới đơn hàng
         orderStatusHistoryService.logStatusChange(order, null, OrderStatus.PENDING, "Tạo mới đơn hàng thành công",
                 "Hình thức thanh toán: " + paymentType);
 
-        // Transaction Ledger: Nếu là COD, ghi nhận giao dịch đang chờ thanh toán
         if (order.getPaymentType() == PaymentType.COD) {
             paymentTransactionService.recordTransaction(
                     order,
@@ -111,7 +109,6 @@ public class OrderServiceImpl implements IOrderService {
                     "Đơn hàng COD - Chờ thanh toán khi giao hàng");
         }
 
-        // Realtime Admin Notification: Đơn hàng mới
         String shortOrderId = order.getId().length() > 8 ? order.getId().substring(0, 8).toUpperCase() : order.getId();
         String customerName = user.getFirstname() != null ? (user.getFirstname() + (user.getLastname() != null ? " " + user.getLastname() : "")) : "Khách hàng";
         eventPublisher.publishEvent(NotificationEvent.of(
@@ -120,7 +117,7 @@ public class OrderServiceImpl implements IOrderService {
                 "Đơn hàng mới #" + shortOrderId,
                 String.format("%s vừa đặt đơn hàng #%s trị giá %,.0f đ", customerName, shortOrderId, order.getTotal()),
                 NotificationPriority.HIGH,
-                "/orders?id=" + order.getId(),
+                "/orders?id=" + order.getId() + "&status=PENDING",
                 order.getId()
         ));
 
@@ -152,14 +149,11 @@ public class OrderServiceImpl implements IOrderService {
             throw new AppException(ErrorCode.SUB_PRODUCT_NOT_FOUND);
         }
 
-        // Cập nhật tồn kho an toàn bằng Atomic SQL Update (Chống Race Condition &
-        // Over-selling triệt để)
         int updatedRows = subProductRepository.directDeductStock(dto.getSubProductId(), dto.getCount());
         if (updatedRows == 0) {
             throw new AppException(ErrorCode.INSUFFICIENT_STOCK);
         }
 
-        // Cảnh báo tồn kho nếu số lượng sau khi trừ xuống thấp hoặc hết hàng
         int currentStock = subProduct.getStock() != null ? subProduct.getStock() : 0;
         int remainingStock = currentStock - dto.getCount();
         String prodTitle = (subProduct.getProduct() != null) ? subProduct.getProduct().getTitle() : "Sản phẩm";
@@ -189,7 +183,6 @@ public class OrderServiceImpl implements IOrderService {
             ));
         }
 
-        // Strategy Pattern: Tính giảm giá độc lập bằng DiscountCalculator
         DiscountCalculationResult discountResult = discountCalculator.calculate(
                 dto.getPrice(), dto.getCount(), dto.getDiscountValue());
 
@@ -202,7 +195,6 @@ public class OrderServiceImpl implements IOrderService {
                 .subProduct(subProduct)
                 .quantity(dto.getCount())
                 .priceAtOrderTime(discountResult.unitPriceAfterDiscount())
-                // --- SNAPSHOT DATA (Bảo toàn dữ liệu lịch sử) ---
                 .productTitle(productTitle)
                 .skuCode((subProduct.getSku() != null && !subProduct.getSku().isBlank()) ? subProduct.getSku()
                         : subProduct.getId())
@@ -240,7 +232,6 @@ public class OrderServiceImpl implements IOrderService {
                 .orderStatus(OrderStatus.PENDING)
                 .paymentType(paymentType)
                 .customerHidden(false)
-                // --- SNAPSHOT SHIPPING ADDRESS ---
                 .recipientName(address.getName())
                 .recipientPhone(address.getPhoneNumber())
                 .shippingAddress(address.getAddress())
@@ -281,9 +272,6 @@ public class OrderServiceImpl implements IOrderService {
             return Collections.emptyList();
         }
 
-        // Fix N+1: Gom tất cả orderId và subProductId, load reviewed status 1 lần duy
-        // nhất
-        // Thay vì N×M queries `existsByReviewed` trong vòng lặp
         List<String> orderIds = orders.stream().map(Order::getId).toList();
         List<String> subProductIds = orders.stream()
                 .flatMap(o -> o.getItems().stream())
@@ -292,7 +280,6 @@ public class OrderServiceImpl implements IOrderService {
                 .distinct()
                 .toList();
 
-        // 1 query duy nhất lấy tất cả combo (subProductId, orderId) đã review
         Set<String> reviewedKeys = reviewRepository
                 .findByCreatedByIdAndSubProductIdInAndOrderIdIn(userId, subProductIds, orderIds)
                 .stream()
@@ -330,7 +317,6 @@ public class OrderServiceImpl implements IOrderService {
         Pageable pageable = PageRequest.of(page - 1, pageSize, Sort.by("createdAt").descending());
         Specification<Order> spec = OrderSpecification.filter(status, search, startDate, endDate);
 
-        // Bước 1: Lấy phân trang + sort đúng theo Specification (không JOIN FETCH)
         Page<Order> orderPage = orderRepository.findAll(spec, pageable);
 
         if (orderPage.isEmpty()) {
@@ -343,8 +329,6 @@ public class OrderServiceImpl implements IOrderService {
                     .build();
         }
 
-        // Bước 2: Fetch lại đúng các order trong trang với JOIN FETCH items
-        // Fix lazy loading: đảm bảo orderResponses luôn đầy đủ (kể cả đơn 1 sản phẩm)
         List<String> orderIds = orderPage.getContent().stream()
                 .map(Order::getId)
                 .toList();
@@ -353,7 +337,6 @@ public class OrderServiceImpl implements IOrderService {
                 .stream()
                 .collect(java.util.stream.Collectors.toMap(Order::getId, o -> o));
 
-        // Giữ nguyên thứ tự sort từ bước 1
         List<OrderDetailResponse> responses = orderPage.getContent().stream()
                 .map(o -> orderMapper.toOrderDetailResponse(
                         ordersWithItems.getOrDefault(o.getId(), o)))
@@ -381,8 +364,6 @@ public class OrderServiceImpl implements IOrderService {
             throw new AppException(ErrorCode.UNAUTHORIZED);
         }
 
-        // Nếu đơn hàng đã ở trạng thái CANCELLED (idempotent), trả về thành công ngay
-        // để tránh lỗi khi click đúp
         if (order.getOrderStatus() == OrderStatus.CANCELLED) {
             log.info("Đơn hàng {} đã ở trạng thái ĐÃ HỦY, trả về thành công.", orderId);
             return;
@@ -404,7 +385,6 @@ public class OrderServiceImpl implements IOrderService {
         orderRepository.save(order);
         log.info("Đơn hàng {} đã được hủy thành công bởi người dùng {}", orderId, userId);
 
-        // Realtime Admin Notification: Hủy đơn hàng
         String shortOrderId = order.getId().length() > 8 ? order.getId().substring(0, 8).toUpperCase() : order.getId();
         eventPublisher.publishEvent(NotificationEvent.of(
                 this,
@@ -414,20 +394,22 @@ public class OrderServiceImpl implements IOrderService {
                         shortOrderId,
                         order.getCancelReason() != null ? order.getCancelReason() : "Khách hàng tự hủy đơn"),
                 NotificationPriority.URGENT,
-                "/orders?id=" + order.getId(),
+                "/orders?id=" + order.getId() + "&status=CANCELLED",
                 order.getId()
         ));
     }
 
     @Override
     public OrderDetailResponse getOrderById(String userId, String orderId) {
-        userRepository.findById(userId)
+        User currentUser = userRepository.findById(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
         Order order = orderRepository.findByIdWithDetails(orderId)
                 .orElseThrow(() -> new AppException(ErrorCode.BILL_NOT_FOUND));
 
-        if (!order.getUser().getId().equals(userId)) {
+        boolean isStaff = currentUser.getRole() == Role.ADMIN || currentUser.getRole() == Role.MANAGER;
+
+        if (!isStaff && !order.getUser().getId().equals(userId)) {
             throw new AppException(ErrorCode.UNAUTHORIZED);
         }
 
@@ -450,11 +432,8 @@ public class OrderServiceImpl implements IOrderService {
         }
 
         if (isAdmin) {
-            // Admin xóa đơn hàng -> đánh dấu deleted = true để ẩn hoàn toàn khỏi danh sách
-            // quản lý
             order.setDeleted(true);
         } else {
-            // Khách hàng tự ẩn đơn hàng phía mình, giữ lại đơn cho Admin và Thống kê
             order.setCustomerHidden(true);
             order.setDeleted(false);
         }

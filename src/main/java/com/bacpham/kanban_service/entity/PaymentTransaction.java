@@ -33,10 +33,10 @@ public class PaymentTransaction extends BaseModel {
     Order order;
 
     @Column(name = "transaction_code", nullable = false, length = 100)
-    String transactionCode; // Mã giao dịch nội bộ duy nhất (vd: TXN-ORD-... hoặc vnp_TxnRef)
+    String transactionCode; 
 
     @Column(name = "gateway_transaction_no", length = 150)
-    String gatewayTransactionNo; // Mã giao dịch trả về từ cổng thanh toán (vnp_TransactionNo, Momo transId)
+    String gatewayTransactionNo; 
 
     @Enumerated(EnumType.STRING)
     @Column(name = "payment_type", nullable = false, length = 50)
@@ -44,7 +44,8 @@ public class PaymentTransaction extends BaseModel {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "transaction_type", nullable = false, length = 50)
-    TransactionType transactionType; // PAYMENT, REFUND, COD_COLLECTION, ADJUSTMENT
+    TransactionType transactionType; 
+    
 
     @Column(name = "amount", nullable = false)
     Double amount;
@@ -55,10 +56,10 @@ public class PaymentTransaction extends BaseModel {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 30)
-    TransactionStatus status; // PENDING, SUCCESS, FAILED
+    TransactionStatus status;
 
     @Column(name = "raw_response", columnDefinition = "TEXT")
-    String rawResponse; // Lưu JSON response từ Webhook/IPN để đối soát khi tranh chấp
+    String rawResponse;
 
     @Column(name = "note", length = 500)
     String note;

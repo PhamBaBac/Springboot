@@ -38,7 +38,6 @@ public class redisConfiguration {
         RedisTemplate<K, V> template = new RedisTemplate<>();
         template.setConnectionFactory(jedisConnectionFactory());
 
-        // Key serializer nên là String
         StringRedisSerializer stringSerializer = new StringRedisSerializer();
         GenericJackson2JsonRedisSerializer jsonSerializer = new GenericJackson2JsonRedisSerializer();
 
@@ -71,7 +70,6 @@ public class redisConfiguration {
 
     @Bean(name = "stockDecrementScript")
     public RedisScript<Long> stockDecrementScript() {
-        //language=Lua
         return RedisScript.of("""
         local stock = tonumber(redis.call("GET", KEYS[1]))
         if stock and stock > 0 then
@@ -85,7 +83,6 @@ public class redisConfiguration {
 
     @Bean(name = "rollbackStockScript")
     public RedisScript<Long> rollbackStockScript() {
-        //language=Lua
         return RedisScript.of("""
         local stock = tonumber(redis.call("GET", KEYS[1]))
         if stock then
@@ -99,7 +96,6 @@ public class redisConfiguration {
 
     @Bean(name = "checkExpiredAndStockScript")
     public RedisScript<Long> checkExpiredAndStockScript() {
-        //language=Lua
         return RedisScript.of("""
         local stock = tonumber(redis.call("GET", KEYS[1]))
         local expireAt = tonumber(redis.call("GET", KEYS[2]))
@@ -116,7 +112,6 @@ public class redisConfiguration {
 
     @Bean(name = "applyCodeOnceScript")
     public RedisScript<Long> applyCodeOnceScript() {
-        //language=Lua
         return RedisScript.of("""
             local userKey = KEYS[1]
             local code = ARGV[1]
@@ -131,7 +126,6 @@ public class redisConfiguration {
     }
     @Bean(name = "applyPromotionSafelyScript")
     public RedisScript<Long> applyPromotionSafelyScript() {
-        //language=Lua
         return RedisScript.of("""
         -- KEYS[1] = stock key
         -- KEYS[2] = expire key

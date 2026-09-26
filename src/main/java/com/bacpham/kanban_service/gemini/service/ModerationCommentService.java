@@ -52,9 +52,9 @@ public class ModerationCommentService {
             ModerationResult result = chatClient.prompt()
                     .system(systemText)
                     .user(userSpec -> {
-                        userSpec.text(comment); // Thêm phần text
+                        userSpec.text(comment);
                         if (!imageMedia.isEmpty()) {
-                            userSpec.media(imageMedia.toArray(new Media[0])); // Thêm các ảnh
+                            userSpec.media(imageMedia.toArray(new Media[0]));
                         }
                     })
                     .call()

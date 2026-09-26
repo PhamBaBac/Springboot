@@ -29,20 +29,15 @@ public class OrderStateMachine {
     private final OrderStatusHandlerRegistry statusHandlerRegistry;
     private final com.bacpham.kanban_service.service.IOrderStatusHistoryService orderStatusHistoryService;
 
-    // Transition Matrix: Định nghĩa các trạng thái kế tiếp được phép từ trạng thái hiện tại
     private static final Map<OrderStatus, Set<OrderStatus>> VALID_TRANSITIONS = new EnumMap<>(OrderStatus.class);
 
     static {
-        // PENDING -> PROCESSING (xác nhận/chuẩn bị đơn) hoặc CANCELLED (hủy đơn)
         VALID_TRANSITIONS.put(OrderStatus.PENDING, EnumSet.of(OrderStatus.PROCESSING, OrderStatus.CANCELLED));
 
-        // PROCESSING -> COMPLETED (giao thành công) hoặc CANCELLED (hủy bởi shop/shipper)
         VALID_TRANSITIONS.put(OrderStatus.PROCESSING, EnumSet.of(OrderStatus.COMPLETED, OrderStatus.CANCELLED));
 
-        // COMPLETED -> REFUNDED (hoàn tiền/đổi trả sau khi đã giao hàng)
         VALID_TRANSITIONS.put(OrderStatus.COMPLETED, EnumSet.of(OrderStatus.REFUNDED));
 
-        // CANCELLED & REFUNDED là Terminal States (trạng thái kết thúc, không được chuyển đi đâu)
         VALID_TRANSITIONS.put(OrderStatus.CANCELLED, Collections.emptySet());
         VALID_TRANSITIONS.put(OrderStatus.REFUNDED, Collections.emptySet());
     }
@@ -55,7 +50,7 @@ public class OrderStateMachine {
             return false;
         }
         if (from == to) {
-            return true; // Idempotent transition
+            return true;
         }
         Set<OrderStatus> allowed = VALID_TRANSITIONS.get(from);
         return allowed != null && allowed.contains(to);
@@ -81,7 +76,6 @@ public class OrderStateMachine {
         if (order.getOrderStatus() != OrderStatus.PENDING) {
             return false;
         }
-        // Nếu đã có tracking code hoặc shipment đã tạo thì khách hàng không thể tự hủy
         if (order.getTrackingCode() != null && !order.getTrackingCode().isBlank()) {
             return false;
         }
@@ -105,13 +99,11 @@ public class OrderStateMachine {
 
         OrderStatus currentStatus = order.getOrderStatus();
 
-        // 1. Kiểm tra tính Idempotent: Nếu trạng thái không đổi, không làm gì thêm
         if (currentStatus == targetStatus) {
             log.info("Order {} is already in status {}, skipping transition.", order.getId(), targetStatus);
             return;
         }
 
-        // 2. Kiểm tra tính hợp lệ của State Transition
         if (!isValidTransition(currentStatus, targetStatus)) {
             log.warn("Invalid order status transition from {} to {} for orderId: {}", currentStatus, targetStatus, order.getId());
             throw new AppException(ErrorCode.INVALID_ORDER_STATUS_TRANSITION);
@@ -119,13 +111,10 @@ public class OrderStateMachine {
 
         log.info("Transitioning order {} from {} to {}", order.getId(), currentStatus, targetStatus);
 
-        // 3. Thực thi Handler (Strategy Pattern) để kích hoạt các nghiệp vụ liên quan (tồn kho, GHN, lý do hủy)
         statusHandlerRegistry.executeTransition(order, targetStatus, request);
 
-        // 4. Cập nhật trạng thái mới cho Order
         order.setOrderStatus(targetStatus);
 
-        // 5. Tự động ghi vết kiểm toán (Audit Trail) cho mọi lần đổi trạng thái
         String reason = (request != null && request.getCancelReason() != null) ? request.getCancelReason() : null;
         String metadata = (request != null && request.getTrackingCode() != null) ? "trackingCode: " + request.getTrackingCode() : null;
         orderStatusHistoryService.logStatusChange(order, currentStatus, targetStatus, reason, metadata);

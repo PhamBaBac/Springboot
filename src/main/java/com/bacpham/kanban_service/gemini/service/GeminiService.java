@@ -57,7 +57,6 @@ public class GeminiService {
         log.info("Sending text prompt to Gemini: '{}'", textPrompt);
         GeminiRequest requestBody = GeminiRequest.fromText(textPrompt);
 
-        // Ưu tiên gemini-2.5-flash theo yêu cầu
         List<String> modelsToTry = new ArrayList<>();
         if (model != null && !model.isBlank()) {
             modelsToTry.add(model);
@@ -179,7 +178,6 @@ public class GeminiService {
             log.error("AI generateAutoContent thất bại ({}), kích hoạt nội dung mẫu dự phòng...", e.getMessage());
         }
 
-        // Dự phòng thông minh nếu tất cả quota hoặc network gặp sự cố
         return buildFallbackContent(contentType, safeTitle);
     }
 

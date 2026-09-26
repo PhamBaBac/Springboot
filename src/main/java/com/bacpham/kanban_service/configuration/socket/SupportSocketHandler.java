@@ -18,7 +18,10 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
 import java.util.Date;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 @Component
 @Slf4j
@@ -32,6 +35,13 @@ public class SupportSocketHandler {
 
     public static final String ADMIN_CHANNEL = "admin_support_channel";
 
+    private final Map<String, List<Long>> rateLimitMap = new ConcurrentHashMap<>();
+    private static final int MAX_MESSAGES_PER_WINDOW = 5;
+    private static final long RATE_LIMIT_WINDOW_MS = 3000;
+
+    private final Map<String, Long> lastNotificationTimeMap = new ConcurrentHashMap<>();
+    private static final long NOTIFICATION_COOLDOWN_MS = 2 * 60 * 1000;
+
     @PostConstruct
     public void registerListeners() {
         socketIOServer.addConnectListener(client -> {
@@ -42,13 +52,10 @@ public class SupportSocketHandler {
             log.info("Socket client disconnected: sessionId={}", client.getSessionId());
         });
 
-        // Event: Admin/Manager joins the general admin notification channel
         socketIOServer.addEventListener("join_admin_channel", Map.class, (client, data, ackSender) -> {
             client.joinRoom(ADMIN_CHANNEL);
             log.info("Staff client {} joined room {}", client.getSessionId(), ADMIN_CHANNEL);
         });
-
-        // Event: Client joins a specific conversation room
         socketIOServer.addEventListener("join_conversation", Map.class, (client, data, ackSender) -> {
             String conversationId = data != null ? (String) data.get("conversationId") : null;
             if (conversationId != null && !conversationId.isBlank()) {
@@ -58,7 +65,6 @@ public class SupportSocketHandler {
             }
         });
 
-        // Event: Client leaves a conversation room
         socketIOServer.addEventListener("leave_conversation", Map.class, (client, data, ackSender) -> {
             String conversationId = data != null ? (String) data.get("conversationId") : null;
             if (conversationId != null && !conversationId.isBlank()) {
@@ -68,16 +74,30 @@ public class SupportSocketHandler {
             }
         });
 
-        // Event: Send a message
         socketIOServer.addEventListener("send_message", SocketChatMessage.class, (client, messageData, ackSender) -> {
             if (messageData == null || messageData.getContent() == null || messageData.getContent().trim().isEmpty()) {
                 return;
             }
 
-            log.info("Received socket message: from={}, role={}, conv={}",
-                    messageData.getUsername(), messageData.getRole(), messageData.getConversationId());
-
             Role role = messageData.getRole() != null ? messageData.getRole() : Role.USER;
+
+            String senderId = messageData.getSenderId();
+            if (role == Role.USER && senderId != null && !senderId.isBlank()) {
+                long now = System.currentTimeMillis();
+                List<Long> timestamps = rateLimitMap.computeIfAbsent(senderId, k -> new CopyOnWriteArrayList<>());
+                timestamps.removeIf(t -> now - t > RATE_LIMIT_WINDOW_MS);
+                if (timestamps.size() >= MAX_MESSAGES_PER_WINDOW) {
+                    log.warn("User {} gửi tin nhắn quá nhanh, chặn spam", senderId);
+                    client.sendEvent("spam_warning", Map.of(
+                            "message", "Bạn đang gửi tin nhắn quá nhanh. Vui lòng chậm lại một chút nhé!"
+                    ));
+                    return;
+                }
+                timestamps.add(now);
+            }
+
+            log.info("Received socket message: from={}, role={}, conv={}",
+                    messageData.getUsername(), role, messageData.getConversationId());
 
             SupportMessageRequest request = SupportMessageRequest.builder()
                     .conversationId(messageData.getConversationId())
@@ -94,34 +114,42 @@ public class SupportSocketHandler {
             SupportMessage saved = supportMessageService.saveMessage(request);
             SupportMessageResponse response = supportMessageMapper.toSupportMessageResponse(saved);
 
-            // 1. Broadcast to everyone currently in this conversation room
             String convRoom = "conversation_" + response.getConversationId();
             socketIOServer.getRoomOperations(convRoom).sendEvent("receive_message", response);
 
-            // 2. Broadcast to all admins so any connected admin receives updates in real time
             socketIOServer.getRoomOperations(ADMIN_CHANNEL).sendEvent("admin_channel_message", response);
 
-            // 3. Nếu là khách hàng gửi tin nhắn, phát sinh thông báo Realtime cho Admin
             if (role == Role.USER) {
-                String senderName = messageData.getUsername() != null && !messageData.getUsername().isBlank()
-                        ? messageData.getUsername() : "Khách hàng";
-                String snippet = messageData.getContent() != null && messageData.getContent().length() > 60
-                        ? messageData.getContent().substring(0, 57) + "..."
-                        : messageData.getContent();
+                String convId = messageData.getConversationId();
+                long now = System.currentTimeMillis();
+                Long lastNotiTime = (convId != null) ? lastNotificationTimeMap.get(convId) : null;
 
-                eventPublisher.publishEvent(NotificationEvent.of(
-                        this,
-                        NotificationType.SUPPORT_MESSAGE,
-                        "Tin nhắn hỗ trợ từ " + senderName,
-                        snippet,
-                        NotificationPriority.NORMAL,
-                        "/support",
-                        messageData.getConversationId()
-                ));
+                if (lastNotiTime == null || (now - lastNotiTime) > NOTIFICATION_COOLDOWN_MS) {
+                    if (convId != null) {
+                        lastNotificationTimeMap.put(convId, now);
+                    }
+
+                    String senderName = messageData.getUsername() != null && !messageData.getUsername().isBlank()
+                            ? messageData.getUsername() : "Khách hàng";
+                    String snippet = messageData.getContent() != null && messageData.getContent().length() > 60
+                            ? messageData.getContent().substring(0, 57) + "..."
+                            : messageData.getContent();
+
+                    eventPublisher.publishEvent(NotificationEvent.of(
+                            this,
+                            NotificationType.SUPPORT_MESSAGE,
+                            "Tin nhắn hỗ trợ từ " + senderName,
+                            snippet,
+                            NotificationPriority.NORMAL,
+                            "/support",
+                            convId
+                    ));
+                } else {
+                    log.info("Bỏ qua tạo thông báo hệ thống cho conversation {} do đang trong Cooldown chống spam", convId);
+                }
             }
         });
 
-        // Event: Typing indicator
         socketIOServer.addEventListener("typing", Map.class, (client, data, ackSender) -> {
             String conversationId = data != null ? (String) data.get("conversationId") : null;
             if (conversationId != null && !conversationId.isBlank()) {

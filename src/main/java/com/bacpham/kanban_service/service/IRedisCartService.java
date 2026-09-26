@@ -10,7 +10,6 @@ public interface IRedisCartService {
     List<CartResponse> getCart(String sessionId);
     void clearCart(String sessionId);
     void syncToDatabase(String sessionId, String userId);
-    //update cart in redis
     void updateCart(String sessionId, int count);
     void deleteOneCartItem(String sessionId, String cartId);
     public CartResponse updateCartFull(String sessionId, String currentSubProductId, CartCreateRequest updatedRequest)

@@ -25,7 +25,7 @@ public class Cart extends BaseModel {
     SubProduct subProduct;
 
     @Column(nullable = false)
-    Integer count; // Số lượng muốn mua
+    Integer count; 
 
     String size;
     String color;
@@ -34,10 +34,10 @@ public class Cart extends BaseModel {
     Double price;
 
     @Column(name = "stock_quantity")
-    Integer qty; // Số lượng còn lại trong kho tại thời điểm thêm
+    Integer qty; 
 
     @Column(name = "product_id")
-    String productId; // UUID của Product
+    String productId; 
 
-    String image; // Chỉ lưu 1 ảnh đại diện
+    String image; 
 }

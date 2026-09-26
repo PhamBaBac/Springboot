@@ -68,7 +68,6 @@ public class ReviewProductServiceImpl implements IReviewProductService {
             throw new AppException(ErrorCode.NO_COMPLETED_ORDER_FOR_REVIEW);
         }
 
-        // Kiểm tra đã review order này + subProduct này chưa
         boolean alreadyReviewed = reviewRepository.existsByCreatedByIdAndSubProductIdAndOrderId(
                 request.getCreatedBy(),
                 request.getSubProductId(),
@@ -78,7 +77,6 @@ public class ReviewProductServiceImpl implements IReviewProductService {
             throw new AppException(ErrorCode.REVIEW_ALREADY_EXISTS_FOR_ORDER);
         }
 
-        // Tạo review
         Review review = reviewProductMapper.toEntity(request);
         review.setSubProduct(subProduct);
         review.setCreatedBy(user);
@@ -86,7 +84,6 @@ public class ReviewProductServiceImpl implements IReviewProductService {
 
         Review saved = reviewRepository.save(review);
 
-        // Realtime Admin Notification: Đánh giá mới
         String prodTitle = (subProduct.getProduct() != null) ? subProduct.getProduct().getTitle() : "Sản phẩm";
         String customerName = user.getFirstname() != null ? (user.getFirstname() + (user.getLastname() != null ? " " + user.getLastname() : "")) : "Khách hàng";
         eventPublisher.publishEvent(NotificationEvent.of(
@@ -107,10 +104,8 @@ public class ReviewProductServiceImpl implements IReviewProductService {
             return List.of();
         }
 
-        // Lấy các review của các subProduct này
         List<Review> reviews = reviewRepository.findBySubProductIdIn(subProductIds);
 
-        // Map sang response
         return reviews.stream()
                 .map(reviewProductMapper::toResponse)
                 .toList();

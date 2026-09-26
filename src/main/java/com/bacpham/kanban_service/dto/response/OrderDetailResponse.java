@@ -14,8 +14,8 @@ import java.util.List;
 @ToString
 public class OrderDetailResponse {
     private String id;
-    private String userName; // ten nguoi tao hoa don
-    private String nameRecipient; //ten nguoi nhan
+    private String userName; 
+    private String nameRecipient; 
     private String address;
     private String phoneNumber;
     private String email;

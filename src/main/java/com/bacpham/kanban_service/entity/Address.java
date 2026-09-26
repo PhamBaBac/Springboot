@@ -15,10 +15,10 @@ import lombok.experimental.FieldDefaults;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class Address extends BaseModel {
 
-    String name; // tên người nhận
+    String name; 
     String phoneNumber;
 
-    String address; // ví dụ: "Xóm Thượng Giáp, Xã Bạch Hà, Tỉnh Nghệ An"
+    String address; 
 
     String province;
     String district;
@@ -27,7 +27,7 @@ public class Address extends BaseModel {
     boolean isDefault;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id") // foreign key
+    @JoinColumn(name = "user_id")
     User createdBy;
 }
 

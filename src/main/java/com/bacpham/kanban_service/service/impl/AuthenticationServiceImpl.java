@@ -92,22 +92,18 @@ public class AuthenticationServiceImpl implements IAuthenticationService {
         }
 
         try {
-            // Serialize request vào JSON và lưu vào Redis
             String json = new ObjectMapper().writeValueAsString(request);
             redisService.set("register:" + request.getEmail(), json);
             redisService.setTimeToLive("register:" + request.getEmail(), 10, TimeUnit.MINUTES);
 
-            // Gửi code xác thực đến email bằng SecureRandom
             String code = String.format("%06d", SECURE_RANDOM.nextInt(1_000_000));
             emailService.sendVerificationCodeEmail(request.getEmail(), code);
             redisService.set("code:" + request.getEmail(), code);
             redisService.setTimeToLive("code:" + request.getEmail(), 5, TimeUnit.MINUTES);
 
-            // Set cooldown 60s
             redisService.set(cooldownKey, "true");
             redisService.setTimeToLive(cooldownKey, OTP_COOLDOWN_SECONDS, TimeUnit.SECONDS);
 
-            // Reset failed attempts count
             redisService.delete("otp_attempts:" + request.getEmail());
         } catch (AppException e) {
             throw e;
@@ -287,11 +283,9 @@ public class AuthenticationServiceImpl implements IAuthenticationService {
         redisService.set("code:" + normalizedEmail, code);
         redisService.setTimeToLive("code:" + normalizedEmail, 5, TimeUnit.MINUTES);
 
-        // Set cooldown 60s
         redisService.set(cooldownKey, "true");
         redisService.setTimeToLive(cooldownKey, OTP_COOLDOWN_SECONDS, TimeUnit.SECONDS);
 
-        // Reset attempts count for new code
         redisService.delete("otp_attempts:" + normalizedEmail);
     }
 
@@ -306,7 +300,6 @@ public class AuthenticationServiceImpl implements IAuthenticationService {
         String redisRegisterKey = "register:" + email;
         String redisAttemptsKey = "otp_attempts:" + email;
 
-        // 1. Kiểm tra số lần nhập sai trước đó
         String attemptsStr = redisService.get(redisAttemptsKey);
         int attempts = (attemptsStr != null) ? Integer.parseInt(attemptsStr) : 0;
         if (attempts >= MAX_OTP_ATTEMPTS) {
@@ -317,25 +310,22 @@ public class AuthenticationServiceImpl implements IAuthenticationService {
         String codeInRedis = redisService.get(redisCodeKey);
         log.info("Đang kiểm tra mã OTP từ Redis cho email: {}", email);
 
-        // 2. Kiểm tra mã OTP
         if (codeInRedis == null || !codeInRedis.equals(request.getCode())) {
             attempts++;
             redisService.set(redisAttemptsKey, String.valueOf(attempts));
             redisService.setTimeToLive(redisAttemptsKey, 15, TimeUnit.MINUTES);
 
             if (attempts >= MAX_OTP_ATTEMPTS) {
-                redisService.delete(redisCodeKey); // Khóa và vô hiệu hóa mã OTP
+                redisService.delete(redisCodeKey);
                 throw new AppException(ErrorCode.OTP_MAX_ATTEMPTS_EXCEEDED);
             }
             throw new AppException(ErrorCode.INVALID_VERIFICATION_CODE);
         }
 
-        // 3. Mã đúng -> Dọn sạch mã, số lần sai và cooldown
         redisService.delete(redisCodeKey);
         redisService.delete(redisAttemptsKey);
         redisService.delete("cooldown:email:" + email);
 
-        // Lưu cờ xác thực đặt lại mật khẩu trong 10 phút
         redisService.set("pwd_reset_verified:" + email, "true");
         redisService.setTimeToLive("pwd_reset_verified:" + email, 10, TimeUnit.MINUTES);
 
@@ -397,7 +387,6 @@ public class AuthenticationServiceImpl implements IAuthenticationService {
             throw new AppException(ErrorCode.INVALID_EXCHANGE_CODE);
         }
 
-        // Xóa ngay mã code sau 1 lần đổi (One-time use)
         redisService.delete(key);
 
         try {
@@ -407,7 +396,6 @@ public class AuthenticationServiceImpl implements IAuthenticationService {
         }
     }
 
-    // =================== Helper Methods ===================
 
     private User buildUserFromRequest(RegisterRequest request) {
         return User.builder()
@@ -429,7 +417,6 @@ public class AuthenticationServiceImpl implements IAuthenticationService {
         String token = jwtService.generateRefreshToken(user);
         String cookieName = getRefreshTokenCookieName(user.getRole());
 
-        // Set role-specific cookie (e.g., refreshTokenAdmin or refreshTokenUser)
         ResponseCookie cookie = ResponseCookie.from(cookieName, token)
                 .httpOnly(true)
                 .secure(isCookieSecure)
@@ -439,7 +426,6 @@ public class AuthenticationServiceImpl implements IAuthenticationService {
                 .build();
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
 
-        // Also set legacy cookie for backward compatibility
         ResponseCookie legacyCookie = ResponseCookie.from(REFRESH_TOKEN_COOKIE_NAME, token)
                 .httpOnly(true)
                 .secure(isCookieSecure)
@@ -475,32 +461,27 @@ public class AuthenticationServiceImpl implements IAuthenticationService {
         Cookie[] cookies = Optional.ofNullable(request.getCookies()).orElse(new Cookie[0]);
 
         if (isAdminClient) {
-            // First check refreshTokenAdmin
             for (Cookie c : cookies) {
                 if (REFRESH_TOKEN_COOKIE_ADMIN.equals(c.getName())) {
                     return c.getValue();
                 }
             }
-            // Fallback to legacy
             for (Cookie c : cookies) {
                 if (REFRESH_TOKEN_COOKIE_NAME.equals(c.getName()) || "refresh_token".equalsIgnoreCase(c.getName())) {
                     return c.getValue();
                 }
             }
         } else {
-            // Check refreshTokenUser first
             for (Cookie c : cookies) {
                 if (REFRESH_TOKEN_COOKIE_USER.equals(c.getName())) {
                     return c.getValue();
                 }
             }
-            // Fallback to legacy
             for (Cookie c : cookies) {
                 if (REFRESH_TOKEN_COOKIE_NAME.equals(c.getName()) || "refresh_token".equalsIgnoreCase(c.getName())) {
                     return c.getValue();
                 }
             }
-            // Fallback to admin cookie if nothing else exists
             for (Cookie c : cookies) {
                 if (REFRESH_TOKEN_COOKIE_ADMIN.equals(c.getName())) {
                     return c.getValue();

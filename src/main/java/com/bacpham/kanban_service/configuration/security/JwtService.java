@@ -48,7 +48,6 @@ public class JwtService {
         Map<String, Object> claims = new HashMap<>();
         claims.put(TOKEN_TYPE_CLAIM, TOKEN_TYPE_ACCESS);
 
-        // Lấy authorities từ UserDetails
         claims.put("authorities", userDetails.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
                 .toList());
@@ -83,7 +82,7 @@ public class JwtService {
     }
 
     public String extractUserEmail(String token) {
-        return extractUsername(token); // sub chính là email
+        return extractUsername(token);
     }
 
     public String extractRole(String token) {
@@ -96,18 +95,15 @@ public class JwtService {
                         .filter(auth -> auth.startsWith("ROLE_"))
                         .map(auth -> auth.replace("ROLE_", ""))
                         .findFirst()
-                        .orElse("USER"); // default role
+                        .orElse("USER");
             }
-            return "USER"; // default role
+            return "USER";
         } catch (Exception e) {
             log.warn("Error extracting role from token: {}", e.getMessage());
-            return "USER"; // default role
+            return "USER";
         }
     }
 
-
-
-    // FIX QUAN TRỌNG: Method validation an toàn, không throw exception
     public boolean isTokenValid(String token) {
         try {
             if (token == null || token.trim().isEmpty()) {
@@ -145,7 +141,6 @@ public class JwtService {
         }
     }
 
-    // FIX: Method cũ giữ lại cho compatibility, nhưng sử dụng method mới
     public boolean isTokenValidForUser(String token, UserDetails userDetails, String expectedTokenType) {
         if (!isTokenValid(token)) {
             return false;
@@ -161,29 +156,25 @@ public class JwtService {
         }
     }
 
-    // FIX: Method kiểm tra expiration an toàn
     public boolean isTokenExpired(String token) {
         try {
             return extractExpiration(token).before(new Date());
         } catch (ExpiredJwtException e) {
-            return true; // Token đã hết hạn
+            return true; 
         } catch (Exception e) {
             log.warn("Error checking token expiration: {}", e.getMessage());
-            return true; // Coi như expired nếu có lỗi
+            return true; 
         }
     }
 
-    // FIX: Method extract expiration an toàn
     private Date extractExpiration(String token) {
         try {
             return extractClaim(token, Claims::getExpiration);
         } catch (ExpiredJwtException e) {
-            // Trả về expiration date từ token đã hết hạn
             return e.getClaims().getExpiration();
         }
     }
 
-    // FIX: Method extract claims an toàn
     private Claims extractAllClaims(String token) {
         return Jwts
                 .parserBuilder()

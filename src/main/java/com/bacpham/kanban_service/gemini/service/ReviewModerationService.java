@@ -66,7 +66,7 @@ public class ReviewModerationService {
                 log.warn("Review moderation with model [{}] failed: {}. Trying next...", currentModel, e.getMessage());
             }
         }
-        return "APPROVED"; // Mặc định không chặn nếu AI tạm thời gián đoạn
+        return "APPROVED";
     }
 
     private String buildModerationPrompt(String content) {

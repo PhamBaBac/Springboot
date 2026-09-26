@@ -47,7 +47,6 @@ public class IdempotencyServiceImpl implements IIdempotencyService {
 
         String currentStatus = redisService.get(redisKey);
         if (currentStatus == null) {
-            // Trường hợp key vừa hết hạn giữa 2 lệnh
             Boolean retryAcquire = redisService.setIfAbsent(redisKey, STATUS_IN_PROGRESS, inProgressTtl);
             if (Boolean.TRUE.equals(retryAcquire)) {
                 return IdempotencyLockResult.acquired();

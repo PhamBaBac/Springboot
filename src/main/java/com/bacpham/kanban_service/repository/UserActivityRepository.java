@@ -8,7 +8,7 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 
 @Repository
-public interface UserActivityRepository extends JpaRepository<UserActivity, String> { // ID của BaseModel là String
+public interface UserActivityRepository extends JpaRepository<UserActivity, String> {
 
     List<UserActivity> findTop10ByUserOrderByCreatedAtDesc(User user);
 }

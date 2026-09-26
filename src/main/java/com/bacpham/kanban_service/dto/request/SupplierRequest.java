@@ -20,7 +20,7 @@ public class SupplierRequest {
     String photoUrl;
     List<String> categories;
     Double price;
-    Integer isTaking; // 0 or 1
+    Integer isTaking; 
     Integer active;
     Boolean deleted;
 }

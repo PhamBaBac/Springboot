@@ -33,10 +33,8 @@ public class NotificationEventListener {
                     event.getRequest().title(),
                     event.getRequest().targetUrl());
 
-            // 1. Lưu thông báo vào cơ sở dữ liệu
             AdminNotificationResponse savedResponse = notificationService.createNotification(event.getRequest());
 
-            // 2. Bắn realtime qua Socket.IO tới admin
             socketPublisher.broadcastToAdmin(savedResponse);
 
         } catch (Exception e) {

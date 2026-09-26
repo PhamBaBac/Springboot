@@ -32,7 +32,6 @@ public interface ProductMapper {
     @Mapping(target = "subProducts", ignore = true)
     void updateProduct(@MappingTarget Product product, ProductCreationRequest request);
 
-// --- PHẦN DÀNH CHO BATCH JOB (SỬ DỤNG @Context) ---
 
     @Mapping(target = "categories", ignore = true)
     @Mapping(target = "supplier", ignore = true)
@@ -51,12 +50,10 @@ public interface ProductMapper {
             @Context SupplierRepository supplierRepository,
             @Context CategoryRepository categoryRepository) {
 
-        // 1. Liên kết Supplier từ tên
         Supplier supplier = supplierRepository.findByName(request.getSupplierName())
                 .orElseThrow(() -> new EntityNotFoundException("Supplier not found with name: " + request.getSupplierName()));
         product.setSupplier(supplier);
 
-        // 2. Liên kết Categories từ chuỗi tên
         if (request.getCategoryNames() != null && !request.getCategoryNames().isBlank()) {
             List<String> categoryTitles = Arrays.stream(request.getCategoryNames().split(","))
                     .map(String::trim).toList();
@@ -73,7 +70,6 @@ public interface ProductMapper {
         }
     }
 
-    // Helper method để chuyển chuỗi "url1,url2" thành List<String>
     @Named("stringToImageList")
     default List<String> stringToImageList(String images) {
         if (images == null || images.isBlank()) {
