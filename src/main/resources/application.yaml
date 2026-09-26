@@ -74,7 +74,7 @@ application:
   cookie:
     secure: ${COOKIE_SECURE:false}
   oauth2:
-    authorized-redirect-uri: ${OAUTH2_AUTHORIZED_REDIRECT_URI:http://localhost:3004/auth/oauth-callback}
+    authorized-redirect-uri: ${OAUTH2_AUTHORIZED_REDIRECT_URI:http://localhost:3004/}
   security:
     jwt:
       secret-key: ${KEY_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}

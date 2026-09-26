@@ -16,6 +16,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -33,21 +34,54 @@ import java.util.stream.Collectors;
 @Slf4j
 public class RecommendationService {
 
+    private static final Pattern JSON_ARRAY_PATTERN = Pattern.compile("\\[.*?\\]", Pattern.DOTALL);
+    private static final Pattern CLEAN_WORDS_PATTERN = Pattern.compile("[^a-zA-Z0-9\\u00C0-\\u1EF9\\s]");
+    private static final Pattern SPLIT_SPACES_PATTERN = Pattern.compile("\\s+");
+    private static final Pattern DIGITS_PATTERN = Pattern.compile("^\\d+$");
+    private static final Set<String> STOP_WORDS = Set.of(
+            "and", "the", "for", "with", "from", "in", "on", "at", "to", "by", "of",
+            "new", "hot", "best", "top", "pro", "plus", "super", "mini", "max",
+            "cua", "cho", "va", "cac", "nhung", "mot", "hai", "ba", "bon", "nam",
+            "dep", "re", "tot", "hang", "chinh", "set", "loai", "chiec", "cai", "bo"
+    );
+
     private final UserActivityRepository userActivityRepository;
     private final ProductRepository productRepository;
     private final RestClient restClient;
     private final ProductMapper productMapper;
+    private final ObjectMapper objectMapper;
 
     @Value("${spring.ai.openai.api-key}")
     private String geminiApiKey;
 
+    @Value("${gemini.recommendation.models:gemini-2.0-flash,gemini-1.5-flash,gemini-2.5-flash,gemini-flash-latest}")
+    private List<String> modelsToTry;
+
+    public RecommendationService(
+            @Qualifier("geminiRestClient") RestClient restClient,
+            UserActivityRepository userActivityRepository,
+            ProductRepository productRepository,
+            ProductMapper productMapper,
+            ObjectMapper objectMapper
+    ) {
+        this.userActivityRepository = userActivityRepository;
+        this.productRepository = productRepository;
+        this.restClient = restClient;
+        this.productMapper = productMapper;
+        this.objectMapper = objectMapper;
+    }
+
     private String callGeminiWithFallback(String prompt) {
-        List<String> modelsToTry = List.of("gemini-2.5-flash", "gemini-3.6-flash", "gemini-3.8-flash", "gemini-flash-latest");
+        List<String> models = (modelsToTry != null && !modelsToTry.isEmpty())
+                ? modelsToTry
+                : List.of("gemini-2.0-flash", "gemini-1.5-flash", "gemini-2.5-flash", "gemini-flash-latest");
+
         GeminiRequest request = GeminiRequest.fromText(prompt);
 
-        for (String currentModel : modelsToTry) {
+        for (String currentModel : models) {
+            String trimmedModel = currentModel.trim();
             try {
-                String url = "/v1beta/models/%s:generateContent".formatted(currentModel);
+                String url = "/v1beta/models/%s:generateContent".formatted(trimmedModel);
                 ResponseEntity<GeminiResponse> response = restClient.post()
                         .uri(uriBuilder -> uriBuilder.path(url).queryParam("key", geminiApiKey).build())
                         .contentType(MediaType.APPLICATION_JSON)
@@ -60,40 +94,14 @@ public class RecommendationService {
                         .orElse(null);
 
                 if (raw != null && !raw.isBlank()) {
-                    log.info("Gemini recommendation response from model [{}]: {}", currentModel, raw);
+                    log.info("Gemini recommendation response from model [{}]: {}", trimmedModel, raw);
                     return raw;
                 }
             } catch (Exception e) {
-                log.warn("Recommendation AI model [{}] failed ({}). Trying next...", currentModel, e.getMessage());
+                log.warn("Recommendation AI model [{}] failed ({}). Trying next...", trimmedModel, e.getMessage());
             }
         }
         return "[]";
-    }
-
-    private boolean isPetRelated(Product product) {
-        if (product == null) return false;
-        String text = (product.getTitle() + " " + (product.getDescription() != null ? product.getDescription() : "")).toLowerCase();
-        if (product.getCategories() != null) {
-            for (Category c : product.getCategories()) {
-                if (c.getTitle() != null) text += " " + c.getTitle().toLowerCase();
-            }
-        }
-        return text.contains("pet") || text.contains("dog") || text.contains("cat")
-                || text.contains("chó") || text.contains("mèo") || text.contains("thú cưng")
-                || text.contains("cún") || text.contains("labrador") || text.contains("retriever")
-                || text.contains("samoyed") || text.contains("alaska") || text.contains("puppy");
-    }
-
-    public RecommendationService(
-            @Qualifier("geminiRestClient") RestClient restClient,
-            UserActivityRepository userActivityRepository,
-            ProductRepository productRepository,
-            ProductMapper productMapper
-    ) {
-        this.userActivityRepository = userActivityRepository;
-        this.productRepository = productRepository;
-        this.restClient = restClient;
-        this.productMapper = productMapper;
     }
 
     public String getRecommendationsForUser(User user) {
@@ -105,6 +113,22 @@ public class RecommendationService {
         String prompt = buildPromptFromActivities(activities);
         String raw = callGeminiWithFallback(prompt);
         return extractJsonArrayString(raw);
+    }
+
+    public List<ProductResponse> getRecommendationProductsForUser(User user) {
+        String jsonArray = getRecommendationsForUser(user);
+        try {
+            List<String> productIds = objectMapper.readValue(jsonArray, new TypeReference<List<String>>() {});
+            if (productIds == null || productIds.isEmpty()) {
+                return Collections.emptyList();
+            }
+            return productRepository.findAllById(productIds).stream()
+                    .map(productMapper::toProductResponse)
+                    .toList();
+        } catch (Exception e) {
+            log.error("Failed to parse user recommendation IDs: {}", e.getMessage());
+            return Collections.emptyList();
+        }
     }
 
     private String buildPromptFromActivities(List<UserActivity> activities) {
@@ -129,10 +153,13 @@ public class RecommendationService {
                 .distinct()
                 .toList();
 
-        if (viewedProductIds.isEmpty()) {
+        List<Product> viewedProducts = viewedProductIds.isEmpty()
+                ? Collections.emptyList()
+                : productRepository.findAllById(viewedProductIds);
+
+        if (viewedProducts.isEmpty()) {
             prompt.append("- No specific product viewed yet.\n");
         } else {
-            List<Product> viewedProducts = productRepository.findAllById(viewedProductIds);
             viewedProducts.forEach(p -> prompt.append(String.format(
                     "- Title: \"%s\"\n  Category: %s\n  Supplier: %s\n\n",
                     p.getTitle(),
@@ -142,7 +169,7 @@ public class RecommendationService {
 
         prompt.append("### Available Candidate Products:\n");
 
-        List<Product> candidates = findCandidateProducts(viewedProductIds);
+        List<Product> candidates = findCandidateProducts(viewedProducts, viewedProductIds);
         if (candidates.isEmpty()) {
             prompt.append("- No candidate products available.\n");
         } else {
@@ -165,10 +192,9 @@ public class RecommendationService {
         return prompt.toString();
     }
 
-    private List<Product> findCandidateProducts(List<String> viewedProductIds) {
-        if (viewedProductIds == null || viewedProductIds.isEmpty()) return List.of();
+    private List<Product> findCandidateProducts(List<Product> viewedProducts, List<String> viewedProductIds) {
+        if (viewedProducts == null || viewedProducts.isEmpty()) return List.of();
 
-        List<Product> viewedProducts = productRepository.findAllById(viewedProductIds);
         Set<Category> categories = viewedProducts.stream()
                 .filter(p -> p.getCategories() != null)
                 .flatMap(p -> p.getCategories().stream())
@@ -181,31 +207,26 @@ public class RecommendationService {
     }
 
     private String extractJsonArrayString(String rawText) {
-        if (rawText == null) return "[]";
-        Matcher matcher = Pattern.compile("\\[.*?\\]", Pattern.DOTALL).matcher(rawText);
+        if (rawText == null || rawText.isBlank()) return "[]";
+        Matcher matcher = JSON_ARRAY_PATTERN.matcher(rawText);
         return matcher.find() ? matcher.group(0) : "[]";
     }
 
     private List<String> extractKeywords(String title) {
         if (title == null || title.isBlank()) return List.of();
-        String[] words = title.replaceAll("[^a-zA-Z0-9\\u00C0-\\u1EF9\\s]", " ").toLowerCase().split("\\s+");
-        Set<String> stopWords = Set.of(
-                "and", "the", "for", "with", "from", "size", "color", "thin", "thick", "high",
-                "quality", "handsome", "cute", "new", "hot", "best", "cua", "cho", "va", "cac",
-                "mot", "hai", "ba", "bon", "nam", "nu", "dep", "re", "tot", "hang", "chinh", "set"
-        );
-        List<String> keywords = new ArrayList<>();
+        String cleaned = CLEAN_WORDS_PATTERN.matcher(title).replaceAll(" ").toLowerCase();
+        String[] words = SPLIT_SPACES_PATTERN.split(cleaned);
+        Set<String> uniqueKeywords = new LinkedHashSet<>();
         for (String w : words) {
             String trimmed = w.trim();
-            if (trimmed.length() >= 3 && !stopWords.contains(trimmed) && !trimmed.matches("\\d+")) {
-                if (!keywords.contains(trimmed)) {
-                    keywords.add(trimmed);
-                }
+            if (trimmed.length() >= 3 && !STOP_WORDS.contains(trimmed) && !DIGITS_PATTERN.matcher(trimmed).matches()) {
+                uniqueKeywords.add(trimmed);
             }
         }
-        return keywords;
+        return new ArrayList<>(uniqueKeywords);
     }
 
+    @Cacheable(value = "related_products", key = "#productId + '_' + #limit", unless = "#result == null || #result.isEmpty()")
     public List<ProductResponse> getRelatedProductsByAi(String productId, int limit) {
         int maxLimit = Math.min(Math.max(limit, 1), 4); // Đảm bảo luôn < 5 (tối đa 4)
         try {
@@ -214,7 +235,6 @@ public class RecommendationService {
                 return Collections.emptyList();
             }
 
-            boolean isCurrentPet = isPetRelated(currentProduct);
             Map<String, Product> candidateMap = new LinkedHashMap<>();
 
             // 1. Truy vấn database theo THỂ LOẠI (Category)
@@ -227,24 +247,24 @@ public class RecommendationService {
                 if (!categoryIds.isEmpty()) {
                     List<Product> catCandidates = productRepository.findRelatedCandidates(categoryIds, productId, Pageable.ofSize(16));
                     for (Product p : catCandidates) {
-                        if (isCurrentPet == isPetRelated(p)) {
-                            candidateMap.put(p.getId(), p);
-                        }
+                        candidateMap.put(p.getId(), p);
                     }
                 }
             }
 
-            // 2. Truy vấn database theo TỪ KHÓA TIÊU ĐỀ (Title keywords)
-            List<String> keywords = extractKeywords(currentProduct.getTitle());
-            for (String kw : keywords) {
-                if (candidateMap.size() >= 20) break;
-                List<Product> byKw = productRepository.findByTitleContainingIgnoreCase(kw, Pageable.ofSize(6)).getContent();
-                for (Product p : byKw) {
-                    if (!p.getId().equals(productId) && !Boolean.TRUE.equals(p.getDeleted())) {
-                        if (isCurrentPet == isPetRelated(p)) {
+            // 2. Truy vấn database theo TỪ KHÓA TIÊU ĐỀ (chỉ truy vấn khi ứng viên từ Category chưa đủ và giới hạn tối đa 3 keywords)
+            if (candidateMap.size() < 10) {
+                List<String> keywords = extractKeywords(currentProduct.getTitle());
+                int kwCount = 0;
+                for (String kw : keywords) {
+                    if (candidateMap.size() >= 20 || kwCount >= 3) break;
+                    List<Product> byKw = productRepository.findByTitleContainingIgnoreCase(kw, Pageable.ofSize(6)).getContent();
+                    for (Product p : byKw) {
+                        if (!p.getId().equals(productId) && !Boolean.TRUE.equals(p.getDeleted())) {
                             candidateMap.put(p.getId(), p);
                         }
                     }
+                    kwCount++;
                 }
             }
 
@@ -262,7 +282,6 @@ public class RecommendationService {
                 String raw = callGeminiWithFallback(prompt);
 
                 String jsonArray = extractJsonArrayString(raw);
-                ObjectMapper objectMapper = new ObjectMapper();
                 List<String> recommendedIds = objectMapper.readValue(jsonArray, new TypeReference<List<String>>() {});
 
                 if (recommendedIds != null && !recommendedIds.isEmpty()) {
@@ -300,6 +319,11 @@ public class RecommendationService {
         }
     }
 
+    private String truncate(String text, int maxLength) {
+        if (text == null) return "";
+        return text.length() <= maxLength ? text : text.substring(0, maxLength) + "...";
+    }
+
     private String buildRelatedPrompt(Product currentProduct, List<Product> candidates, int maxLimit) {
         StringBuilder prompt = new StringBuilder();
         String catTitles = currentProduct.getCategories() != null
@@ -317,7 +341,7 @@ public class RecommendationService {
         """,
                 currentProduct.getTitle(),
                 catTitles,
-                currentProduct.getDescription() != null ? currentProduct.getDescription() : ""
+                truncate(currentProduct.getDescription(), 200)
         ));
 
         candidates.forEach(p -> prompt.append(String.format(
@@ -329,12 +353,13 @@ public class RecommendationService {
 
         prompt.append(String.format("""
         ### CRITICAL RELEVANCE RULES:
-        1. TARGET AUDIENCE COMPATIBILITY (STRICTEST REQUIREMENT):
-           - If the viewed product is for pets (dogs, cats, animals), ONLY recommend products specifically intended for pets (pet apparel, pet accessories, pet toys/food).
-           - NEVER recommend human clothing, shirts, dresses, or unrelated adult/kid fashion for a pet product!
-           - If the viewed product is for humans, do not recommend pet clothes.
+        1. LOGICAL RELEVANCE & COMPATIBILITY (STRICTEST REQUIREMENT):
+           - Only recommend products that have a direct, meaningful relationship with the viewed product:
+             a) Direct Alternatives: Same or adjacent category, comparable usage, or alternative models/variants.
+             b) Complementary / Cross-Selling: Accessories, add-ons, or items frequently used alongside or supporting the viewed product.
+           - NEVER recommend completely unrelated items with conflicting purposes, incompatible ecosystems, or totally disconnected contexts.
         2. QUALITY OVER QUANTITY:
-           - If no candidates in the list are truly relevant or appropriate to the viewed product, return an empty array: []
+           - If no candidates in the list are genuinely relevant or complementary to the viewed product, return an empty array: []
            - Do NOT pick unrelated items just to fill the quota.
         3. OUTPUT FORMAT:
            - Return ONLY a single JSON array of product IDs selected from the candidate list, e.g.: ["id1", "id2", "id3"]

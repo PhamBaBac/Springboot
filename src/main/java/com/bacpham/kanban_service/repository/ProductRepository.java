@@ -100,6 +100,34 @@ public interface ProductRepository extends JpaRepository<Product, String>, JpaSp
             @Param("maxPrice") Double maxPrice
     );
 
+    @Query("""
+        SELECT DISTINCT p FROM Product p
+        LEFT JOIN p.categories c
+        LEFT JOIN p.subProducts sp
+        WHERE p.deleted = false
+          AND (sp.stock > 0 OR sp.stock IS NULL)
+          AND (:keyword IS NULL OR :keyword = ''
+               OR LOWER(p.title) LIKE LOWER(CONCAT('%', :keyword, '%'))
+               OR LOWER(p.description) LIKE LOWER(CONCAT('%', :keyword, '%'))
+               OR LOWER(c.title) LIKE LOWER(CONCAT('%', :keyword, '%')))
+          AND (:categoryName IS NULL OR :categoryName = ''
+               OR LOWER(c.title) LIKE LOWER(CONCAT('%', :categoryName, '%')))
+          AND (:sizes IS NULL OR sp.size IN :sizes)
+          AND (:colors IS NULL OR LOWER(sp.color) IN :colors)
+          AND (:minPrice IS NULL OR sp.price >= :minPrice)
+          AND (:maxPrice IS NULL OR sp.price <= :maxPrice)
+        ORDER BY p.createdAt DESC
+    """)
+    List<Product> searchProductsForAi(
+            @Param("keyword") String keyword,
+            @Param("categoryName") String categoryName,
+            @Param("sizes") List<String> sizes,
+            @Param("colors") List<String> colors,
+            @Param("minPrice") Double minPrice,
+            @Param("maxPrice") Double maxPrice,
+            Pageable pageable
+    );
+
 
 
     @Query("""

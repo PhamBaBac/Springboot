@@ -24,4 +24,16 @@ public interface SupportMessageRepository extends JpaRepository<SupportMessage, 
 
     @Query("SELECT COUNT(s) FROM SupportMessage s WHERE s.conversationId = :conversationId AND s.status = 'DELIVERED' AND s.senderId != :userId")
     Long countUnreadMessages(String conversationId, String userId);
+
+    Optional<SupportMessage> findFirstByConversationIdOrderByCreatedAtDesc(String conversationId);
+
+    Optional<SupportMessage> findFirstByConversationIdAndRoleOrderByCreatedAtAsc(String conversationId, com.bacpham.kanban_service.enums.Role role);
+
+    @Query("SELECT COUNT(s) FROM SupportMessage s WHERE s.conversationId = :conversationId AND s.role = com.bacpham.kanban_service.enums.Role.USER AND s.status != com.bacpham.kanban_service.enums.MessageStatus.READ")
+    Long countUnreadCustomerMessages(String conversationId);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.transaction.annotation.Transactional
+    @Query("UPDATE SupportMessage s SET s.status = com.bacpham.kanban_service.enums.MessageStatus.READ WHERE s.conversationId = :conversationId AND s.role = com.bacpham.kanban_service.enums.Role.USER AND s.status != com.bacpham.kanban_service.enums.MessageStatus.READ")
+    int markConversationAsRead(String conversationId);
 }

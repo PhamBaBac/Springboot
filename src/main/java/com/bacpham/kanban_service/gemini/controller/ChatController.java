@@ -41,7 +41,6 @@ public class ChatController {
     private final GeminiService geminiService;
 
     @PostMapping("/generate")
-    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<String> generateContent(@RequestBody AiGenerateRequest request) {
         if (request.getTitle() == null || request.getTitle().trim().isEmpty()) {
             throw new AppException(ErrorCode.INVALID_INPUT);

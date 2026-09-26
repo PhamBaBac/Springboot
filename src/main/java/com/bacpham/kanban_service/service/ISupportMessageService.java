@@ -15,4 +15,6 @@ public interface ISupportMessageService {
 
     List<SupportMessageResponse> getConversation(String conversationId);
     List<String> getActiveConversations();
+    List<com.bacpham.kanban_service.dto.response.ConversationSummaryResponse> getConversationSummaries();
+    int markAsRead(String conversationId);
 }

@@ -6,6 +6,7 @@ import com.bacpham.kanban_service.entity.User;
 import com.bacpham.kanban_service.enums.Provider;
 import com.bacpham.kanban_service.enums.Role;
 import com.bacpham.kanban_service.repository.UserRepository;
+import com.bacpham.kanban_service.service.UserCacheService;
 import com.bacpham.kanban_service.service.impl.AuthenticationServiceImpl;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.ServletException;
@@ -40,6 +41,7 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
     private final GenericRedisService<String, String, String> redisService;
     private final ObjectMapper objectMapper;
     private final PasswordEncoder passwordEncoder;
+    private final UserCacheService userCacheService;
 
     @Value("${application.oauth2.authorized-redirect-uri}")
     private String authorizedRedirectUri;
@@ -70,6 +72,17 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
                 providerId = (String) attributes.get("sub");
                 firstName = (String) attributes.get("given_name");
                 lastName = (String) attributes.get("family_name");
+                if ((firstName == null || firstName.isBlank()) && attributes.get("name") != null) {
+                    String fullName = (String) attributes.get("name");
+                    int spaceIdx = fullName.lastIndexOf(" ");
+                    if (spaceIdx > 0) {
+                        firstName = fullName.substring(0, spaceIdx);
+                        lastName = fullName.substring(spaceIdx + 1);
+                    } else {
+                        firstName = fullName;
+                        lastName = "";
+                    }
+                }
                 avatarUrl = (String) attributes.get("picture");
             }
             case GITHUB -> {
@@ -107,17 +120,34 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
                 existingUser.setProviderId(finalProviderId);
                 updated = true;
             }
-            if (existingUser.getAvatarUrl() == null && finalAvatarUrl != null) {
-                existingUser.setAvatarUrl(finalAvatarUrl);
+            if (finalFirstName != null && !finalFirstName.isBlank() && (existingUser.getFirstname() == null || existingUser.getFirstname().isBlank())) {
+                existingUser.setFirstname(finalFirstName);
                 updated = true;
             }
-            return updated ? userRepository.save(existingUser) : existingUser;
+            if (finalLastName != null && !finalLastName.isBlank() && (existingUser.getLastname() == null || existingUser.getLastname().isBlank())) {
+                existingUser.setLastname(finalLastName);
+                updated = true;
+            }
+            if (finalAvatarUrl != null && !finalAvatarUrl.isBlank()) {
+                if (existingUser.getAvatarUrl() == null 
+                        || existingUser.getAvatarUrl().isBlank() 
+                        || existingUser.getAvatarUrl().contains("googleusercontent.com")
+                        || existingUser.getAvatarUrl().contains("githubusercontent.com")) {
+                    existingUser.setAvatarUrl(finalAvatarUrl);
+                    updated = true;
+                }
+            }
+            if (updated) {
+                userCacheService.evictUser(finalEmail);
+                return userRepository.save(existingUser);
+            }
+            return existingUser;
         }).orElseGet(() -> {
             log.info("Creating new user with email: {}", finalEmail);
             User newUser = new User();
             newUser.setEmail(finalEmail);
-            newUser.setFirstname(finalFirstName);
-            newUser.setLastname(finalLastName);
+            newUser.setFirstname(finalFirstName != null && !finalFirstName.isBlank() ? finalFirstName : "User");
+            newUser.setLastname(finalLastName != null ? finalLastName : "");
             newUser.setRole(Role.USER);
             newUser.setMfaEnabled(false);
             newUser.setProvider(finalProvider);

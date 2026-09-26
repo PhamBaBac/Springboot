@@ -39,6 +39,25 @@ public class SupportMessageController {
                 .build();
     }
 
+    @GetMapping("/conversations/summary")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    public ApiResponse<List<com.bacpham.kanban_service.dto.response.ConversationSummaryResponse>> getConversationSummaries() {
+        var summaries = supportMessageService.getConversationSummaries();
+        return ApiResponse.<List<com.bacpham.kanban_service.dto.response.ConversationSummaryResponse>>builder()
+                .data(summaries)
+                .message("Lấy danh sách tóm tắt hội thoại thành công")
+                .build();
+    }
+
+    @PutMapping("/markAsRead/{conversationId}")
+    public ApiResponse<Integer> markAsRead(@PathVariable String conversationId) {
+        int updated = supportMessageService.markAsRead(conversationId);
+        return ApiResponse.<Integer>builder()
+                .data(updated)
+                .message("Đánh dấu đã đọc thành công")
+                .build();
+    }
+
     @GetMapping("/user/{userId}")
     public ApiResponse<List<SupportMessageResponse>> getUserMessages(@PathVariable String userId) {
         String conversationId = "user_" + userId;

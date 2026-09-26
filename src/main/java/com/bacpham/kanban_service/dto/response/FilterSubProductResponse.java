@@ -3,6 +3,8 @@ package com.bacpham.kanban_service.dto.response;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
+import java.io.Serializable;
+
 @Getter
 @Setter
 @NoArgsConstructor
@@ -10,7 +12,8 @@ import lombok.experimental.FieldDefaults;
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @ToString
-public class FilterSubProductResponse {
+public class FilterSubProductResponse implements Serializable {
+    private static final long serialVersionUID = 1L;
     String sku;
     String size;
     String color;

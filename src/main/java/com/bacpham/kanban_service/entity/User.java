@@ -40,7 +40,7 @@ public class User extends BaseModel implements UserDetails {
     @JsonIgnore
     String password;
 
-    @Column(length = 255)
+    @Column(columnDefinition = "TEXT")
     String avatarUrl;
 
     @Column(nullable = false)
