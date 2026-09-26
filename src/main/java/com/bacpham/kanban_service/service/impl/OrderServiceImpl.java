@@ -84,11 +84,13 @@ public class OrderServiceImpl implements IOrderService {
         }
         double subtotal = total + discountTotal;
 
-        Order order = buildAndSaveOrder(user, request.getAddressId(), paymentType, total, subtotal, discountTotal, orderItems);
+        Order order = buildAndSaveOrder(user, request.getAddressId(), paymentType, total, subtotal, discountTotal,
+                orderItems);
         cleanupCartItems(user, request.getItems());
 
         // Audit Trail: Ghi nhận sự kiện tạo mới đơn hàng
-        orderStatusHistoryService.logStatusChange(order, null, OrderStatus.PENDING, "Tạo mới đơn hàng thành công", "Hình thức thanh toán: " + paymentType);
+        orderStatusHistoryService.logStatusChange(order, null, OrderStatus.PENDING, "Tạo mới đơn hàng thành công",
+                "Hình thức thanh toán: " + paymentType);
 
         // Transaction Ledger: Nếu là COD, ghi nhận giao dịch đang chờ thanh toán
         if (order.getPaymentType() == PaymentType.COD) {
@@ -101,8 +103,7 @@ public class OrderServiceImpl implements IOrderService {
                     order.getTotal(),
                     TransactionStatus.PENDING,
                     null,
-                    "Đơn hàng COD - Chờ thanh toán khi giao hàng"
-            );
+                    "Đơn hàng COD - Chờ thanh toán khi giao hàng");
         }
 
         return order;
@@ -115,9 +116,11 @@ public class OrderServiceImpl implements IOrderService {
     }
 
     private List<OrderItemRequest> sortItemsForDeadlockPrevention(List<OrderItemRequest> items) {
-        if (items == null) return Collections.emptyList();
+        if (items == null)
+            return Collections.emptyList();
         return items.stream()
-                .sorted(Comparator.comparing(OrderItemRequest::getSubProductId, Comparator.nullsLast(Comparator.naturalOrder())))
+                .sorted(Comparator.comparing(OrderItemRequest::getSubProductId,
+                        Comparator.nullsLast(Comparator.naturalOrder())))
                 .toList();
     }
 
@@ -131,7 +134,8 @@ public class OrderServiceImpl implements IOrderService {
             throw new AppException(ErrorCode.SUB_PRODUCT_NOT_FOUND);
         }
 
-        // Cập nhật tồn kho an toàn bằng Atomic SQL Update (Chống Race Condition & Over-selling triệt để)
+        // Cập nhật tồn kho an toàn bằng Atomic SQL Update (Chống Race Condition &
+        // Over-selling triệt để)
         int updatedRows = subProductRepository.directDeductStock(dto.getSubProductId(), dto.getCount());
         if (updatedRows == 0) {
             throw new AppException(ErrorCode.INSUFFICIENT_STOCK);
@@ -152,7 +156,8 @@ public class OrderServiceImpl implements IOrderService {
                 .priceAtOrderTime(discountResult.unitPriceAfterDiscount())
                 // --- SNAPSHOT DATA (Bảo toàn dữ liệu lịch sử) ---
                 .productTitle(productTitle)
-                .skuCode((subProduct.getSku() != null && !subProduct.getSku().isBlank()) ? subProduct.getSku() : subProduct.getId())
+                .skuCode((subProduct.getSku() != null && !subProduct.getSku().isBlank()) ? subProduct.getSku()
+                        : subProduct.getId())
                 .size(subProduct.getSize())
                 .color(subProduct.getColor())
                 .image(firstImage)
@@ -166,7 +171,8 @@ public class OrderServiceImpl implements IOrderService {
         return new ProcessedItemResult(orderItem, discountResult.itemTotal());
     }
 
-    private Order buildAndSaveOrder(User user, String addressId, String paymentTypeStr, double total, double subtotal, double discountAmount, List<OrderItem> items) {
+    private Order buildAndSaveOrder(User user, String addressId, String paymentTypeStr, double total, double subtotal,
+            double discountAmount, List<OrderItem> items) {
         PaymentType paymentType;
         try {
             paymentType = PaymentType.valueOf(paymentTypeStr.toUpperCase());
@@ -205,14 +211,16 @@ public class OrderServiceImpl implements IOrderService {
     }
 
     private void cleanupCartItems(User user, List<OrderItemRequest> items) {
-        if (items == null) return;
+        if (items == null)
+            return;
         List<String> subProductIds = items.stream()
                 .map(OrderItemRequest::getSubProductId)
                 .toList();
         cartRepository.deleteByCreatedByAndSubProductIds(user, subProductIds);
     }
 
-    private record ProcessedItemResult(OrderItem item, double total) {}
+    private record ProcessedItemResult(OrderItem item, double total) {
+    }
 
     @Override
     public List<OrderResponse> getOrdersByUserId(String userId) {
@@ -225,7 +233,8 @@ public class OrderServiceImpl implements IOrderService {
             return Collections.emptyList();
         }
 
-        // Fix N+1: Gom tất cả orderId và subProductId, load reviewed status 1 lần duy nhất
+        // Fix N+1: Gom tất cả orderId và subProductId, load reviewed status 1 lần duy
+        // nhất
         // Thay vì N×M queries `existsByReviewed` trong vòng lặp
         List<String> orderIds = orders.stream().map(Order::getId).toList();
         List<String> subProductIds = orders.stream()
@@ -269,10 +278,11 @@ public class OrderServiceImpl implements IOrderService {
             String startDate,
             String endDate,
             int page,
-            int pageSize
-    ) {
+            int pageSize) {
         Pageable pageable = PageRequest.of(page - 1, pageSize, Sort.by("createdAt").descending());
         Specification<Order> spec = OrderSpecification.filter(status, search, startDate, endDate);
+
+        // Bước 1: Lấy phân trang + sort đúng theo Specification (không JOIN FETCH)
         Page<Order> orderPage = orderRepository.findAll(spec, pageable);
 
         if (orderPage.isEmpty()) {
@@ -285,8 +295,20 @@ public class OrderServiceImpl implements IOrderService {
                     .build();
         }
 
+        // Bước 2: Fetch lại đúng các order trong trang với JOIN FETCH items
+        // Fix lazy loading: đảm bảo orderResponses luôn đầy đủ (kể cả đơn 1 sản phẩm)
+        List<String> orderIds = orderPage.getContent().stream()
+                .map(Order::getId)
+                .toList();
+
+        Map<String, Order> ordersWithItems = orderRepository.findAllWithItemsByIds(orderIds)
+                .stream()
+                .collect(java.util.stream.Collectors.toMap(Order::getId, o -> o));
+
+        // Giữ nguyên thứ tự sort từ bước 1
         List<OrderDetailResponse> responses = orderPage.getContent().stream()
-                .map(orderMapper::toOrderDetailResponse)
+                .map(o -> orderMapper.toOrderDetailResponse(
+                        ordersWithItems.getOrDefault(o.getId(), o)))
                 .toList();
 
         return PageResponse.<OrderDetailResponse>builder()
@@ -311,7 +333,8 @@ public class OrderServiceImpl implements IOrderService {
             throw new AppException(ErrorCode.UNAUTHORIZED);
         }
 
-        // Nếu đơn hàng đã ở trạng thái CANCELLED (idempotent), trả về thành công ngay để tránh lỗi khi click đúp
+        // Nếu đơn hàng đã ở trạng thái CANCELLED (idempotent), trả về thành công ngay
+        // để tránh lỗi khi click đúp
         if (order.getOrderStatus() == OrderStatus.CANCELLED) {
             log.info("Đơn hàng {} đã ở trạng thái ĐÃ HỦY, trả về thành công.", orderId);
             return;
@@ -365,7 +388,8 @@ public class OrderServiceImpl implements IOrderService {
         }
 
         if (isAdmin) {
-            // Admin xóa đơn hàng -> đánh dấu deleted = true để ẩn hoàn toàn khỏi danh sách quản lý
+            // Admin xóa đơn hàng -> đánh dấu deleted = true để ẩn hoàn toàn khỏi danh sách
+            // quản lý
             order.setDeleted(true);
         } else {
             // Khách hàng tự ẩn đơn hàng phía mình, giữ lại đơn cho Admin và Thống kê
@@ -399,7 +423,8 @@ public class OrderServiceImpl implements IOrderService {
         }
 
         orderRepository.save(order);
-        log.info("Cập nhật đơn hàng {} thành công. Trạng thái: {}, Mã vận đơn: {}", orderId, order.getOrderStatus(), order.getTrackingCode());
+        log.info("Cập nhật đơn hàng {} thành công. Trạng thái: {}, Mã vận đơn: {}", orderId, order.getOrderStatus(),
+                order.getTrackingCode());
     }
 
     @Override
@@ -427,7 +452,8 @@ public class OrderServiceImpl implements IOrderService {
         try {
             int restoredCount = orderRepository.recoverDeletedOrders();
             if (restoredCount > 0) {
-                log.info("Đã phục hồi {} đơn hàng bị xóa trước đó sang customerHidden=true, deleted=false", restoredCount);
+                log.info("Đã phục hồi {} đơn hàng bị xóa trước đó sang customerHidden=true, deleted=false",
+                        restoredCount);
             }
         } catch (Exception e) {
             log.warn("Không thể phục hồi các đơn hàng đã bị xóa trước đó: {}", e.getMessage());

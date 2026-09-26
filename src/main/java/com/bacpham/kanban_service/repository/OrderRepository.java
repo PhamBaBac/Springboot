@@ -22,7 +22,8 @@ public interface OrderRepository extends JpaRepository<Order, String>, JpaSpecif
 
     /**
      * Fix A-5: Khôi phục trực tiếp trên database bằng 1 câu UPDATE duy nhất.
-     * Tránh việc findAll() load toàn bộ Order vào bộ nhớ tại thời điểm khởi động server (@PostConstruct).
+     * Tránh việc findAll() load toàn bộ Order vào bộ nhớ tại thời điểm khởi động
+     * server (@PostConstruct).
      */
     @Modifying
     @Transactional
@@ -33,55 +34,58 @@ public interface OrderRepository extends JpaRepository<Order, String>, JpaSpecif
 
     /**
      * Fix N+1: Eager load items + subProduct trong 1 query.
-     * Không dùng @EntityGraph vì Spring Data không hỗ trợ tốt với collection fetch + pagination.
+     * Không dùng @EntityGraph vì Spring Data không hỗ trợ tốt với collection fetch
+     * + pagination.
      * Dùng JPQL JOIN FETCH thay thế.
      */
     @Query("""
-        SELECT DISTINCT o FROM Order o
-        LEFT JOIN FETCH o.items i
-        LEFT JOIN FETCH i.subProduct sp
-        LEFT JOIN FETCH sp.product
-        WHERE o.user = :user
-          AND (o.customerHidden = false OR o.customerHidden IS NULL)
-          AND (o.deleted = false OR o.deleted IS NULL)
-    """)
+                SELECT DISTINCT o FROM Order o
+                LEFT JOIN FETCH o.items i
+                LEFT JOIN FETCH i.subProduct sp
+                LEFT JOIN FETCH sp.product
+                WHERE o.user = :user
+                  AND (o.customerHidden = false OR o.customerHidden IS NULL)
+                  AND (o.deleted = false OR o.deleted IS NULL)
+            """)
     List<Order> findByUserAndNotCustomerHidden(@Param("user") User user);
 
     /**
-     * Fix N+1-2: Eager load user + address + items khi lấy paginated orders cho admin.
+     * Fix N+1-2: Eager load user + address + items khi lấy paginated orders cho
+     * admin.
      * Dùng countQuery riêng để pagination vẫn đúng khi có JOIN FETCH.
      */
     @Query(value = """
-        SELECT DISTINCT o FROM Order o
-        LEFT JOIN FETCH o.user u
-        LEFT JOIN FETCH o.address a
-        LEFT JOIN FETCH o.items i
-        LEFT JOIN FETCH i.subProduct sp
-        LEFT JOIN FETCH sp.product p
-        WHERE o.deleted = false
-    """,
-    countQuery = "SELECT COUNT(o) FROM Order o WHERE o.deleted = false")
+                SELECT DISTINCT o FROM Order o
+                LEFT JOIN FETCH o.user u
+                LEFT JOIN FETCH o.address a
+                LEFT JOIN FETCH o.items i
+                LEFT JOIN FETCH i.subProduct sp
+                LEFT JOIN FETCH sp.product p
+                WHERE o.deleted = false
+            """, countQuery = "SELECT COUNT(o) FROM Order o WHERE o.deleted = false")
     Page<Order> findAllByDeletedFalse(Pageable pageable);
 
     @Query("""
-    SELECT CASE WHEN COUNT(o) > 0 THEN true ELSE false END
-    FROM Order o
-    JOIN o.items i
-    WHERE o.id = :orderId
-      AND o.user.id = :userId
-      AND o.orderStatus = :orderStatus
-      AND i.subProduct.id = :subProductId
-""")
+                SELECT CASE WHEN COUNT(o) > 0 THEN true ELSE false END
+                FROM Order o
+                JOIN o.items i
+                WHERE o.id = :orderId
+                  AND o.user.id = :userId
+                  AND o.orderStatus = :orderStatus
+                  AND i.subProduct.id = :subProductId
+            """)
     boolean existsByIdAndUserIdAndOrderStatusAndItemsSubProductId(
             @Param("orderId") String orderId,
             @Param("userId") String userId,
             @Param("orderStatus") OrderStatus orderStatus,
-            @Param("subProductId") String subProductId
-    );
+            @Param("subProductId") String subProductId);
 
     Optional<Order> findByTrackingCode(String trackingCode);
 
-    /** Fix RAM-4: Tính tổng doanh thu bằng DB aggregate — không cần load toàn bộ Order vào memory */
+    /**
+     * Fix RAM-4: Tính tổng doanh thu bằng DB aggregate — không cần load toàn bộ
+     * Order vào memory
+     */
     @Query("SELECT COALESCE(SUM(o.total), 0) FROM Order o WHERE o.orderStatus = :status AND (o.deleted = false OR o.deleted IS NULL)")
     double sumTotalByStatusAndDeletedFalse(@Param("status") com.bacpham.kanban_service.enums.OrderStatus status);
 
@@ -93,15 +97,31 @@ public interface OrderRepository extends JpaRepository<Order, String>, JpaSpecif
     List<Object[]> countOrdersByStatus();
 
     /**
-     * Fix RAM-4: Tìm order theo id với eager fetch để tránh lazy N+1 khi truy cập items.
+     * Fix RAM-4: Tìm order theo id với eager fetch để tránh lazy N+1 khi truy cập
+     * items.
      */
     @Query("""
-        SELECT o FROM Order o
-        LEFT JOIN FETCH o.items i
-        LEFT JOIN FETCH i.subProduct sp
-        LEFT JOIN FETCH sp.product p
-        LEFT JOIN FETCH o.address a
-        WHERE o.id = :id
-    """)
+                SELECT o FROM Order o
+                LEFT JOIN FETCH o.items i
+                LEFT JOIN FETCH i.subProduct sp
+                LEFT JOIN FETCH sp.product p
+                LEFT JOIN FETCH o.address a
+                WHERE o.id = :id
+            """)
     Optional<Order> findByIdWithDetails(@Param("id") String id);
+
+    /**
+     * Fix lazy loading for paginated admin orders: batch-fetch a page of orders
+     * by their IDs with all associations eagerly loaded in a single query.
+     * DISTINCT prevents duplicate Order rows caused by the collection JOIN FETCHes.
+     */
+    @Query("""
+                SELECT DISTINCT o FROM Order o
+                LEFT JOIN FETCH o.items i
+                LEFT JOIN FETCH i.subProduct sp
+                LEFT JOIN FETCH sp.product p
+                LEFT JOIN FETCH o.address a
+                WHERE o.id IN :ids
+            """)
+    List<Order> findAllWithItemsByIds(@Param("ids") List<String> ids);
 }
