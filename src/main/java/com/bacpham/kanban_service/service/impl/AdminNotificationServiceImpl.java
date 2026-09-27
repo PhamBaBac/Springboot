@@ -1,5 +1,6 @@
 package com.bacpham.kanban_service.service.impl;
 
+import com.bacpham.kanban_service.configuration.socket.NotificationSocketPublisher;
 import com.bacpham.kanban_service.dto.request.AdminNotificationRequest;
 import com.bacpham.kanban_service.dto.response.AdminNotificationResponse;
 import com.bacpham.kanban_service.dto.response.AdminNotificationStatsResponse;
@@ -34,6 +35,7 @@ public class AdminNotificationServiceImpl implements IAdminNotificationService {
 
     AdminNotificationRepository repository;
     AdminNotificationMapper mapper;
+    NotificationSocketPublisher socketPublisher;
 
     @Override
     public PageResponse<AdminNotificationResponse> getNotifications(int page, int size, NotificationType type, Boolean isRead, String search) {
@@ -87,13 +89,19 @@ public class AdminNotificationServiceImpl implements IAdminNotificationService {
             notification = repository.save(notification);
         }
 
-        return mapper.toAdminNotificationResponse(notification);
+        AdminNotificationResponse response = mapper.toAdminNotificationResponse(notification);
+        long unreadCount = repository.countByIsReadFalseAndDeletedFalse();
+        socketPublisher.broadcastNotificationRead(id, unreadCount);
+        return response;
     }
 
     @Override
     @Transactional
     public int markAllAsRead() {
-        return repository.markAllAsRead();
+        int updated = repository.markAllAsRead();
+        long unreadCount = repository.countByIsReadFalseAndDeletedFalse();
+        socketPublisher.broadcastNotificationReadAll(unreadCount);
+        return updated;
     }
 
     @Override
@@ -103,12 +111,17 @@ public class AdminNotificationServiceImpl implements IAdminNotificationService {
                 .orElseThrow(() -> new AppException(ErrorCode.NOTIFICATION_NOT_FOUND));
         notification.setDeleted(true);
         repository.save(notification);
+        long unreadCount = repository.countByIsReadFalseAndDeletedFalse();
+        socketPublisher.broadcastNotificationDeleted(id, unreadCount);
     }
 
     @Override
     @Transactional
     public int deleteAllRead() {
-        return repository.deleteAllRead();
+        int deleted = repository.deleteAllRead();
+        long unreadCount = repository.countByIsReadFalseAndDeletedFalse();
+        socketPublisher.broadcastNotificationClearRead(unreadCount);
+        return deleted;
     }
 
     @Override

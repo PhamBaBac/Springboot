@@ -36,4 +36,54 @@ public class NotificationSocketPublisher {
             log.error("Lỗi khi broadcast socket notification: {}", e.getMessage(), e);
         }
     }
+
+    public void broadcastNotificationRead(String id, long unreadCount) {
+        try {
+            java.util.Map<String, Object> payload = new java.util.HashMap<>();
+            payload.put("id", id);
+            payload.put("unreadCount", unreadCount);
+            socketIOServer.getRoomOperations(SupportSocketHandler.ADMIN_CHANNEL)
+                    .sendEvent("admin_notification_read", payload);
+            log.info("Đã broadcast socket event 'admin_notification_read' id={}, unreadCount={}", id, unreadCount);
+        } catch (Exception e) {
+            log.error("Lỗi khi broadcast socket admin_notification_read: {}", e.getMessage(), e);
+        }
+    }
+
+    public void broadcastNotificationReadAll(long unreadCount) {
+        try {
+            java.util.Map<String, Object> payload = new java.util.HashMap<>();
+            payload.put("unreadCount", unreadCount);
+            socketIOServer.getRoomOperations(SupportSocketHandler.ADMIN_CHANNEL)
+                    .sendEvent("admin_notification_read_all", payload);
+            log.info("Đã broadcast socket event 'admin_notification_read_all' unreadCount={}", unreadCount);
+        } catch (Exception e) {
+            log.error("Lỗi khi broadcast socket admin_notification_read_all: {}", e.getMessage(), e);
+        }
+    }
+
+    public void broadcastNotificationDeleted(String id, long unreadCount) {
+        try {
+            java.util.Map<String, Object> payload = new java.util.HashMap<>();
+            payload.put("id", id);
+            payload.put("unreadCount", unreadCount);
+            socketIOServer.getRoomOperations(SupportSocketHandler.ADMIN_CHANNEL)
+                    .sendEvent("admin_notification_deleted", payload);
+            log.info("Đã broadcast socket event 'admin_notification_deleted' id={}, unreadCount={}", id, unreadCount);
+        } catch (Exception e) {
+            log.error("Lỗi khi broadcast socket admin_notification_deleted: {}", e.getMessage(), e);
+        }
+    }
+
+    public void broadcastNotificationClearRead(long unreadCount) {
+        try {
+            java.util.Map<String, Object> payload = new java.util.HashMap<>();
+            payload.put("unreadCount", unreadCount);
+            socketIOServer.getRoomOperations(SupportSocketHandler.ADMIN_CHANNEL)
+                    .sendEvent("admin_notification_clear_read", payload);
+            log.info("Đã broadcast socket event 'admin_notification_clear_read' unreadCount={}", unreadCount);
+        } catch (Exception e) {
+            log.error("Lỗi khi broadcast socket admin_notification_clear_read: {}", e.getMessage(), e);
+        }
+    }
 }

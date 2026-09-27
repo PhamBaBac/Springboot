@@ -46,6 +46,9 @@ import com.bacpham.kanban_service.event.NotificationEvent;
 import org.springframework.context.ApplicationEventPublisher;
 import com.bacpham.kanban_service.enums.TransactionStatus;
 import com.bacpham.kanban_service.enums.TransactionType;
+import com.bacpham.kanban_service.enums.UserNotificationType;
+import com.bacpham.kanban_service.dto.request.UserNotificationCreateRequest;
+import com.bacpham.kanban_service.service.IUserNotificationService;
 import com.bacpham.kanban_service.service.IOrderStatusHistoryService;
 import com.bacpham.kanban_service.service.IPaymentTransactionService;
 
@@ -67,6 +70,7 @@ public class OrderServiceImpl implements IOrderService {
     private final IOrderStatusHistoryService orderStatusHistoryService;
     private final IPaymentTransactionService paymentTransactionService;
     private final ApplicationEventPublisher eventPublisher;
+    private final IUserNotificationService userNotificationService;
 
     @Override
     @Transactional
@@ -120,6 +124,15 @@ public class OrderServiceImpl implements IOrderService {
                 "/orders?id=" + order.getId() + "&status=PENDING",
                 order.getId()
         ));
+
+        userNotificationService.createNotification(UserNotificationCreateRequest.builder()
+                .userId(user.getId())
+                .title("Đặt hàng thành công #" + shortOrderId)
+                .content(String.format("Bạn đã đặt thành công đơn hàng #%s trị giá %,.0f đ. Chúng tôi sẽ sớm giao hàng đến bạn.", shortOrderId, order.getTotal()))
+                .type(UserNotificationType.ORDER_STATUS)
+                .targetUrl("/profile?tab=orders")
+                .referenceId(order.getId())
+                .build());
 
         return order;
     }
@@ -404,6 +417,15 @@ public class OrderServiceImpl implements IOrderService {
                 "/orders?id=" + order.getId() + "&status=CANCELLED",
                 order.getId()
         ));
+
+        userNotificationService.createNotification(UserNotificationCreateRequest.builder()
+                .userId(userId)
+                .title("Đã hủy đơn hàng #" + shortOrderId)
+                .content(String.format("Đơn hàng #%s của bạn đã được hủy thành công.", shortOrderId))
+                .type(UserNotificationType.ORDER_STATUS)
+                .targetUrl("/profile?tab=orders")
+                .referenceId(order.getId())
+                .build());
     }
 
     @Override
@@ -468,6 +490,16 @@ public class OrderServiceImpl implements IOrderService {
 
         if (newStatus != oldStatus) {
             orderStateMachine.transition(order, newStatus, status);
+
+            String shortId = order.getId().length() > 8 ? order.getId().substring(0, 8).toUpperCase() : order.getId();
+            userNotificationService.createNotification(UserNotificationCreateRequest.builder()
+                    .userId(order.getUser().getId())
+                    .title("Cập nhật đơn hàng #" + shortId)
+                    .content("Đơn hàng #" + shortId + " của bạn đã chuyển sang trạng thái: " + newStatus.name())
+                    .type(UserNotificationType.ORDER_STATUS)
+                    .targetUrl("/profile?tab=orders")
+                    .referenceId(order.getId())
+                    .build());
         }
 
         orderRepository.save(order);
