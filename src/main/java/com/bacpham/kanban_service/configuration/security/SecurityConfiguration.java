@@ -39,6 +39,7 @@ public class SecurityConfiguration {
             "/api/v1/payment/momo-return",
             "/api/v1/payment/callback/**",
             "/api/v1/public/products/**",
+            "/api/v1/wishlists/count/**",
             "/api/v1/shipping/**",
             "/oauth2/**",
             "/login/oauth2/**",

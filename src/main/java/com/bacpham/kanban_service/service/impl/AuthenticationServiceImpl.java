@@ -399,9 +399,9 @@ public class AuthenticationServiceImpl implements IAuthenticationService {
 
     private User buildUserFromRequest(RegisterRequest request) {
         return User.builder()
-                .firstname(request.getFirstName())
-                .lastname(request.getLastName())
-                .email(request.getEmail())
+                .firstname(request.getFirstName() != null ? request.getFirstName().trim() : null)
+                .lastname(request.getLastName() != null ? request.getLastName().trim() : null)
+                .email(request.getEmail() != null ? request.getEmail().trim().toLowerCase() : null)
                 .password(passwordEncoder.encode(request.getPassword()))
                 .role(request.getRole() != null ? request.getRole() : Role.USER)
                 .provider(Provider.LOCAL)
