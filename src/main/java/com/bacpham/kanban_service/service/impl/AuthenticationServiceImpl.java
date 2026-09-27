@@ -426,15 +426,6 @@ public class AuthenticationServiceImpl implements IAuthenticationService {
                 .build();
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
 
-        ResponseCookie legacyCookie = ResponseCookie.from(REFRESH_TOKEN_COOKIE_NAME, token)
-                .httpOnly(true)
-                .secure(isCookieSecure)
-                .path("/")
-                .sameSite("Lax")
-                .maxAge(Duration.ofDays(7))
-                .build();
-        response.addHeader(HttpHeaders.SET_COOKIE, legacyCookie.toString());
-
         return token;
     }
 

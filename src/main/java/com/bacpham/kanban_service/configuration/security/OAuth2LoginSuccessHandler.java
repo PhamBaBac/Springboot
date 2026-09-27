@@ -190,15 +190,6 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
                 .build();
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
 
-        ResponseCookie legacyCookie = ResponseCookie.from(AuthenticationServiceImpl.REFRESH_TOKEN_COOKIE_NAME, refreshToken)
-                .httpOnly(true)
-                .secure(isCookieSecure)
-                .path("/")
-                .maxAge(Duration.ofDays(7))
-                .sameSite("Lax")
-                .build();
-        response.addHeader(HttpHeaders.SET_COOKIE, legacyCookie.toString());
-
         AuthenticationResponse authResponse = AuthenticationResponse.builder()
                 .accessToken(accessToken)
                 .userId(user.getId())
