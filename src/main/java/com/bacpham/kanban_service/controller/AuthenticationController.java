@@ -68,7 +68,7 @@ public class AuthenticationController {
             @RequestHeader(value = "X-Session-Id", required = false) String sessionId
     ) {
         AuthenticationResponse authResponse = service.exchangeToken(request.getCode());
-        if (sessionId != null) {
+        if (sessionId != null && authResponse.getUserId() != null && !authResponse.isMfaEnabled()) {
             redisCartService.syncToDatabase(sessionId, authResponse.getUserId());
         }
         return ResponseEntity.ok(

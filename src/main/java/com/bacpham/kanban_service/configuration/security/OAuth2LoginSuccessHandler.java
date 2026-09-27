@@ -154,6 +154,29 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
             newUser.setPassword(passwordEncoder.encode(UUID.randomUUID().toString()));
             return userRepository.save(newUser);
         });
+        String exchangeCode = UUID.randomUUID().toString();
+
+        if (user.isMfaEnabled()) {
+            // Khi user bật 2FA: KHÔNG cấp accessToken, KHÔNG cấp refreshToken, KHÔNG set cookie
+            AuthenticationResponse authResponse = AuthenticationResponse.builder()
+                    .userId(user.getId())
+                    .email(user.getEmail())
+                    .mfaEnabled(true)
+                    .build();
+
+            redisService.set("oauth2:code:" + exchangeCode, objectMapper.writeValueAsString(authResponse));
+            redisService.setTimeToLive("oauth2:code:" + exchangeCode, 60, TimeUnit.SECONDS);
+
+            String redirectUrl = UriComponentsBuilder.fromUriString(authorizedRedirectUri)
+                    .queryParam("code", exchangeCode)
+                    .build().toUriString();
+
+            log.info("Redirecting to frontend for 2FA verification for user: {}", user.getEmail());
+            getRedirectStrategy().sendRedirect(request, response, redirectUrl);
+            return;
+        }
+
+        // Khi user KHÔNG bật 2FA: cấp token và set cookie bình thường
         String accessToken = jwtService.generateAccessToken(user);
         String refreshToken = jwtService.generateRefreshToken(user);
 
@@ -176,11 +199,11 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
                 .build();
         response.addHeader(HttpHeaders.SET_COOKIE, legacyCookie.toString());
 
-        String exchangeCode = UUID.randomUUID().toString();
         AuthenticationResponse authResponse = AuthenticationResponse.builder()
                 .accessToken(accessToken)
                 .userId(user.getId())
-                .mfaEnabled(user.isMfaEnabled())
+                .email(user.getEmail())
+                .mfaEnabled(false)
                 .build();
 
         redisService.set("oauth2:code:" + exchangeCode, objectMapper.writeValueAsString(authResponse));
