@@ -7,9 +7,11 @@ import com.bacpham.kanban_service.dto.request.UpdateStatusOrder;
 import com.bacpham.kanban_service.dto.response.OrderDetailResponse;
 import com.bacpham.kanban_service.dto.response.OrderResponse;
 import com.bacpham.kanban_service.dto.response.PageResponse;
+import com.bacpham.kanban_service.dto.response.PromotionResponse;
 import com.bacpham.kanban_service.entity.*;
 import com.bacpham.kanban_service.enums.OrderStatus;
 import com.bacpham.kanban_service.enums.PaymentType;
+import com.bacpham.kanban_service.enums.PromotionType;
 import com.bacpham.kanban_service.enums.Role;
 import com.bacpham.kanban_service.helper.exception.AppException;
 import com.bacpham.kanban_service.helper.exception.ErrorCode;
@@ -78,7 +80,7 @@ public class OrderServiceImpl implements IOrderService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
 
-        validateAndApplyPromotion(user, request.getCode());
+        PromotionResponse activePromotion = validateAndApplyPromotion(user, request.getCode());
 
         List<OrderItemRequest> sortedItems = sortItemsForDeadlockPrevention(request.getItems());
 
@@ -86,15 +88,17 @@ public class OrderServiceImpl implements IOrderService {
         double discountTotal = 0.0;
         List<OrderItem> orderItems = new ArrayList<>(sortedItems.size());
         for (OrderItemRequest dto : sortedItems) {
-            ProcessedItemResult result = processOrderItem(dto);
+            ProcessedItemResult result = processOrderItem(dto, activePromotion);
             orderItems.add(result.item());
             total += result.total();
             discountTotal += (result.item().getDiscountAmount() != null ? result.item().getDiscountAmount() : 0.0);
         }
         double subtotal = total + discountTotal;
+        double shippingFee = total >= 400000.0 ? 0.0 : 20000.0;
+        double finalTotal = total + shippingFee;
 
-        Order order = buildAndSaveOrder(user, request.getAddressId(), paymentType, total, subtotal, discountTotal,
-                orderItems);
+        Order order = buildAndSaveOrder(user, request.getAddressId(), paymentType, finalTotal, subtotal, discountTotal,
+                shippingFee, orderItems);
         cleanupCartItems(user, request.getItems());
 
         orderStatusHistoryService.logStatusChange(order, null, OrderStatus.PENDING, "Tạo mới đơn hàng thành công",
@@ -137,10 +141,21 @@ public class OrderServiceImpl implements IOrderService {
         return order;
     }
 
-    private void validateAndApplyPromotion(User user, String code) {
+    private PromotionResponse validateAndApplyPromotion(User user, String code) {
         if (code != null && !code.isBlank()) {
-            promotionService.applyPromotionCode(user.getId(), code);
+            String trimmedCode = code.trim();
+            boolean applied = promotionService.applyPromotionCode(user.getId(), trimmedCode);
+            if (!applied) {
+                log.warn("Mã khuyến mãi {} không hợp lệ hoặc đã được sử dụng đối với user {}", trimmedCode, user.getId());
+                throw new AppException(ErrorCode.PROMOTION_ALREADY_USED);
+            }
+            try {
+                return promotionService.getPromotionByNameCode(trimmedCode);
+            } catch (Exception e) {
+                log.warn("Không tìm thấy thông tin chi tiết của khuyến mãi {}: {}", trimmedCode, e.getMessage());
+            }
         }
+        return null;
     }
 
     private List<OrderItemRequest> sortItemsForDeadlockPrevention(List<OrderItemRequest> items) {
@@ -152,7 +167,11 @@ public class OrderServiceImpl implements IOrderService {
                 .toList();
     }
 
-    private ProcessedItemResult processOrderItem(OrderItemRequest dto) {
+    private ProcessedItemResult processOrderItem(OrderItemRequest dto, PromotionResponse activePromotion) {
+        if (dto.getCount() == null || dto.getCount() <= 0) {
+            throw new AppException(ErrorCode.INVALID_INPUT);
+        }
+
         SubProduct subProduct = subProductRepository.findById(dto.getSubProductId())
                 .orElseThrow(() -> new AppException(ErrorCode.SUB_PRODUCT_NOT_FOUND));
 
@@ -165,6 +184,34 @@ public class OrderServiceImpl implements IOrderService {
         int updatedRows = subProductRepository.directDeductStock(dto.getSubProductId(), dto.getCount());
         if (updatedRows == 0) {
             throw new AppException(ErrorCode.INSUFFICIENT_STOCK);
+        }
+
+        double officialUnitPrice = (subProduct.getPrice() != null && subProduct.getPrice() >= 0)
+                ? subProduct.getPrice()
+                : 0.0;
+
+        if (dto.getPrice() != null && Math.abs(dto.getPrice() - officialUnitPrice) > 0.01) {
+            log.warn("CẢNH BÁO BẢO MẬT: Phát hiện can thiệp giá từ client cho subProductId: {}. Client gửi: {}, Giá thực tế DB: {}. Hệ thống áp dụng giá DB.",
+                    subProduct.getId(), dto.getPrice(), officialUnitPrice);
+        }
+
+        DiscountRequest effectiveDiscount = null;
+        if (activePromotion != null && activePromotion.getValue() != null && activePromotion.getType() != null) {
+            PromotionType promoType = null;
+            try {
+                promoType = PromotionType.valueOf(activePromotion.getType().trim().toUpperCase());
+            } catch (IllegalArgumentException | NullPointerException e) {
+                log.warn("Không xác định được loại khuyến mãi: {}", activePromotion.getType());
+            }
+
+            if (promoType != null) {
+                effectiveDiscount = DiscountRequest.builder()
+                        .type(promoType)
+                        .value(activePromotion.getValue().toString())
+                        .build();
+            }
+        } else if (activePromotion != null && dto.getDiscountValue() != null) {
+            effectiveDiscount = dto.getDiscountValue();
         }
 
         int currentStock = subProduct.getStock() != null ? subProduct.getStock() : 0;
@@ -204,7 +251,7 @@ public class OrderServiceImpl implements IOrderService {
         }
 
         DiscountCalculationResult discountResult = discountCalculator.calculate(
-                dto.getPrice(), dto.getCount(), dto.getDiscountValue());
+                officialUnitPrice, dto.getCount(), effectiveDiscount);
 
         String productTitle = (subProduct.getProduct() != null) ? subProduct.getProduct().getTitle() : null;
         String firstImage = (subProduct.getImages() != null && !subProduct.getImages().isEmpty())
@@ -221,7 +268,7 @@ public class OrderServiceImpl implements IOrderService {
                 .size(subProduct.getSize())
                 .color(subProduct.getColor())
                 .image(firstImage)
-                .originalPrice(dto.getPrice())
+                .originalPrice(officialUnitPrice) // FIX: Luôn ghi nhận giá gốc chính thức từ DB
                 .cost(subProduct.getCost())
                 .discountAmount(discountResult.discountAmount())
                 .totalPrice(discountResult.itemTotal())
@@ -232,7 +279,7 @@ public class OrderServiceImpl implements IOrderService {
     }
 
     private Order buildAndSaveOrder(User user, String addressId, String paymentTypeStr, double total, double subtotal,
-            double discountAmount, List<OrderItem> items) {
+            double discountAmount, double shippingFee, List<OrderItem> items) {
         PaymentType paymentType;
         try {
             paymentType = PaymentType.valueOf(paymentTypeStr.toUpperCase());
@@ -248,6 +295,7 @@ public class OrderServiceImpl implements IOrderService {
                 .address(address)
                 .total(total)
                 .subtotal(subtotal)
+                .shippingFee(shippingFee)
                 .discountAmount(discountAmount)
                 .orderStatus(OrderStatus.PENDING)
                 .paymentType(paymentType)

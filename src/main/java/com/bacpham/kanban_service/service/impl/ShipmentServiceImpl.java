@@ -65,7 +65,7 @@ public class ShipmentServiceImpl implements IShipmentService {
                 .width(request.getWidth())
                 .height(request.getHeight())
                 .codAmount(codAmount)
-                .shippingFee(0.0)
+                .shippingFee(order.getShippingFee() != null ? order.getShippingFee() : 0.0)
                 .note(request.getNote())
                 .requiredNote(request.getRequiredNote() != null ? request.getRequiredNote() : "CHOXEMHANGKHONGTHU")
                 .items(new ArrayList<>())
@@ -165,7 +165,14 @@ public class ShipmentServiceImpl implements IShipmentService {
     public Double calculateShippingFee(CalculateShippingFeeRequest request) {
         if (request.getOrderId() != null && !request.getOrderId().isBlank()) {
             Order order = orderRepository.findById(request.getOrderId()).orElse(null);
-            if (order != null && order.getAddress() != null) {
+            if (order != null) {
+                if (order.getShippingFee() != null) {
+                    return order.getShippingFee();
+                }
+                if (order.getTotal() >= 400000.0) {
+                    return 0.0;
+                }
+                return 20000.0;
             }
         }
         return ghnShippingService.calculateShippingFee(request);

@@ -5,10 +5,11 @@ import com.bacpham.kanban_service.configuration.redis.GenericRedisService;
 import com.bacpham.kanban_service.dto.request.OrderCreateRequest;
 import com.bacpham.kanban_service.dto.response.PaymentResponse;
 import com.bacpham.kanban_service.enums.PaymentType;
+import com.bacpham.kanban_service.repository.SubProductRepository;
 import com.bacpham.kanban_service.strategy.discount.DiscountCalculator;
 import jakarta.servlet.http.HttpServletRequest;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -30,7 +31,6 @@ import java.util.concurrent.TimeUnit;
  * - Quản lý Idempotency & lưu cache tạm đơn hàng trong Redis.
  */
 @Component
-@RequiredArgsConstructor
 @Slf4j
 public class MoMoPaymentStrategy implements PaymentStrategy {
 
@@ -39,6 +39,30 @@ public class MoMoPaymentStrategy implements PaymentStrategy {
     private final GenericRedisService<String, String, OrderCreateRequest> redisServiceOrder;
     private final DiscountCalculator discountCalculator;
     private final RestTemplate restTemplate;
+    private final SubProductRepository subProductRepository;
+
+    @Autowired
+    public MoMoPaymentStrategy(ConfigMoMo configMoMo,
+                               GenericRedisService<String, String, String> redisService,
+                               GenericRedisService<String, String, OrderCreateRequest> redisServiceOrder,
+                               DiscountCalculator discountCalculator,
+                               RestTemplate restTemplate,
+                               SubProductRepository subProductRepository) {
+        this.configMoMo = configMoMo;
+        this.redisService = redisService;
+        this.redisServiceOrder = redisServiceOrder;
+        this.discountCalculator = discountCalculator;
+        this.restTemplate = restTemplate;
+        this.subProductRepository = subProductRepository;
+    }
+
+    public MoMoPaymentStrategy(ConfigMoMo configMoMo,
+                               GenericRedisService<String, String, String> redisService,
+                               GenericRedisService<String, String, OrderCreateRequest> redisServiceOrder,
+                               DiscountCalculator discountCalculator,
+                               RestTemplate restTemplate) {
+        this(configMoMo, redisService, redisServiceOrder, discountCalculator, restTemplate, null);
+    }
 
     @Override
     public PaymentType getPaymentType() {
@@ -203,9 +227,24 @@ public class MoMoPaymentStrategy implements PaymentStrategy {
     }
 
     private double calculateTotal(OrderCreateRequest request) {
-        return request.getItems().stream()
-                .mapToDouble(item -> discountCalculator.calculate(
-                        item.getPrice(), item.getCount(), item.getDiscountValue()).itemTotal())
+        if (request.getItems() == null || request.getItems().isEmpty()) {
+            return 0.0;
+        }
+        double itemsTotal = request.getItems().stream()
+                .mapToDouble(item -> {
+                    double unitPrice = 0.0;
+                    if (subProductRepository != null && item.getSubProductId() != null && !item.getSubProductId().isBlank()) {
+                        unitPrice = subProductRepository.findById(item.getSubProductId())
+                                .map(sp -> (sp.getPrice() != null && sp.getPrice() >= 0) ? sp.getPrice() : 0.0)
+                                .orElse(item.getPrice() != null ? item.getPrice() : 0.0);
+                    } else if (item.getPrice() != null) {
+                        unitPrice = item.getPrice();
+                    }
+                    int count = (item.getCount() != null && item.getCount() > 0) ? item.getCount() : 1;
+                    return discountCalculator.calculate(unitPrice, count, item.getDiscountValue()).itemTotal();
+                })
                 .sum();
+        double shippingFee = itemsTotal >= 400000.0 ? 0.0 : 20000.0;
+        return itemsTotal + shippingFee;
     }
 }

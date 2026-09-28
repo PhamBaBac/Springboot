@@ -178,7 +178,7 @@ class MoMoPaymentStrategyTest {
 
         assertFalse(result.signatureValid());
         assertFalse(result.success());
-        assertEquals("Invalid checksum from MoMo", result.message());
+        assertEquals("Chữ ký không hợp lệ từ MoMo", result.message());
     }
 
     @Test

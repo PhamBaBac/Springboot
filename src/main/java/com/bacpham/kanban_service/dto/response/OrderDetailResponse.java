@@ -25,5 +25,9 @@ public class OrderDetailResponse {
     private String cancelReason;
     private String trackingCode;
     private String shippingStatus;
+    private Double total;
+    private Double subtotal;
+    private Double shippingFee;
+    private Double discountAmount;
     private LocalDate createdAt;
 }

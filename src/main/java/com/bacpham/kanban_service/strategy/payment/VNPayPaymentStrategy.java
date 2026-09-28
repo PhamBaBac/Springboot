@@ -5,10 +5,11 @@ import com.bacpham.kanban_service.configuration.redis.GenericRedisService;
 import com.bacpham.kanban_service.dto.request.OrderCreateRequest;
 import com.bacpham.kanban_service.dto.response.PaymentResponse;
 import com.bacpham.kanban_service.enums.PaymentType;
+import com.bacpham.kanban_service.repository.SubProductRepository;
 import com.bacpham.kanban_service.strategy.discount.DiscountCalculator;
 import jakarta.servlet.http.HttpServletRequest;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.net.URLEncoder;
@@ -22,13 +23,30 @@ import java.util.concurrent.TimeUnit;
  * Đóng gói toàn bộ nghiệp vụ tạo URL mã hóa HMAC-SHA512 và xác thực chữ ký callback của VNPay.
  */
 @Component
-@RequiredArgsConstructor
 @Slf4j
 public class VNPayPaymentStrategy implements PaymentStrategy {
 
     private final GenericRedisService<String, String, String> redisService;
     private final GenericRedisService<String, String, OrderCreateRequest> redisServiceOrder;
     private final DiscountCalculator discountCalculator;
+    private final SubProductRepository subProductRepository;
+
+    @Autowired
+    public VNPayPaymentStrategy(GenericRedisService<String, String, String> redisService,
+                                GenericRedisService<String, String, OrderCreateRequest> redisServiceOrder,
+                                DiscountCalculator discountCalculator,
+                                SubProductRepository subProductRepository) {
+        this.redisService = redisService;
+        this.redisServiceOrder = redisServiceOrder;
+        this.discountCalculator = discountCalculator;
+        this.subProductRepository = subProductRepository;
+    }
+
+    public VNPayPaymentStrategy(GenericRedisService<String, String, String> redisService,
+                                GenericRedisService<String, String, OrderCreateRequest> redisServiceOrder,
+                                DiscountCalculator discountCalculator) {
+        this(redisService, redisServiceOrder, discountCalculator, null);
+    }
 
     @Override
     public PaymentType getPaymentType() {
@@ -152,10 +170,25 @@ public class VNPayPaymentStrategy implements PaymentStrategy {
     }
 
     private double calculateTotal(OrderCreateRequest request) {
-        return request.getItems().stream()
-                .mapToDouble(item -> discountCalculator.calculate(
-                        item.getPrice(), item.getCount(), item.getDiscountValue()).itemTotal())
+        if (request.getItems() == null || request.getItems().isEmpty()) {
+            return 0.0;
+        }
+        double itemsTotal = request.getItems().stream()
+                .mapToDouble(item -> {
+                    double unitPrice = 0.0;
+                    if (subProductRepository != null && item.getSubProductId() != null && !item.getSubProductId().isBlank()) {
+                        unitPrice = subProductRepository.findById(item.getSubProductId())
+                                .map(sp -> (sp.getPrice() != null && sp.getPrice() >= 0) ? sp.getPrice() : 0.0)
+                                .orElse(item.getPrice() != null ? item.getPrice() : 0.0);
+                    } else if (item.getPrice() != null) {
+                        unitPrice = item.getPrice();
+                    }
+                    int count = (item.getCount() != null && item.getCount() > 0) ? item.getCount() : 1;
+                    return discountCalculator.calculate(unitPrice, count, item.getDiscountValue()).itemTotal();
+                })
                 .sum();
+        double shippingFee = itemsTotal >= 400000.0 ? 0.0 : 20000.0;
+        return itemsTotal + shippingFee;
     }
 
     private String buildPaymentUrl(Map<String, String> vnp_Params) {

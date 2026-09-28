@@ -206,9 +206,7 @@ public class ProductServiceImpl implements IProductService {
             colors = null;
         }
 
-        List<String> resolvedCategoryIds = (search != null && !search.trim().isEmpty())
-                ? null
-                : resolveAllCategoryIds(categoryIds);
+        List<String> resolvedCategoryIds = resolveAllCategoryIds(categoryIds);
 
         Double minPrice = (priceRange != null && !priceRange.isEmpty()) ? priceRange.get(0) : null;
         Double maxPrice = (priceRange != null && priceRange.size() > 1) ? priceRange.get(1) : null;

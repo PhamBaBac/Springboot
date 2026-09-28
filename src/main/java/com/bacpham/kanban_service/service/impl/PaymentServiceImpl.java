@@ -6,7 +6,8 @@ import com.bacpham.kanban_service.service.IPaymeentService;
 import com.bacpham.kanban_service.strategy.payment.PaymentCallbackResult;
 import com.bacpham.kanban_service.strategy.payment.VNPayPaymentStrategy;
 import jakarta.servlet.http.HttpServletRequest;
-import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
@@ -16,10 +17,15 @@ import java.util.Map;
  * ủy quyền toàn bộ xử lý sang VNPayPaymentStrategy.
  */
 @Service
-@RequiredArgsConstructor
+@Slf4j
 public class PaymentServiceImpl implements IPaymeentService {
 
     private final VNPayPaymentStrategy vnPayPaymentStrategy;
+
+    @Autowired
+    public PaymentServiceImpl(VNPayPaymentStrategy vnPayPaymentStrategy) {
+        this.vnPayPaymentStrategy = vnPayPaymentStrategy;
+    }
 
     @Override
     public PaymentResponse createPaymentUrl(OrderCreateRequest request, String userId, HttpServletRequest httpRequest) {

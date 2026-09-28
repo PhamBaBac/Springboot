@@ -297,10 +297,10 @@ public class GhnShippingService implements IGhnShippingService {
                 }
             }
         } catch (Exception e) {
-            log.warn("Không tính được phí GHN online, fallback về phí mặc định 30000: {}", e.getMessage());
+            log.warn("Không tính được phí GHN online, fallback về phí mặc định 20000: {}", e.getMessage());
         }
 
-        return 30000.0;
+        return 20000.0;
     }
 
     /**

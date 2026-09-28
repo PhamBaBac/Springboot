@@ -16,12 +16,13 @@ public class SearchSynonymUtils {
             List.of("ao khoac", "ao gio", "ao bomber", "ao hoodie", "ao cardigan", "hoodie", "cardigan"),
             List.of("dam", "vay", "chan vay", "dam xoe", "dam suong"),
             List.of("dep", "sandal", "giay dep", "tong", "dep le"),
-            List.of("giay", "sneaker", "giay the thao", "giay luoi", "giay da")
+            List.of("giay", "sneaker", "giay the thao", "giay luoi", "giay da"),
+            List.of("tui", "tui tote", "tui xach", "tui cheo", "balo", "cap", "vi", "tote bag", "backpack"),
+            List.of("that lung", "day nit", "that lung da", "belt"),
+            List.of("non", "mu", "non ket", "mu luoi trai", "hat")
     );
 
-    /**
-     * Bỏ dấu tiếng Việt và chuẩn hóa: "Áo cộc tay" -> "ao coc tay"
-     */
+    
     public static String removeDiacritics(String text) {
         if (text == null) return "";
         String normalized = Normalizer.normalize(text, Normalizer.Form.NFD);
@@ -33,7 +34,7 @@ public class SearchSynonymUtils {
      * Từ 1 keyword tìm kiếm ban đầu, tìm và mở rộng thêm các từ đồng nghĩa (alias).
      * Ví dụ: "ao coc tay" -> ["ao coc tay", "ao polo", "ao phong", "ao thun", "ao ngan tay", "polo"]
      */
-    public static Set<String> expandKeywords(String rawKeyword) {
+    public   static Set<String> expandKeywords(String rawKeyword) {
         Set<String> keywords = new LinkedHashSet<>();
         if (rawKeyword == null || rawKeyword.trim().isEmpty()) {
             return keywords;
