@@ -69,6 +69,20 @@ public class PromotionController {
                 .build();
     }
 
+    com.bacpham.kanban_service.repository.UserRepository userRepository;
+
+    @GetMapping("/generate-code")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    public ApiResponse<String> generateUniqueCode(
+            @RequestParam(value = "prefix", required = false) String prefix
+    ) {
+        String code = promotionService.generateUniqueCode(prefix);
+        return ApiResponse.<String>builder()
+                .data(code)
+                .message("Tạo mã khuyến mãi ngẫu nhiên thành công")
+                .build();
+    }
+
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public ApiResponse<Void> deletePromotion(@PathVariable String id) {
@@ -78,15 +92,26 @@ public class PromotionController {
 
     @GetMapping("/check/{code}")
     public ApiResponse<Boolean> checkPromotionCode(
-            @PathVariable String code
+            @PathVariable String code,
+            @RequestParam(value = "userId", required = false) String userId,
+            @org.springframework.security.core.annotation.AuthenticationPrincipal org.springframework.security.core.userdetails.UserDetails userDetails
     ) {
-        boolean isValid = promotionService.isPromotionValid(code);
+        String effectiveUserId = userId;
+        if ((effectiveUserId == null || effectiveUserId.isBlank()) && userDetails != null) {
+            effectiveUserId = userRepository.findByEmail(userDetails.getUsername())
+                    .map(com.bacpham.kanban_service.entity.User::getId)
+                    .orElse(null);
+        }
+
+        boolean isValid = effectiveUserId != null && !effectiveUserId.isBlank()
+                ? promotionService.isPromotionValidForUser(code, effectiveUserId)
+                : promotionService.isPromotionValid(code);
+
         return ApiResponse.<Boolean>builder()
                 .data(isValid)
                 .message(isValid ? "Mã khuyến mãi hợp lệ" : "Mã khuyến mãi không hợp lệ hoặc đã hết hạn")
                 .build();
     }
-
 
     @PostMapping("/apply")
     public ApiResponse<Boolean> applyPromotion(

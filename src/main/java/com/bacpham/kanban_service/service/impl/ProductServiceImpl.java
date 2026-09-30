@@ -253,13 +253,6 @@ public class ProductServiceImpl implements IProductService {
         return new ArrayList<>(allIds);
     }
 
-    @Override
-    public List<ProductResponse> getListProductRecommendations(List<String> ids) {
-        List<Product> products = productRepository.findAllById(ids);
-        return products.stream()
-                .map(productMapper::toProductResponse)
-                .toList();
-    }
 
     @Override
     public List<ProductResponse> getBestSellers() {

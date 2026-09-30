@@ -104,7 +104,22 @@ public class SubProductServiceImpl implements ISubProductService {
         SubProduct subProduct = subProductRepository.findById(request.getId())
                 .orElseThrow(() -> new AppException(ErrorCode.SUB_PRODUCT_NOT_FOUND));
 
+        // @BeanMapping(IGNORE) in mapper already protects null fields,
+        // but we add explicit guards for price & discount to be safe.
+        Double oldPrice = subProduct.getPrice();
+        Double oldDiscount = subProduct.getDiscount();
+
         subProductMapper.updateSubProduct(subProduct, request);
+
+        // Restore price if request didn't send it (or sent null)
+        if (request.getPrice() == null) {
+            subProduct.setPrice(oldPrice);
+        }
+        // Restore discount if request didn't send it (null means "no change")
+        if (request.getDiscount() == null) {
+            subProduct.setDiscount(oldDiscount);
+        }
+
         if (request.getQty() != null) {
             subProduct.setStock(request.getQty());
             subProduct.setQty(request.getQty());

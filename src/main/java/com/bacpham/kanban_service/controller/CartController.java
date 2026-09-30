@@ -72,18 +72,6 @@ public class CartController {
                 .build();
     }
 
-    @DeleteMapping("/remove")
-    public ApiResponse<?> deleteCart(
-            @RequestParam String id,
-            Principal connectedUser
-    ) {
-        User user = getAuthenticatedUser(connectedUser);
-        String userId = user != null ? user.getId() : null;
-        cartService.deleteCart(id, userId);
-        return ApiResponse.builder()
-                .message("Xóa sản phẩm khỏi giỏ hàng thành công")
-                .build();
-    }
 
     @GetMapping
     public ApiResponse<List<CartResponse>> getUserCart(Principal connectedUser) {

@@ -56,6 +56,24 @@ public class SupportSocketHandler {
             client.joinRoom(ADMIN_CHANNEL);
             log.info("Staff client {} joined room {}", client.getSessionId(), ADMIN_CHANNEL);
         });
+
+        socketIOServer.addEventListener("join_user_channel", Map.class, (client, data, ackSender) -> {
+            String userId = data != null ? (String) data.get("userId") : null;
+            if (userId != null && !userId.isBlank()) {
+                String room = "user_" + userId.trim();
+                client.joinRoom(room);
+                log.info("Client {} joined user room {}", client.getSessionId(), room);
+            }
+        });
+
+        socketIOServer.addEventListener("leave_user_channel", Map.class, (client, data, ackSender) -> {
+            String userId = data != null ? (String) data.get("userId") : null;
+            if (userId != null && !userId.isBlank()) {
+                String room = "user_" + userId.trim();
+                client.leaveRoom(room);
+                log.info("Client {} left user room {}", client.getSessionId(), room);
+            }
+        });
         socketIOServer.addEventListener("join_conversation", Map.class, (client, data, ackSender) -> {
             String conversationId = data != null ? (String) data.get("conversationId") : null;
             if (conversationId != null && !conversationId.isBlank()) {

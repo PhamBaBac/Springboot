@@ -6,16 +6,14 @@ import com.bacpham.kanban_service.dto.request.ApiResponse;
 import com.bacpham.kanban_service.dto.response.AdminNotificationResponse;
 import com.bacpham.kanban_service.dto.response.AdminNotificationStatsResponse;
 import com.bacpham.kanban_service.dto.response.PageResponse;
-import com.bacpham.kanban_service.enums.NotificationPriority;
 import com.bacpham.kanban_service.enums.NotificationType;
-import com.bacpham.kanban_service.event.NotificationEvent;
 import com.bacpham.kanban_service.service.IAdminNotificationService;
 import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationEventPublisher;
+
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -29,7 +27,6 @@ public class AdminNotificationController {
 
     IAdminNotificationService notificationService;
     NotificationSocketPublisher socketPublisher;
-    ApplicationEventPublisher eventPublisher;
 
     @GetMapping
     public ApiResponse<PageResponse<AdminNotificationResponse>> getNotifications(
@@ -111,84 +108,6 @@ public class AdminNotificationController {
         return ApiResponse.<AdminNotificationResponse>builder()
                 .data(response)
                 .message("Tạo thông báo thành công")
-                .build();
-    }
-
-    @PostMapping("/simulate")
-    public ApiResponse<String> simulateEvent(@RequestParam(defaultValue = "ORDER_NEW") NotificationType type) {
-        String testId = "TEST-" + (System.currentTimeMillis() % 100000);
-        NotificationEvent event = switch (type) {
-            case ORDER_NEW -> NotificationEvent.of(
-                    this,
-                    NotificationType.ORDER_NEW,
-                    "Đơn hàng mới #" + testId,
-                    "Khách hàng Nguyễn Văn A vừa đặt đơn hàng #" + testId + " trị giá 1,250,000 đ",
-                    NotificationPriority.HIGH,
-                    "/orders?id=" + testId + "&status=PENDING",
-                    testId
-            );
-            case ORDER_CANCEL -> NotificationEvent.of(
-                    this,
-                    NotificationType.ORDER_CANCEL,
-                    "Đơn hàng đã bị hủy #" + testId,
-                    "Đơn hàng #" + testId + " đã bị khách hàng hủy. Lý do: Thay đổi địa chỉ nhận hàng",
-                    NotificationPriority.URGENT,
-                    "/orders?id=" + testId + "&status=CANCELLED",
-                    testId
-            );
-            case LOW_STOCK -> NotificationEvent.of(
-                    this,
-                    NotificationType.LOW_STOCK,
-                    "Cảnh báo sắp hết hàng",
-                    "Biến thể Áo thun nam Polo - Đen / L chỉ còn lại 3 sản phẩm trong kho.",
-                    NotificationPriority.HIGH,
-                    "/inventory",
-                    testId
-            );
-            case OUT_OF_STOCK -> NotificationEvent.of(
-                    this,
-                    NotificationType.OUT_OF_STOCK,
-                    "Sản phẩm đã hết hàng!",
-                    "Biến thể Giày Sneaker Retro - Trắng / 42 đã hết hàng trong kho.",
-                    NotificationPriority.URGENT,
-                    "/inventory",
-                    testId
-            );
-            case SUPPORT_MESSAGE -> NotificationEvent.of(
-                    this,
-                    NotificationType.SUPPORT_MESSAGE,
-                    "Tin nhắn hỗ trợ từ Trần Thị B",
-                    "Chào shop, đơn hàng của em hôm nay đã được gửi đi chưa ạ?",
-                    NotificationPriority.NORMAL,
-                    "/support",
-                    testId
-            );
-            case NEW_REVIEW -> NotificationEvent.of(
-                    this,
-                    NotificationType.NEW_REVIEW,
-                    "Đánh giá mới từ khách hàng",
-                    "Lê Hoàng C đã gửi đánh giá (5⭐) cho 'Áo Khoác Bomber Kaki'",
-                    NotificationPriority.NORMAL,
-                    "/inventory",
-                    testId
-            );
-            case SYSTEM_ALERT -> NotificationEvent.of(
-                    this,
-                    NotificationType.SYSTEM_ALERT,
-                    "Cảnh báo hệ thống",
-                    "Hệ thống sẽ tiến hành bảo trì định kỳ hoặc có thông báo quan trọng.",
-                    NotificationPriority.URGENT,
-                    "/settings",
-                    testId
-            );
-        };
-
-        eventPublisher.publishEvent(event);
-        log.info("Simulated event triggered for type: {}", type);
-
-        return ApiResponse.<String>builder()
-                .data("Đã mô phỏng sự kiện " + type.name() + " thành công")
-                .message("Kích hoạt sự kiện thông báo thử nghiệm thành công")
                 .build();
     }
 }

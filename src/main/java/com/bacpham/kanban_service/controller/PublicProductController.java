@@ -84,15 +84,6 @@ public class PublicProductController {
                                 .build();
         }
 
-        @GetMapping("/listProductRecommendations")
-        public ApiResponse<List<ProductResponse>> getProductsByIds(@RequestBody List<String> ids) {
-                log.info("Nhận yêu cầu gợi ý sản phẩm theo danh sách ID: {}", ids);
-                List<ProductResponse> result = productService.getListProductRecommendations(ids);
-                return ApiResponse.<List<ProductResponse>>builder()
-                                .data(result)
-                                .message("Lấy gợi ý sản phẩm thành công")
-                                .build();
-        }
 
         @GetMapping({ "/related/{id}", "/ai-related/{id}" })
         public ApiResponse<List<ProductResponse>> getRelatedProducts(

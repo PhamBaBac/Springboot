@@ -19,15 +19,19 @@ public class RedisScriptService {
     private final RedisScript<Long> rollbackStockScript;
     private final RedisScript<Long> checkExpiredAndStockScript;
     private final RedisScript<Long> applyCodeOnceScript;
-    private RedisScript<Long> applyPromotionSafelyScript;
+    private final RedisScript<Long> applyPromotionSafelyScript;
+    private final RedisScript<Long> rollbackPromotionSafelyScript;
+    private final RedisScript<Long> checkPromotionForUserScript;
 
     public RedisScriptService(
             GenericRedisService<String, String, Long> redisService,
             @Qualifier("stockDecrementScript") RedisScript<Long> stockDecrementScript,
             @Qualifier("rollbackStockScript") RedisScript<Long> rollbackStockScript,
             @Qualifier("checkExpiredAndStockScript") RedisScript<Long> checkExpiredAndStockScript,
-            @Qualifier("applyCodeOnceScript") RedisScript<Long> applyCodeOnceScript
-            , @Qualifier("applyPromotionSafelyScript") RedisScript<Long> applyPromotionSafelyScript
+            @Qualifier("applyCodeOnceScript") RedisScript<Long> applyCodeOnceScript,
+            @Qualifier("applyPromotionSafelyScript") RedisScript<Long> applyPromotionSafelyScript,
+            @Qualifier("rollbackPromotionSafelyScript") RedisScript<Long> rollbackPromotionSafelyScript,
+            @Qualifier("checkPromotionForUserScript") RedisScript<Long> checkPromotionForUserScript
     ) {
         this.redisService = redisService;
         this.stockDecrementScript = stockDecrementScript;
@@ -35,6 +39,8 @@ public class RedisScriptService {
         this.checkExpiredAndStockScript = checkExpiredAndStockScript;
         this.applyCodeOnceScript = applyCodeOnceScript;
         this.applyPromotionSafelyScript = applyPromotionSafelyScript;
+        this.rollbackPromotionSafelyScript = rollbackPromotionSafelyScript;
+        this.checkPromotionForUserScript = checkPromotionForUserScript;
     }
     public boolean decrementStock(String key) {
         Long result = redisService.executeLuaScript(stockDecrementScript, List.of(key), List.of());
@@ -66,5 +72,20 @@ public class RedisScriptService {
             case -2 -> throw new AppException(ErrorCode.PROMOTION_EXPIRED);
             default -> throw new AppException(ErrorCode.UNKNOWN);
         };
+    }
+
+    public boolean rollbackPromotionSafely(String stockKey, String appliedSetKey, String userId) {
+        List<String> keys = List.of(stockKey, appliedSetKey);
+        List<Object> args = List.of(userId != null ? userId : "");
+        Long result = redisService.executeLuaScript(rollbackPromotionSafelyScript, keys, args);
+        return result != null && result == 1L;
+    }
+
+    public int checkPromotionForUser(String stockKey, String expireKey, String appliedSetKey, String userId) {
+        long now = Instant.now().toEpochMilli();
+        List<String> keys = List.of(stockKey, expireKey, appliedSetKey);
+        List<Object> args = List.of(now, userId != null ? userId : "");
+        Long result = redisService.executeLuaScript(checkPromotionForUserScript, keys, args);
+        return result != null ? result.intValue() : -1;
     }
 }

@@ -18,6 +18,8 @@ import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.client.RestTemplate;
 
 import com.bacpham.kanban_service.dto.request.UpdateStatusOrder;
+import com.bacpham.kanban_service.dto.request.UserNotificationCreateRequest;
+import com.bacpham.kanban_service.enums.UserNotificationType;
 import com.bacpham.kanban_service.strategy.order.OrderStateMachine;
 import com.bacpham.kanban_service.utils.shipping.GhnStatusMapper;
 import com.bacpham.kanban_service.utils.shipping.GhnOrderRequestBuilder;
@@ -48,6 +50,10 @@ public class GhnShippingService implements IGhnShippingService {
     @Autowired
     @Lazy
     private OrderStateMachine orderStateMachine;
+
+    @Autowired
+    @Lazy
+    private com.bacpham.kanban_service.service.IUserNotificationService userNotificationService;
 
     /**
      * Tra cá»©u chi tiáº¿t hÃ nh trÃ¬nh váº­n Ä‘Æ¡n tá»« Giao HÃ ng Nhanh (GHN)
@@ -318,17 +324,33 @@ public class GhnShippingService implements IGhnShippingService {
         log.info("Nháº­n GHN Webhook event: {}", payload);
 
         String orderCode = null;
-        if (payload.get("OrderCode") != null) {
-            orderCode = payload.get("OrderCode").toString();
-        } else if (payload.get("order_code") != null) {
-            orderCode = payload.get("order_code").toString();
+        String ghnStatus = null;
+
+        Map<String, Object> dataMap = payload;
+        if (payload.get("data") instanceof Map) {
+            dataMap = (Map<String, Object>) payload.get("data");
         }
 
-        String ghnStatus = null;
-        if (payload.get("Status") != null) {
-            ghnStatus = payload.get("Status").toString();
-        } else if (payload.get("status") != null) {
-            ghnStatus = payload.get("status").toString();
+        for (String key : List.of("OrderCode", "order_code", "orderCode", "ClientOrderCode", "client_order_code")) {
+            if (dataMap.get(key) != null) {
+                orderCode = dataMap.get(key).toString();
+                break;
+            }
+            if (payload.get(key) != null) {
+                orderCode = payload.get(key).toString();
+                break;
+            }
+        }
+
+        for (String key : List.of("Status", "status", "shipping_status", "CurrentStatus", "current_status")) {
+            if (dataMap.get(key) != null) {
+                ghnStatus = dataMap.get(key).toString();
+                break;
+            }
+            if (payload.get(key) != null) {
+                ghnStatus = payload.get(key).toString();
+                break;
+            }
         }
 
         if (orderCode == null || orderCode.isBlank()) {
@@ -386,6 +408,48 @@ public class GhnShippingService implements IGhnShippingService {
 
             if (updated) {
                 orderRepository.save(order);
+                log.info("GHN Webhook: Da cap nhat don hang {} voi trackingCode {} sang trang thai GHN {}",
+                        order.getId(), trackingCode, finalGhnStatus);
+
+                if (order.getUser() != null && order.getUser().getId() != null) {
+                    try {
+                        String shortId = order.getId().length() > 8 ? order.getId().substring(0, 8).toUpperCase() : order.getId();
+                        String friendlyStatusName = ghnStatusMapper != null ? ghnStatusMapper.toDisplayName(finalGhnStatus) : finalGhnStatus;
+                        String title;
+                        String content;
+                        String lowerStatus = finalGhnStatus != null ? finalGhnStatus.toLowerCase() : "";
+
+                        if (lowerStatus.equals("delivered")) {
+                            title = "Đơn hàng #" + shortId + " đã giao thành công";
+                            content = "Đơn hàng #" + shortId + " (Mã vận đơn: " + trackingCode + ") đã được giao thành công tới quý khách. Cảm ơn bạn đã mua sắm!";
+                        } else if (lowerStatus.equals("delivering")) {
+                            title = "Đơn hàng #" + shortId + " đang được giao";
+                            content = "Bưu tá GHN đang trên đường giao đơn hàng #" + shortId + " (Mã vận đơn: " + trackingCode + ") đến địa chỉ của bạn.";
+                        } else if (lowerStatus.equals("picked")) {
+                            title = "Đơn vị vận chuyển đã nhận đơn hàng #" + shortId;
+                            content = "Đơn vị vận chuyển GHN đã nhận kiện hàng #" + shortId + " (Mã vận đơn: " + trackingCode + ") và bắt đầu vận chuyển.";
+                        } else if (lowerStatus.equals("cancel")) {
+                            title = "Đơn hàng #" + shortId + " đã hủy vận chuyển";
+                            content = "Vận đơn GHN " + trackingCode + " cho đơn hàng #" + shortId + " đã bị hủy.";
+                        } else {
+                            title = "Cập nhật vận đơn #" + shortId;
+                            content = "Vận đơn GHN " + trackingCode + " đã chuyển sang trạng thái: " + friendlyStatusName;
+                        }
+
+                        if (userNotificationService != null) {
+                            userNotificationService.createNotification(UserNotificationCreateRequest.builder()
+                                    .userId(order.getUser().getId())
+                                    .title(title)
+                                    .content(content)
+                                    .type(UserNotificationType.ORDER_STATUS)
+                                    .targetUrl("/profile?tab=orders")
+                                    .referenceId(order.getId())
+                                    .build());
+                        }
+                    } catch (Exception ex) {
+                        log.warn("GHN Webhook: Không thể gửi thông báo cho user {}: {}", order.getUser().getId(), ex.getMessage());
+                    }
+                }
                 log.info("GHN Webhook: ÄÃ£ cáº­p nháº­t Ä‘Æ¡n hÃ ng {} vá»›i trackingCode {} sang tráº¡ng thÃ¡i GHN {}",
                         order.getId(), trackingCode, finalGhnStatus);
             }

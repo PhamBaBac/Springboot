@@ -18,8 +18,18 @@ public interface IPromotionService {
     List<PromotionResponse> getAllPromotions();
 
     void deletePromotion(String id);
-    boolean isPromotionValid (String code);
+
+    boolean isPromotionValid(String code);
+
+    boolean isPromotionValidForUser(String code, String userId);
 
     boolean applyPromotionCode(String userId, String code);
 
+    void rollbackPromotionCode(String userId, String code);
+
+    void recordPromotionUsage(com.bacpham.kanban_service.entity.Promotion promotion, String userId, String orderId, Double discountAmount);
+
+    void rollbackPromotionUsage(String orderId);
+
+    String generateUniqueCode(String prefix);
 }

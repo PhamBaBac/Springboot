@@ -1,6 +1,7 @@
 package com.bacpham.kanban_service.configuration.socket;
 
 import com.bacpham.kanban_service.dto.response.AdminNotificationResponse;
+import com.bacpham.kanban_service.dto.response.UserNotificationResponse;
 import com.corundumstudio.socketio.SocketIOServer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -14,6 +15,42 @@ public class NotificationSocketPublisher {
     private final SocketIOServer socketIOServer;
 
     public static final String NOTIFICATION_EVENT = "admin_notification";
+    public static final String USER_NOTIFICATION_EVENT = "user_notification";
+
+    /**
+     * Broadcast notification to a specific connected user in their personal room
+     */
+    public void sendToUser(String userId, UserNotificationResponse notification) {
+        if (userId == null || notification == null) return;
+
+        try {
+            String room = "user_" + userId.trim();
+            socketIOServer.getRoomOperations(room)
+                    .sendEvent(USER_NOTIFICATION_EVENT, notification);
+
+            log.info("Đã broadcast socket event '{}' tới room {}: id={}, title='{}'",
+                    USER_NOTIFICATION_EVENT,
+                    room,
+                    notification.getId(),
+                    notification.getTitle());
+        } catch (Exception e) {
+            log.error("Lỗi khi gửi socket notification tới user {}: {}", userId, e.getMessage(), e);
+        }
+    }
+
+    public void sendUnreadCountToUser(String userId, long unreadCount) {
+        if (userId == null) return;
+        try {
+            String room = "user_" + userId.trim();
+            java.util.Map<String, Object> payload = new java.util.HashMap<>();
+            payload.put("unreadCount", unreadCount);
+            socketIOServer.getRoomOperations(room)
+                    .sendEvent("user_unread_count", payload);
+            log.info("Đã broadcast socket event 'user_unread_count' tới room {}: unreadCount={}", room, unreadCount);
+        } catch (Exception e) {
+            log.error("Lỗi khi broadcast socket user unread count: {}", e.getMessage(), e);
+        }
+    }
 
     /**
      * Broadcast notification to all connected staff/admins in the ADMIN_CHANNEL

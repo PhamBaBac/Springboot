@@ -156,4 +156,54 @@ public class redisConfiguration {
     """, Long.class);
     }
 
+    @Bean(name = "rollbackPromotionSafelyScript")
+    public RedisScript<Long> rollbackPromotionSafelyScript() {
+        return RedisScript.of("""
+        -- KEYS[1] = stock key (promotion:stock:code)
+        -- KEYS[2] = applied set key (promotion:applied:code)
+        -- ARGV[1] = userId
+
+        local stock = redis.call("GET", KEYS[1])
+        if stock then
+            redis.call("INCR", KEYS[1])
+        end
+
+        local userId = ARGV[1]
+        if userId and userId ~= "" then
+            redis.call("SREM", KEYS[2], userId)
+        end
+
+        return 1
+    """, Long.class);
+    }
+
+    @Bean(name = "checkPromotionForUserScript")
+    public RedisScript<Long> checkPromotionForUserScript() {
+        return RedisScript.of("""
+        -- KEYS[1] = stock key
+        -- KEYS[2] = expire key
+        -- KEYS[3] = applied set key
+        -- ARGV[1] = current timestamp (in millis)
+        -- ARGV[2] = userId (optional)
+
+        local stock = tonumber(redis.call("GET", KEYS[1]))
+        local expireAt = tonumber(redis.call("GET", KEYS[2]))
+        local now = tonumber(ARGV[1])
+        local userId = ARGV[2]
+
+        if not stock or stock <= 0 then
+            return -1 -- out of stock
+        end
+
+        if not expireAt or expireAt <= now then
+            return -2 -- expired
+        end
+
+        if userId and userId ~= "" and redis.call("SISMEMBER", KEYS[3], userId) == 1 then
+            return 0 -- already used
+        end
+
+        return 1 -- valid
+    """, Long.class);
+    }
 }

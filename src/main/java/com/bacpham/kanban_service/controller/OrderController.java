@@ -85,21 +85,6 @@ public class OrderController {
                 .message("Lấy danh sách đơn hàng thành công")
                 .build();
     }
-    @GetMapping("/all")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
-    public ApiResponse<?> getAllBills(
-            @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "10") int pageSize,
-            @RequestParam(required = false) String status,
-            @RequestParam(required = false) String search,
-            @RequestParam(required = false) String startDate,
-            @RequestParam(required = false) String endDate
-    ) {
-        return ApiResponse.<PageResponse<OrderDetailResponse>>builder()
-                .data(oderService.getPagedOrders(status, search, startDate, endDate, page, pageSize))
-                .message("Lấy toàn bộ danh sách đơn hàng thành công")
-                .build();
-    }
 
     @GetMapping("/filter")
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")

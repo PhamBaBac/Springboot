@@ -21,4 +21,6 @@ public class PromotionResponse {
     private String imageURL;
     private LocalDateTime startAt;
     private LocalDateTime endAt;
+    private Double minOrderAmount;
+    private Double maxDiscountAmount;
 }

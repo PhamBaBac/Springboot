@@ -1,5 +1,6 @@
 package com.bacpham.kanban_service.service.impl;
 
+import com.bacpham.kanban_service.configuration.socket.NotificationSocketPublisher;
 import com.bacpham.kanban_service.dto.request.UserNotificationCreateRequest;
 import com.bacpham.kanban_service.dto.response.UserNotificationResponse;
 import com.bacpham.kanban_service.entity.User;
@@ -17,6 +18,8 @@ import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.Date;
 import java.util.List;
@@ -30,6 +33,7 @@ public class UserNotificationServiceImpl implements IUserNotificationService {
     UserNotificationRepository notificationRepository;
     UserRepository userRepository;
     UserNotificationMapper notificationMapper;
+    NotificationSocketPublisher notificationSocketPublisher;
 
     @Override
     public List<UserNotificationResponse> getNotifications(String userId, UserNotificationType type) {
@@ -58,6 +62,7 @@ public class UserNotificationServiceImpl implements IUserNotificationService {
             notification.setIsRead(true);
             notification.setReadAt(new Date());
             notificationRepository.save(notification);
+            syncUnreadCount(userId);
         }
     }
 
@@ -65,6 +70,7 @@ public class UserNotificationServiceImpl implements IUserNotificationService {
     @Transactional
     public void markAllAsRead(String userId) {
         notificationRepository.markAllAsRead(userId);
+        syncUnreadCount(userId);
     }
 
     @Override
@@ -76,12 +82,14 @@ public class UserNotificationServiceImpl implements IUserNotificationService {
 
         notification.setDeleted(true);
         notificationRepository.save(notification);
+        syncUnreadCount(userId);
     }
 
     @Override
     @Transactional
     public void clearAll(String userId) {
         notificationRepository.clearAll(userId);
+        syncUnreadCount(userId);
     }
 
     @Override
@@ -101,6 +109,37 @@ public class UserNotificationServiceImpl implements IUserNotificationService {
                 .build();
 
         UserNotification saved = notificationRepository.save(notification);
-        return notificationMapper.toResponse(saved);
+        UserNotificationResponse response = notificationMapper.toResponse(saved);
+
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    notificationSocketPublisher.sendToUser(user.getId(), response);
+                }
+            });
+        } else {
+            notificationSocketPublisher.sendToUser(user.getId(), response);
+        }
+
+        return response;
+    }
+
+    private void syncUnreadCount(String userId) {
+        try {
+            long unread = notificationRepository.countByUserIdAndIsReadFalseAndDeletedFalse(userId);
+            if (TransactionSynchronizationManager.isActualTransactionActive()) {
+                TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        notificationSocketPublisher.sendUnreadCountToUser(userId, unread);
+                    }
+                });
+            } else {
+                notificationSocketPublisher.sendUnreadCountToUser(userId, unread);
+            }
+        } catch (Exception e) {
+            log.warn("Không thể đồng bộ unreadCount qua socket cho user {}: {}", userId, e.getMessage());
+        }
     }
 }

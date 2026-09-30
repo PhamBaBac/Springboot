@@ -1,7 +1,9 @@
 package com.bacpham.kanban_service.mapper;
 
+import org.mapstruct.BeanMapping;
 import org.mapstruct.Mapper;
 import org.mapstruct.MappingTarget;
+import org.mapstruct.NullValuePropertyMappingStrategy;
 
 import com.bacpham.kanban_service.dto.request.SubProductCreationRequest;
 import com.bacpham.kanban_service.dto.response.FilterSubProductResponse;
@@ -17,5 +19,6 @@ public interface SubProductMapper {
 
     FilterSubProductResponse toFilterSubProductResponse(SubProduct subProduct);
     
+    @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     void updateSubProduct(@MappingTarget SubProduct subProduct, SubProductCreationRequest request);
 }

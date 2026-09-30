@@ -14,5 +14,7 @@ import java.util.UUID;
 public interface PromotionRepository extends JpaRepository<Promotion, String> {
 
     Optional<Promotion> findByCode(String code);
+    Optional<Promotion> findByCodeAndDeletedFalse(String code);
+    boolean existsByCodeAndDeletedFalse(String code);
     List<Promotion> findAllByDeletedFalse();
 }

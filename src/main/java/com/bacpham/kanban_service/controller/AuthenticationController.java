@@ -118,14 +118,5 @@ public class AuthenticationController {
                 .build();
     }
 
-    @GetMapping("/failure")
-    public ApiResponse<?> fail() {
-        return ApiResponse.builder()
-                .code(400)
-                .message("Đăng nhập thất bại")
-                .build();
-    }
-
-
 }
 

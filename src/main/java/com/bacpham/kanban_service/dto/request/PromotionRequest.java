@@ -19,4 +19,6 @@ public class PromotionRequest {
     private String imageURL;
     private LocalDateTime startAt;
     private LocalDateTime endAt;
+    private Double minOrderAmount;
+    private Double maxDiscountAmount;
 }

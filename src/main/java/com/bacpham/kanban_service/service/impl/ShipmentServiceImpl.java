@@ -18,6 +18,9 @@ import com.bacpham.kanban_service.repository.ShipmentRepository;
 import com.bacpham.kanban_service.service.IGhnShippingService;
 import com.bacpham.kanban_service.service.IShipmentService;
 import com.bacpham.kanban_service.dto.request.UpdateStatusOrder;
+import com.bacpham.kanban_service.dto.request.UserNotificationCreateRequest;
+import com.bacpham.kanban_service.enums.UserNotificationType;
+import com.bacpham.kanban_service.service.IUserNotificationService;
 import com.bacpham.kanban_service.strategy.order.OrderStateMachine;
 import com.bacpham.kanban_service.utils.shipping.GhnStatusMapper;
 import lombok.RequiredArgsConstructor;
@@ -41,6 +44,7 @@ public class ShipmentServiceImpl implements IShipmentService {
     private final IGhnShippingService ghnShippingService;
     private final GhnStatusMapper ghnStatusMapper;
     private final OrderStateMachine orderStateMachine;
+    private final IUserNotificationService userNotificationService;
 
     @Override
     @Transactional
@@ -109,6 +113,23 @@ public class ShipmentServiceImpl implements IShipmentService {
                 orderRepository.save(order);
                 shipment = shipmentRepository.save(shipment);
                 log.info("Tạo Shipment {} thành công với trackingCode {}", shipmentCode, trackingCode);
+
+                if (order.getUser() != null && order.getUser().getId() != null) {
+                    try {
+                        String shortId = order.getId().length() > 8 ? order.getId().substring(0, 8).toUpperCase() : order.getId();
+                        userNotificationService.createNotification(UserNotificationCreateRequest.builder()
+                                .userId(order.getUser().getId())
+                                .title("Đơn hàng #" + shortId + " đang được chuẩn bị")
+                                .content(String.format("Đơn hàng #%s đã được tạo vận đơn (%s - Mã vận đơn: %s). Đang chuẩn bị giao cho đơn vị vận chuyển.",
+                                        shortId, shipment.getCarrier() != null ? shipment.getCarrier() : "GHN", trackingCode))
+                                .type(UserNotificationType.ORDER_STATUS)
+                                .targetUrl("/profile?tab=orders")
+                                .referenceId(order.getId())
+                                .build());
+                    } catch (Exception ex) {
+                        log.warn("Không thể gửi thông báo cho user {}: {}", order.getUser().getId(), ex.getMessage());
+                    }
+                }
             }
         } catch (Exception e) {
             log.error("Không thể bắn đơn sang GHN cho Shipment {}: {}", shipmentCode, e.getMessage());

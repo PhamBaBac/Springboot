@@ -44,4 +44,10 @@ public class Promotion extends BaseModel {
     LocalDateTime endAt;
 
     String imageURL;
+
+    @Column(name = "min_order_amount")
+    BigDecimal minOrderAmount;
+
+    @Column(name = "max_discount_amount")
+    BigDecimal maxDiscountAmount;
 }

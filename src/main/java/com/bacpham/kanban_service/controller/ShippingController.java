@@ -46,7 +46,7 @@ public class ShippingController {
     /**
      * Endpoint nhận Webhook từ Giao Hàng Nhanh (GHN) khi có thay đổi trạng thái vận chuyển
      */
-    @PostMapping("/webhook")
+    @PostMapping({"/","/webhook"})
     public ResponseEntity<Map<String, Object>> handleGhnWebhook(@RequestBody Map<String, Object> payload) {
         log.info("Incoming GHN webhook callback: {}", payload);
         try {

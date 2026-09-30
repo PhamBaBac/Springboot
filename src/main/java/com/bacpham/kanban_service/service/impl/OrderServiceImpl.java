@@ -66,6 +66,7 @@ public class OrderServiceImpl implements IOrderService {
     private final SubProductRepository subProductRepository;
     private final AddressRepository addressRepository;
     private final ReviewProductRepository reviewRepository;
+    private final PromotionRepository promotionRepository;
     private final IPromotionService promotionService;
     private final DiscountCalculator discountCalculator;
     private final OrderStateMachine orderStateMachine;
@@ -82,68 +83,100 @@ public class OrderServiceImpl implements IOrderService {
 
         PromotionResponse activePromotion = validateAndApplyPromotion(user, request.getCode());
 
-        List<OrderItemRequest> sortedItems = sortItemsForDeadlockPrevention(request.getItems());
+        try {
+            List<OrderItemRequest> sortedItems = sortItemsForDeadlockPrevention(request.getItems());
 
-        double total = 0.0;
-        double discountTotal = 0.0;
-        List<OrderItem> orderItems = new ArrayList<>(sortedItems.size());
-        for (OrderItemRequest dto : sortedItems) {
-            ProcessedItemResult result = processOrderItem(dto, activePromotion);
-            orderItems.add(result.item());
-            total += result.total();
-            discountTotal += (result.item().getDiscountAmount() != null ? result.item().getDiscountAmount() : 0.0);
+            double total = 0.0;
+            double discountTotal = 0.0;
+            List<OrderItem> orderItems = new ArrayList<>(sortedItems.size());
+            for (OrderItemRequest dto : sortedItems) {
+                ProcessedItemResult result = processOrderItem(dto, activePromotion);
+                orderItems.add(result.item());
+                total += result.total();
+                discountTotal += (result.item().getDiscountAmount() != null ? result.item().getDiscountAmount() : 0.0);
+            }
+            double subtotal = total + discountTotal;
+
+            // Kiểm tra giá trị đơn hàng tối thiểu để áp dụng mã giảm giá
+            if (activePromotion != null && activePromotion.getMinOrderAmount() != null) {
+                if (subtotal < activePromotion.getMinOrderAmount()) {
+                    promotionService.rollbackPromotionCode(user.getId(), activePromotion.getCode());
+                    log.warn("Đơn hàng {} không đạt giá trị tối thiểu {} để dùng mã [{}]. Subtotal: {}",
+                            user.getId(), activePromotion.getMinOrderAmount(), activePromotion.getCode(), subtotal);
+                    throw new AppException(ErrorCode.PROMOTION_MIN_ORDER_AMOUNT_NOT_MET);
+                }
+            }
+
+            double shippingFee = total >= 400000.0 ? 0.0 : 20000.0;
+            double finalTotal = total + shippingFee;
+
+            Order order = buildAndSaveOrder(user, request.getAddressId(), paymentType, finalTotal, subtotal, discountTotal,
+                    shippingFee, orderItems);
+            cleanupCartItems(user, request.getItems());
+
+            if (activePromotion != null && activePromotion.getCode() != null) {
+                promotionRepository.findByCodeAndDeletedFalse(activePromotion.getCode().trim().toUpperCase())
+                        .ifPresent(promoEntity -> {
+                            promotionService.recordPromotionUsage(promoEntity, user.getId(), order.getId(), order.getDiscountAmount());
+                        });
+            }
+
+            orderStatusHistoryService.logStatusChange(order, null, OrderStatus.PENDING, "Tạo mới đơn hàng thành công",
+                    "Hình thức thanh toán: " + paymentType);
+
+            if (order.getPaymentType() == PaymentType.COD) {
+                paymentTransactionService.recordTransaction(
+                        order,
+                        "COD-" + order.getId(),
+                        null,
+                        PaymentType.COD,
+                        TransactionType.PAYMENT,
+                        order.getTotal(),
+                        TransactionStatus.PENDING,
+                        null,
+                        "Đơn hàng COD - Chờ thanh toán khi giao hàng");
+            }
+
+            String shortOrderId = order.getId().length() > 8 ? order.getId().substring(0, 8).toUpperCase() : order.getId();
+            String customerName = user.getFirstname() != null ? (user.getFirstname() + (user.getLastname() != null ? " " + user.getLastname() : "")) : "Khách hàng";
+            eventPublisher.publishEvent(NotificationEvent.of(
+                    this,
+                    NotificationType.ORDER_NEW,
+                    "Đơn hàng mới #" + shortOrderId,
+                    String.format("%s vừa đặt đơn hàng #%s trị giá %,.0f đ", customerName, shortOrderId, order.getTotal()),
+                    NotificationPriority.HIGH,
+                    "/orders?id=" + order.getId() + "&status=PENDING",
+                    order.getId()
+            ));
+
+            userNotificationService.createNotification(UserNotificationCreateRequest.builder()
+                    .userId(user.getId())
+                    .title("Đặt hàng thành công #" + shortOrderId)
+                    .content(String.format("Bạn đã đặt thành công đơn hàng #%s trị giá %,.0f đ. Chúng tôi sẽ sớm giao hàng đến bạn.", shortOrderId, order.getTotal()))
+                    .type(UserNotificationType.ORDER_STATUS)
+                    .targetUrl("/profile?tab=orders")
+                    .referenceId(order.getId())
+                    .build());
+
+            return order;
+        } catch (Exception e) {
+            // Rollback Redis promotion state nếu xảy ra lỗi trong quá trình tạo đơn hàng
+            if (activePromotion != null && activePromotion.getCode() != null) {
+                try {
+                    promotionService.rollbackPromotionCode(user.getId(), activePromotion.getCode());
+                    log.info("Đã rollback mã giảm giá [{}] cho user [{}] do lỗi tạo đơn hàng: {}",
+                            activePromotion.getCode(), user.getId(), e.getMessage());
+                } catch (Exception ex) {
+                    log.error("Lỗi khi rollback mã giảm giá [{}]: {}", activePromotion.getCode(), ex.getMessage());
+                }
+            }
+            throw e;
         }
-        double subtotal = total + discountTotal;
-        double shippingFee = total >= 400000.0 ? 0.0 : 20000.0;
-        double finalTotal = total + shippingFee;
-
-        Order order = buildAndSaveOrder(user, request.getAddressId(), paymentType, finalTotal, subtotal, discountTotal,
-                shippingFee, orderItems);
-        cleanupCartItems(user, request.getItems());
-
-        orderStatusHistoryService.logStatusChange(order, null, OrderStatus.PENDING, "Tạo mới đơn hàng thành công",
-                "Hình thức thanh toán: " + paymentType);
-
-        if (order.getPaymentType() == PaymentType.COD) {
-            paymentTransactionService.recordTransaction(
-                    order,
-                    "COD-" + order.getId(),
-                    null,
-                    PaymentType.COD,
-                    TransactionType.PAYMENT,
-                    order.getTotal(),
-                    TransactionStatus.PENDING,
-                    null,
-                    "Đơn hàng COD - Chờ thanh toán khi giao hàng");
-        }
-
-        String shortOrderId = order.getId().length() > 8 ? order.getId().substring(0, 8).toUpperCase() : order.getId();
-        String customerName = user.getFirstname() != null ? (user.getFirstname() + (user.getLastname() != null ? " " + user.getLastname() : "")) : "Khách hàng";
-        eventPublisher.publishEvent(NotificationEvent.of(
-                this,
-                NotificationType.ORDER_NEW,
-                "Đơn hàng mới #" + shortOrderId,
-                String.format("%s vừa đặt đơn hàng #%s trị giá %,.0f đ", customerName, shortOrderId, order.getTotal()),
-                NotificationPriority.HIGH,
-                "/orders?id=" + order.getId() + "&status=PENDING",
-                order.getId()
-        ));
-
-        userNotificationService.createNotification(UserNotificationCreateRequest.builder()
-                .userId(user.getId())
-                .title("Đặt hàng thành công #" + shortOrderId)
-                .content(String.format("Bạn đã đặt thành công đơn hàng #%s trị giá %,.0f đ. Chúng tôi sẽ sớm giao hàng đến bạn.", shortOrderId, order.getTotal()))
-                .type(UserNotificationType.ORDER_STATUS)
-                .targetUrl("/profile?tab=orders")
-                .referenceId(order.getId())
-                .build());
-
-        return order;
     }
 
     private PromotionResponse validateAndApplyPromotion(User user, String code) {
         if (code != null && !code.isBlank()) {
-            String trimmedCode = code.trim();
+            String trimmedCode = code.trim().toUpperCase();
             boolean applied = promotionService.applyPromotionCode(user.getId(), trimmedCode);
             if (!applied) {
                 log.warn("Mã khuyến mãi {} không hợp lệ hoặc đã được sử dụng đối với user {}", trimmedCode, user.getId());
@@ -382,7 +415,9 @@ public class OrderServiceImpl implements IOrderService {
             String endDate,
             int page,
             int pageSize) {
-        Pageable pageable = PageRequest.of(page - 1, pageSize, Sort.by("createdAt").descending());
+        int safePage = page > 0 ? page - 1 : 0;
+        int safePageSize = pageSize > 0 ? pageSize : 10;
+        Pageable pageable = PageRequest.of(safePage, safePageSize, Sort.by("createdAt").descending());
         Specification<Order> spec = OrderSpecification.filter(status, search, startDate, endDate);
 
         Page<Order> orderPage = orderRepository.findAll(spec, pageable);
