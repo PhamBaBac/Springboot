@@ -80,12 +80,8 @@ public class SubProductServiceImpl implements ISubProductService {
 
         Map<String, List<?>> result = new HashMap<>();
         if (catIds != null) {
-            result.put("sizes", subProductRepository.findDistinctSizesByCatIds(catIds, search));
-            result.put("colors", subProductRepository.findDistinctColorsByCatIds(catIds, search));
             result.put("prices", subProductRepository.findDistinctPricesByCatIds(catIds, search));
         } else {
-            result.put("sizes", subProductRepository.findDistinctSizesWithoutCatIds(search));
-            result.put("colors", subProductRepository.findDistinctColorsWithoutCatIds(search));
             result.put("prices", subProductRepository.findDistinctPricesWithoutCatIds(search));
         }
         return result;

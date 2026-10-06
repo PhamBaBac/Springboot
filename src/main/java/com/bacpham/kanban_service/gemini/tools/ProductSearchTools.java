@@ -61,7 +61,7 @@ public class ProductSearchTools {
     """)
     public List<ProductResponse> productSearchTool(
             @ToolParam(description = "Từ khóa tìm kiếm sản phẩm (ví dụ tên sản phẩm, dòng máy, loại hàng, thương hiệu). Để null nếu chỉ tìm theo danh mục.") String keyword,
-            @ToolParam(description = "Tên danh mục hoặc loại sản phẩm (ví dụ: 'Nhà bếp', 'Điện tử', 'Gia dụng', 'Thời trang', 'Nội thất'). Để null nếu không rõ.") String categoryName,
+            @ToolParam(description = "Tên danh mục hoặc loại sản phẩm. Để null nếu không rõ.") String categoryName,
             @ToolParam(description = "Danh sách kích cỡ hoặc thông số phân loại sản phẩm (ví dụ: size S/M/L, dung tích, công suất, kích thước). Để null nếu khách không chỉ định.") List<String> sizes,
             @ToolParam(description = "Danh sách màu sắc cần tìm (ví dụ: 'đen', 'trắng', 'xanh', 'xám', 'bạc'). Để null nếu khách không chỉ định màu.") List<String> colors,
             @ToolParam(description = "Mức giá tối thiểu của sản phẩm (VNĐ).") Double minPrice,

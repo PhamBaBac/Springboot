@@ -18,19 +18,15 @@ public class ProductSpecification {
     public static Specification<Product> filter(
             List<String> categoryIds,
             String search,
-            List<String> sizes,
-            List<String> colors,
             Double minPrice,
             Double maxPrice
     ) {
-        return filter(categoryIds, search, sizes, colors, minPrice, maxPrice, "relevance");
+        return filter(categoryIds, search, minPrice, maxPrice, "relevance");
     }
 
     public static Specification<Product> filter(
             List<String> categoryIds,
             String search,
-            List<String> sizes,
-            List<String> colors,
             Double minPrice,
             Double maxPrice,
             String sortBy) {
@@ -70,24 +66,15 @@ public class ProductSpecification {
                 }
             }
 
-            boolean hasSizes = sizes != null && !sizes.isEmpty();
-            boolean hasColors = colors != null && !colors.isEmpty();
             boolean hasMinPrice = minPrice != null;
             boolean hasMaxPrice = maxPrice != null;
 
-            if (hasSizes || hasColors || hasMinPrice || hasMaxPrice) {
+            if (hasMinPrice || hasMaxPrice) {
                 Join<Product, SubProduct> subProductJoin = root.join("subProducts", JoinType.LEFT);
 
                 predicates.add(cb.or(
                         cb.isNull(subProductJoin.get("deleted")),
                         cb.isFalse(subProductJoin.get("deleted"))));
-
-                if (hasSizes) {
-                    predicates.add(subProductJoin.get("size").in(sizes));
-                }
-                if (hasColors) {
-                    predicates.add(subProductJoin.get("color").in(colors));
-                }
 
                 if (hasMinPrice || hasMaxPrice) {
                     Expression<Double> effectivePrice = cb.selectCase()

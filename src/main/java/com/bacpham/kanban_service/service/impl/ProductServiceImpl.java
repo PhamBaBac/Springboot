@@ -178,19 +178,15 @@ public class ProductServiceImpl implements IProductService {
     @Override
     public Page<ProductResponse> getFilteredProducts(
             List<String> categoryIds,
-            List<String> sizes,
-            List<String> colors,
             List<Double> priceRange,
             Pageable pageable) {
-        return getFilteredProducts(categoryIds, null, sizes, colors, priceRange, pageable);
+        return getFilteredProducts(categoryIds, null,priceRange, pageable);
     }
 
     @Override
     public Page<ProductResponse> getFilteredProducts(
             List<String> categoryIds,
             String search,
-            List<String> sizes,
-            List<String> colors,
             List<Double> priceRange,
             Pageable pageable) {
         if (categoryIds != null && categoryIds.isEmpty()) {
@@ -198,12 +194,6 @@ public class ProductServiceImpl implements IProductService {
         }
         if (search != null && search.trim().isEmpty()) {
             search = null;
-        }
-        if (sizes != null && sizes.isEmpty()) {
-            sizes = null;
-        }
-        if (colors != null && colors.isEmpty()) {
-            colors = null;
         }
 
         List<String> resolvedCategoryIds = resolveAllCategoryIds(categoryIds);
@@ -214,8 +204,6 @@ public class ProductServiceImpl implements IProductService {
         Specification<Product> spec = ProductSpecification.filter(
                 resolvedCategoryIds,
                 search,
-                sizes,
-                colors,
                 minPrice,
                 maxPrice);
 

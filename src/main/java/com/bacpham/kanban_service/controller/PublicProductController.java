@@ -56,8 +56,6 @@ public class PublicProductController {
         public ApiResponse<PageResponse<ProductResponse>> filterProducts(
                         @RequestParam(value = "catIds", required = false) List<String> catIds,
                         @RequestParam(value = "search", required = false) String search,
-                        @RequestParam(value = "sizes", required = false) List<String> sizes,
-                        @RequestParam(value = "colors", required = false) List<String> colors,
                         @RequestParam(value = "price", required = false) List<Double> price,
                         @RequestParam(value = "page", defaultValue = "1") int page,
                         @RequestParam(value = "pageSize", defaultValue = "12") int pageSize) {
@@ -66,8 +64,6 @@ public class PublicProductController {
                 Page<ProductResponse> result = productService.getFilteredProducts(
                                 catIds,
                                 search,
-                                sizes,
-                                colors,
                                 price,
                                 pageable);
 
@@ -104,8 +100,6 @@ public class PublicProductController {
                 Pageable pageable = PageRequest.of(0, Math.max(1, limit));
                 Page<ProductResponse> filtered = productService.getFilteredProducts(
                                 List.of(categoryId),
-                                null,
-                                null,
                                 null,
                                 null,
                                 pageable);

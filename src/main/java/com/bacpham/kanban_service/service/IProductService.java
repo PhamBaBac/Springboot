@@ -24,8 +24,6 @@ public interface IProductService {
 
     Page<ProductResponse> getFilteredProducts(
             List<String> categoryIds,
-            List<String> sizes,
-            List<String> colors,
             List<Double> priceRange,
             Pageable pageable
     );
@@ -33,8 +31,6 @@ public interface IProductService {
     Page<ProductResponse> getFilteredProducts(
             List<String> categoryIds,
             String search,
-            List<String> sizes,
-            List<String> colors,
             List<Double> priceRange,
             Pageable pageable
     );
