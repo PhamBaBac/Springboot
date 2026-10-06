@@ -92,7 +92,6 @@ public class SecurityConfiguration {
                 .oauth2Login(oauth2 ->
                         oauth2.successHandler(oAuth2LoginSuccessHandler)
                 );
-                ;
 
         return http.build();
     }

@@ -21,6 +21,7 @@ public enum ErrorCode {
     FILE_TOO_LARGE(1008, "Kích thước tập tin tải lên vượt quá giới hạn cho phép", HttpStatus.PAYLOAD_TOO_LARGE),
     RESOURCE_NOT_FOUND(1009, "Không tìm thấy tài nguyên hoặc đường dẫn yêu cầu", HttpStatus.NOT_FOUND),
     UNSUPPORTED_MEDIA_TYPE(1010, "Định dạng dữ liệu gửi lên (Content-Type) không được hỗ trợ", HttpStatus.UNSUPPORTED_MEDIA_TYPE),
+    REDIS_CONNECTION_ERROR(1011, "Không thể kết nối đến máy chủ Redis. Vui lòng thử lại sau.", HttpStatus.SERVICE_UNAVAILABLE),
 
     USER_NOT_FOUND(2001, "Không tìm thấy thông tin tài khoản", HttpStatus.NOT_FOUND),
     USER_ALREADY_EXISTS(2002, "Tài khoản hoặc email này đã tồn tại trên hệ thống", HttpStatus.BAD_REQUEST),
@@ -45,6 +46,7 @@ public enum ErrorCode {
     OAUTH2_ACCOUNT_CANNOT_RESET_PASSWORD(2021, "Tài khoản này được đăng nhập bằng mạng xã hội (Google/GitHub). Vui lòng sử dụng tính năng Đăng nhập mạng xã hội thay vì đặt lại mật khẩu.", HttpStatus.BAD_REQUEST),
     OAUTH2_ACCOUNT_CANNOT_CHANGE_PASSWORD(2022, "Tài khoản đăng nhập mạng xã hội không có mật khẩu nội bộ. Vui lòng quản lý bảo mật trên tài khoản mạng xã hội của bạn.", HttpStatus.BAD_REQUEST),
     CANNOT_DOWNGRADE_SELF(2023, "Không thể tự thay đổi vai trò của tài khoản đang đăng nhập", HttpStatus.BAD_REQUEST),
+    CANNOT_UPDATE_CUSTOMER_ROLE(2024, "Tài khoản khách hàng thông thường trên app shopping không được phép thay đổi quyền và vai trò", HttpStatus.BAD_REQUEST),
     PRODUCT_NOT_FOUND(3001, "Không tìm thấy sản phẩm", HttpStatus.NOT_FOUND),
     SUB_PRODUCT_NOT_FOUND(3002, "Không tìm thấy biến thể sản phẩm", HttpStatus.NOT_FOUND),
     CATEGORY_NOT_FOUND(3003, "Không tìm thấy danh mục", HttpStatus.NOT_FOUND),

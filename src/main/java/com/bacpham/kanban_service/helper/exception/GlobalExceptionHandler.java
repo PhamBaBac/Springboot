@@ -30,7 +30,10 @@ import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.MultipartException;
+import org.springframework.data.redis.RedisConnectionFailureException;
+import org.springframework.data.redis.RedisSystemException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
+import redis.clients.jedis.exceptions.JedisConnectionException;
 
 import java.net.ConnectException;
 import java.net.SocketException;
@@ -350,6 +353,22 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(errorCode.getStatusCode()).body(response);
     }
 
+    @ExceptionHandler({
+            RedisConnectionFailureException.class,
+            JedisConnectionException.class,
+            RedisSystemException.class
+    })
+    public ResponseEntity<ApiResponse<Void>> handleRedisException(Exception ex) {
+        log.error("Redis connection error [{}]: {}", ex.getClass().getSimpleName(), ex.getMessage());
+        ErrorCode errorCode = isTimeoutException(ex)
+                ? ErrorCode.CONNECTION_TIMEOUT
+                : ErrorCode.REDIS_CONNECTION_ERROR;
+        ApiResponse<Void> response = new ApiResponse<>();
+        response.setCode(errorCode.getCode());
+        response.setMessage(errorCode.getMessage());
+        return ResponseEntity.status(errorCode.getStatusCode()).body(response);
+    }
+
     private boolean isConnectionException(Throwable throwable) {
         Throwable current = throwable;
         while (current != null) {
@@ -359,7 +378,10 @@ public class GlobalExceptionHandler {
                     || current instanceof MongoException
                     || current instanceof DataAccessResourceFailureException
                     || current instanceof CannotCreateTransactionException
-                    || current instanceof ResourceAccessException) {
+                    || current instanceof ResourceAccessException
+                    || current instanceof RedisConnectionFailureException
+                    || current instanceof JedisConnectionException
+                    || current instanceof RedisSystemException) {
                 return true;
             }
             current = current.getCause();

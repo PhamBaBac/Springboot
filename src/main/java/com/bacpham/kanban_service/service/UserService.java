@@ -239,6 +239,10 @@ public class UserService implements IUserService {
             throw new AppException(ErrorCode.CANNOT_DOWNGRADE_SELF);
         }
 
+        if (user.getRole() == Role.USER) {
+            throw new AppException(ErrorCode.CANNOT_UPDATE_CUSTOMER_ROLE);
+        }
+
         Role oldRole = user.getRole();
         user.setRole(newRole);
         User updatedUser = repository.save(user);
