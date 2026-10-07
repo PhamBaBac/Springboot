@@ -12,6 +12,8 @@ import com.bacpham.kanban_service.mapper.SupplierMapper;
 import com.bacpham.kanban_service.repository.CategoryRepository;
 import com.bacpham.kanban_service.repository.SupplierRepository;
 import com.bacpham.kanban_service.service.ISupplierService;
+import com.bacpham.kanban_service.repository.specification.SupplierSpecification;
+import org.springframework.data.jpa.domain.Specification;
 import jakarta.transaction.Transactional;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -43,6 +45,12 @@ public class SupplierServiceImpl implements ISupplierService {
     @Transactional
     public SupplierResponse createSupplier(SupplierRequest request) {
         Supplier supplier = supplierMapper.toSupplier(request);
+        if (supplier.getActive() == null) {
+            supplier.setActive(1);
+        }
+        if (supplier.getIsTaking() == null) {
+            supplier.setIsTaking(0);
+        }
 
         if (request.getCategories() != null && !request.getCategories().isEmpty()) {
             List<Category> categories = new ArrayList<>();
@@ -67,14 +75,16 @@ public class SupplierServiceImpl implements ISupplierService {
         return supplierMapper.toSupplierResponse(supplier);
     }
 
-
-    public PageResponse<SupplierResponse> getSupplierResponsePage(int page, int pageSize) {
+    @Override
+    public PageResponse<SupplierResponse> getFilteredSuppliers(String status, String search, int page, int pageSize) {
+        int safePage = page > 0 ? page - 1 : 0;
+        int safePageSize = pageSize > 0 ? pageSize : 10;
         Sort sort = Sort.by("createdAt").descending();
 
-        Pageable pageable = PageRequest.of(page - 1, pageSize, sort);
-        Page<Supplier> pageData;
+        Pageable pageable = PageRequest.of(safePage, safePageSize, sort);
+        Specification<Supplier> spec = SupplierSpecification.filter(status, search);
 
-        pageData = supplierRepository.findAllByDeletedFalse(pageable);
+        Page<Supplier> pageData = supplierRepository.findAll(spec, pageable);
 
         return PageResponse.<SupplierResponse>builder()
                 .currentPage(page)
@@ -83,6 +93,11 @@ public class SupplierServiceImpl implements ISupplierService {
                 .totalElements(pageData.getTotalElements())
                 .data(pageData.getContent().stream().map(supplierMapper::toSupplierResponse).toList())
                 .build();
+    }
+
+    @Override
+    public PageResponse<SupplierResponse> getSupplierResponsePage(int page, int pageSize) {
+        return getFilteredSuppliers(null, null, page, pageSize);
     }
 
     public void deleteSupplier(String id) {

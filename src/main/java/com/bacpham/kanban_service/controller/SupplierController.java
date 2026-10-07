@@ -41,7 +41,7 @@ public class SupplierController {
                 new FormItem("categories", "categories", "Categories", "Select product category", "select", false, "", "", 150, null),
                 new FormItem("price", "price", "Buying price", "Enter buying price", "number", false, "", "", 150, null),
                 new FormItem("contact", "contact", "Contact Number", "Enter supplier contact number", "tel", false, "", "", 150, null),
-                new FormItem("type", "isTaking", "Talking", "", "checkbox", false, "", null, 150, null)
+                new FormItem("isTaking", "isTaking", "Đang lấy hàng", "", "checkbox", false, "", null, 150, null)
         );
 
         SupplierFormDTO form = new SupplierFormDTO();
@@ -63,13 +63,16 @@ public class SupplierController {
      }
 
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
-    @GetMapping("/page")
-    ApiResponse<PageResponse<SupplierResponse>> productPage(
+    @GetMapping({"/page", "/filter"})
+    ApiResponse<PageResponse<SupplierResponse>> getSupplierPage(
             @RequestParam(value = "page", required = false, defaultValue = "1") int page,
-            @RequestParam(value = "pageSize", required = false, defaultValue = "10") int pageSize
+            @RequestParam(value = "pageSize", required = false, defaultValue = "10") int pageSize,
+            @RequestParam(value = "status", required = false) String status,
+            @RequestParam(value = "search", required = false) String search
     ) {
         return ApiResponse.<PageResponse<SupplierResponse>>builder()
-                .data(supplierService.getSupplierResponsePage(page, pageSize))
+                .data(supplierService.getFilteredSuppliers(status, search, page, pageSize))
+                .message("Lấy danh sách nhà cung cấp thành công")
                 .build();
     }
 

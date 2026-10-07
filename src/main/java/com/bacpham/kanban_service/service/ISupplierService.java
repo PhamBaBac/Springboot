@@ -10,6 +10,7 @@ import java.util.List;
 public interface ISupplierService {
     SupplierResponse createSupplier(SupplierRequest request);
     PageResponse<SupplierResponse> getSupplierResponsePage(int page, int pageSize);
+    PageResponse<SupplierResponse> getFilteredSuppliers(String status, String search, int page, int pageSize);
     void deleteSupplier(String id);
     SupplierResponse updateSupplier(String id, SupplierRequest request);
     List<SupplierResponse> findAllSupplier();

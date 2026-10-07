@@ -36,6 +36,7 @@ public interface SupplierMapper {
                     .toList();
         }
 
+    @org.mapstruct.BeanMapping(nullValuePropertyMappingStrategy = org.mapstruct.NullValuePropertyMappingStrategy.IGNORE)
     @Mapping(target = "categories", ignore = true)
     @Mapping(target = "id", ignore = true)
     void updateSupplierFromRequest(@MappingTarget Supplier supplier, SupplierRequest request);
