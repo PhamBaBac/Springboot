@@ -53,6 +53,9 @@ import com.bacpham.kanban_service.dto.request.UserNotificationCreateRequest;
 import com.bacpham.kanban_service.service.IUserNotificationService;
 import com.bacpham.kanban_service.service.IOrderStatusHistoryService;
 import com.bacpham.kanban_service.service.IPaymentTransactionService;
+import com.bacpham.kanban_service.configuration.socket.NotificationSocketPublisher;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Service
 @RequiredArgsConstructor
@@ -74,6 +77,7 @@ public class OrderServiceImpl implements IOrderService {
     private final IPaymentTransactionService paymentTransactionService;
     private final ApplicationEventPublisher eventPublisher;
     private final IUserNotificationService userNotificationService;
+    private final NotificationSocketPublisher notificationSocketPublisher;
 
     @Override
     @Transactional
@@ -88,21 +92,24 @@ public class OrderServiceImpl implements IOrderService {
 
             double total = 0.0;
             double discountTotal = 0.0;
+            double voucherDiscountTotal = 0.0;
             List<OrderItem> orderItems = new ArrayList<>(sortedItems.size());
             for (OrderItemRequest dto : sortedItems) {
                 ProcessedItemResult result = processOrderItem(dto, activePromotion);
                 orderItems.add(result.item());
                 total += result.total();
                 discountTotal += (result.item().getDiscountAmount() != null ? result.item().getDiscountAmount() : 0.0);
+                voucherDiscountTotal += result.voucherDiscount();
             }
             double subtotal = total + discountTotal;
 
             // Kiểm tra giá trị đơn hàng tối thiểu để áp dụng mã giảm giá
             if (activePromotion != null && activePromotion.getMinOrderAmount() != null) {
-                if (subtotal < activePromotion.getMinOrderAmount()) {
+                double orderAmountBeforeVoucher = total + voucherDiscountTotal;
+                if (orderAmountBeforeVoucher < activePromotion.getMinOrderAmount()) {
                     promotionService.rollbackPromotionCode(user.getId(), activePromotion.getCode());
-                    log.warn("Đơn hàng {} không đạt giá trị tối thiểu {} để dùng mã [{}]. Subtotal: {}",
-                            user.getId(), activePromotion.getMinOrderAmount(), activePromotion.getCode(), subtotal);
+                    log.warn("Đơn hàng {} không đạt giá trị tối thiểu {} để dùng mã [{}]. Giá trị đơn: {}",
+                            user.getId(), activePromotion.getMinOrderAmount(), activePromotion.getCode(), orderAmountBeforeVoucher);
                     throw new AppException(ErrorCode.PROMOTION_MIN_ORDER_AMOUNT_NOT_MET);
                 }
             }
@@ -110,8 +117,12 @@ public class OrderServiceImpl implements IOrderService {
             double shippingFee = total >= 400000.0 ? 0.0 : 20000.0;
             double finalTotal = total + shippingFee;
 
+            String promoCode = (activePromotion != null && activePromotion.getCode() != null)
+                    ? activePromotion.getCode().trim().toUpperCase()
+                    : null;
+
             Order order = buildAndSaveOrder(user, request.getAddressId(), paymentType, finalTotal, subtotal, discountTotal,
-                    shippingFee, orderItems);
+                    shippingFee, promoCode, voucherDiscountTotal, orderItems);
             cleanupCartItems(user, request.getItems());
 
             if (activePromotion != null && activePromotion.getCode() != null) {
@@ -223,9 +234,15 @@ public class OrderServiceImpl implements IOrderService {
                 ? subProduct.getPrice()
                 : 0.0;
 
-        if (dto.getPrice() != null && Math.abs(dto.getPrice() - officialUnitPrice) > 0.01) {
+        boolean hasProductDiscount = subProduct.getDiscount() != null
+                && subProduct.getDiscount() > 0
+                && subProduct.getDiscount() < officialUnitPrice;
+        double actualSellingPrice = hasProductDiscount ? subProduct.getDiscount() : officialUnitPrice;
+
+        if (dto.getPrice() != null && Math.abs(dto.getPrice() - actualSellingPrice) > 0.01
+                && Math.abs(dto.getPrice() - officialUnitPrice) > 0.01) {
             log.warn("CẢNH BÁO BẢO MẬT: Phát hiện can thiệp giá từ client cho subProductId: {}. Client gửi: {}, Giá thực tế DB: {}. Hệ thống áp dụng giá DB.",
-                    subProduct.getId(), dto.getPrice(), officialUnitPrice);
+                    subProduct.getId(), dto.getPrice(), actualSellingPrice);
         }
 
         DiscountRequest effectiveDiscount = null;
@@ -284,7 +301,10 @@ public class OrderServiceImpl implements IOrderService {
         }
 
         DiscountCalculationResult discountResult = discountCalculator.calculate(
-                officialUnitPrice, dto.getCount(), effectiveDiscount);
+                actualSellingPrice, dto.getCount(), effectiveDiscount);
+
+        double productDiscountAmount = (officialUnitPrice - actualSellingPrice) * dto.getCount();
+        double totalItemDiscountAmount = productDiscountAmount + discountResult.discountAmount();
 
         String productTitle = (subProduct.getProduct() != null) ? subProduct.getProduct().getTitle() : null;
         String firstImage = (subProduct.getImages() != null && !subProduct.getImages().isEmpty())
@@ -303,16 +323,16 @@ public class OrderServiceImpl implements IOrderService {
                 .image(firstImage)
                 .originalPrice(officialUnitPrice) // FIX: Luôn ghi nhận giá gốc chính thức từ DB
                 .cost(subProduct.getCost())
-                .discountAmount(discountResult.discountAmount())
+                .discountAmount(totalItemDiscountAmount)
                 .totalPrice(discountResult.itemTotal())
                 .attributesSnapshot(subProduct.getAttributes())
                 .build();
 
-        return new ProcessedItemResult(orderItem, discountResult.itemTotal());
+        return new ProcessedItemResult(orderItem, discountResult.itemTotal(), discountResult.discountAmount());
     }
 
     private Order buildAndSaveOrder(User user, String addressId, String paymentTypeStr, double total, double subtotal,
-            double discountAmount, double shippingFee, List<OrderItem> items) {
+            double discountAmount, double shippingFee, String promotionCode, double voucherDiscount, List<OrderItem> items) {
         PaymentType paymentType;
         try {
             paymentType = PaymentType.valueOf(paymentTypeStr.toUpperCase());
@@ -330,6 +350,8 @@ public class OrderServiceImpl implements IOrderService {
                 .subtotal(subtotal)
                 .shippingFee(shippingFee)
                 .discountAmount(discountAmount)
+                .promotionCode(promotionCode)
+                .voucherDiscount(voucherDiscount)
                 .orderStatus(OrderStatus.PENDING)
                 .paymentType(paymentType)
                 .customerHidden(false)
@@ -359,7 +381,7 @@ public class OrderServiceImpl implements IOrderService {
         cartRepository.deleteByCreatedByAndSubProductIds(user, subProductIds);
     }
 
-    private record ProcessedItemResult(OrderItem item, double total) {
+    private record ProcessedItemResult(OrderItem item, double total, double voucherDiscount) {
     }
 
     @Override
@@ -544,6 +566,9 @@ public class OrderServiceImpl implements IOrderService {
         }
 
         if (isAdmin) {
+            if (order.getOrderStatus() != OrderStatus.CANCELLED) {
+                throw new AppException(ErrorCode.ORDER_CANNOT_BE_DELETED_NOT_CANCELLED);
+            }
             order.setDeleted(true);
         } else {
             order.setCustomerHidden(true);
@@ -575,14 +600,54 @@ public class OrderServiceImpl implements IOrderService {
             orderStateMachine.transition(order, newStatus, status);
 
             String shortId = order.getId().length() > 8 ? order.getId().substring(0, 8).toUpperCase() : order.getId();
+            String notifTitle;
+            String notifContent;
+
+            if (newStatus == OrderStatus.COMPLETED) {
+                notifTitle = "Đơn hàng #" + shortId + " đã giao thành công";
+                notifContent = "Đơn hàng #" + shortId + " của bạn đã được giao thành công. Cảm ơn bạn đã tin tưởng và mua sắm tại cửa hàng!";
+            } else if (newStatus == OrderStatus.CANCELLED) {
+                String reason = (status.getCancelReason() != null && !status.getCancelReason().isBlank())
+                        ? status.getCancelReason().trim()
+                        : "Cửa hàng đã hủy đơn hàng";
+                notifTitle = "Đơn hàng #" + shortId + " đã bị hủy";
+                notifContent = "Đơn hàng #" + shortId + " của bạn đã bị hủy. Lý do: " + reason;
+            } else if (newStatus == OrderStatus.PROCESSING) {
+                notifTitle = "Đơn hàng #" + shortId + " đang được chuẩn bị";
+                notifContent = "Đơn hàng #" + shortId + " của bạn đang được đóng gói và chuẩn bị giao cho đơn vị vận chuyển.";
+            } else if (newStatus == OrderStatus.REFUNDED) {
+                notifTitle = "Đơn hàng #" + shortId + " đã hoàn tiền";
+                notifContent = "Đơn hàng #" + shortId + " của bạn đã được xử lý hoàn tiền thành công.";
+            } else {
+                notifTitle = "Cập nhật đơn hàng #" + shortId;
+                notifContent = "Đơn hàng #" + shortId + " của bạn đã có cập nhật mới.";
+            }
+
             userNotificationService.createNotification(UserNotificationCreateRequest.builder()
                     .userId(order.getUser().getId())
-                    .title("Cập nhật đơn hàng #" + shortId)
-                    .content("Đơn hàng #" + shortId + " của bạn đã chuyển sang trạng thái: " + newStatus.name())
+                    .title(notifTitle)
+                    .content(notifContent)
                     .type(UserNotificationType.ORDER_STATUS)
                     .targetUrl("/profile?tab=orders")
                     .referenceId(order.getId())
                     .build());
+
+            if (order.getUser() != null && order.getUser().getId() != null) {
+                final String finalUserId = order.getUser().getId();
+                final String finalOrderId = order.getId();
+                final String finalStatusName = newStatus.name();
+                final String finalReason = status.getCancelReason();
+                if (TransactionSynchronizationManager.isActualTransactionActive()) {
+                    TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                        @Override
+                        public void afterCommit() {
+                            notificationSocketPublisher.sendOrderStatusUpdateToUser(finalUserId, finalOrderId, finalStatusName, finalReason);
+                        }
+                    });
+                } else {
+                    notificationSocketPublisher.sendOrderStatusUpdateToUser(finalUserId, finalOrderId, finalStatusName, finalReason);
+                }
+            }
         }
 
         orderRepository.save(order);

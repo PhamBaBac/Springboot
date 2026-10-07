@@ -37,6 +37,15 @@ public interface ProductRepository extends JpaRepository<Product, String>, JpaSp
     """)
     List<String> findIdsByDeletedFalseOrdered(Pageable pageable);
 
+    @Query("""
+        SELECT p.id FROM Product p
+        JOIN p.subProducts sp
+        WHERE p.deleted = false AND sp.discount > 0
+        GROUP BY p.id
+        ORDER BY MAX(sp.discount) DESC
+    """)
+    List<String> findFlashSaleProductIds(Pageable pageable);
+
     /**
      * Batch fetch products với đầy đủ associations bằng ID list.
      * Dùng sau khi đã paginate bằng ID — tránh N+1 lazy load.

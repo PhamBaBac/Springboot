@@ -12,6 +12,7 @@ import java.util.UUID;
 @Mapper(componentModel = "spring")
 public interface AddressMapper {
   @Mapping(source = "createdBy", target = "createdBy")
+  @Mapping(target = "isDefault", expression = "java(request.isDefault())")
   Address toAddress(AddressCreateRequest request);
 
   default User map(String createdBy) {
@@ -25,8 +26,8 @@ public interface AddressMapper {
     }
   }
 
-
   @Mapping(source = "id", target = "id")
+  @Mapping(target = "isDefault", expression = "java(address.isDefault())")
   AddressResponse toResponse(Address address);
 
 }

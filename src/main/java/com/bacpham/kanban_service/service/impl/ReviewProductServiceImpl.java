@@ -44,12 +44,12 @@ public class ReviewProductServiceImpl implements IReviewProductService {
 
     @Override
     public void createReview(ReviewProductRequest request) {
-        if (!reviewModerationService.isReviewApproved(request.getComment(), request.getImages())) {
-            throw new AppException(ErrorCode.REVIEW_REJECTED_BY_MODERATION);
-        }
+        reviewModerationService.validateReview(request.getComment(), request.getImages());
 
 
         SubProduct subProduct = subProductRepository.findById(request.getSubProductId())
+                .or(() -> subProductRepository.findBySkuAndDeletedFalse(request.getSubProductId()))
+                .or(() -> subProductRepository.findBySku(request.getSubProductId()))
                 .orElseThrow(() -> new AppException(ErrorCode.SUB_PRODUCT_NOT_FOUND));
 
         User user = userRepository.findById(request.getCreatedBy())
@@ -62,17 +62,32 @@ public class ReviewProductServiceImpl implements IReviewProductService {
                 request.getOrderId(),
                 request.getCreatedBy(),
                 OrderStatus.COMPLETED,
-                request.getSubProductId()
+                subProduct.getId()
         );
+        if (!validOrder && request.getSubProductId() != null && !request.getSubProductId().equals(subProduct.getId())) {
+            validOrder = orderRepository.existsByIdAndUserIdAndOrderStatusAndItemsSubProductId(
+                    request.getOrderId(),
+                    request.getCreatedBy(),
+                    OrderStatus.COMPLETED,
+                    request.getSubProductId()
+            );
+        }
         if (!validOrder) {
             throw new AppException(ErrorCode.NO_COMPLETED_ORDER_FOR_REVIEW);
         }
 
         boolean alreadyReviewed = reviewRepository.existsByCreatedByIdAndSubProductIdAndOrderId(
                 request.getCreatedBy(),
-                request.getSubProductId(),
+                subProduct.getId(),
                 request.getOrderId()
         );
+        if (!alreadyReviewed && request.getSubProductId() != null && !request.getSubProductId().equals(subProduct.getId())) {
+            alreadyReviewed = reviewRepository.existsByCreatedByIdAndSubProductIdAndOrderId(
+                    request.getCreatedBy(),
+                    request.getSubProductId(),
+                    request.getOrderId()
+            );
+        }
         if (alreadyReviewed) {
             throw new AppException(ErrorCode.REVIEW_ALREADY_EXISTS_FOR_ORDER);
         }
@@ -105,6 +120,17 @@ public class ReviewProductServiceImpl implements IReviewProductService {
         }
 
         List<Review> reviews = reviewRepository.findBySubProductIdIn(subProductIds);
+
+        return reviews.stream()
+                .map(reviewProductMapper::toResponse)
+                .toList();
+    }
+
+    @Override
+    public List<ReviewProductResponse> getFeaturedReviews(int limit) {
+        int safeLimit = Math.min(Math.max(limit, 1), 20);
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(0, safeLimit);
+        List<Review> reviews = reviewRepository.findFeaturedReviews(pageable);
 
         return reviews.stream()
                 .map(reviewProductMapper::toResponse)

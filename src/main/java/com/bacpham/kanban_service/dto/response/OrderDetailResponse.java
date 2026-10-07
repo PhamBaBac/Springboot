@@ -29,5 +29,7 @@ public class OrderDetailResponse {
     private Double subtotal;
     private Double shippingFee;
     private Double discountAmount;
+    private String promotionCode;
+    private Double voucherDiscount;
     private LocalDate createdAt;
 }

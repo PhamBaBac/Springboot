@@ -77,6 +77,12 @@ public class Order extends BaseModel {
     @Column(name = "discount_amount")
     private Double discountAmount;
 
+    @Column(name = "promotion_code")
+    private String promotionCode;
+
+    @Column(name = "voucher_discount")
+    private Double voucherDiscount;
+
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL)
     private List<OrderItem> items;
 

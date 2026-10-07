@@ -55,6 +55,10 @@ public class GhnShippingService implements IGhnShippingService {
     @Lazy
     private com.bacpham.kanban_service.service.IUserNotificationService userNotificationService;
 
+    @Autowired
+    @Lazy
+    private com.bacpham.kanban_service.configuration.socket.NotificationSocketPublisher notificationSocketPublisher;
+
     /**
      * Tra cá»©u chi tiáº¿t hÃ nh trÃ¬nh váº­n Ä‘Æ¡n tá»« Giao HÃ ng Nhanh (GHN)
      * @param orderCode MÃ£ Ä‘Æ¡n GHN (vÃ­ dá»¥: L5G7S1)
@@ -445,6 +449,14 @@ public class GhnShippingService implements IGhnShippingService {
                                     .targetUrl("/profile?tab=orders")
                                     .referenceId(order.getId())
                                     .build());
+                        }
+
+                        if (notificationSocketPublisher != null) {
+                            notificationSocketPublisher.sendOrderStatusUpdateToUser(
+                                    order.getUser().getId(),
+                                    order.getId(),
+                                    order.getOrderStatus().name(),
+                                    order.getCancelReason());
                         }
                     } catch (Exception ex) {
                         log.warn("GHN Webhook: Không thể gửi thông báo cho user {}: {}", order.getUser().getId(), ex.getMessage());

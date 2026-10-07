@@ -32,4 +32,8 @@ public class OrderResponse {
     private OrderStatus orderStatus;
     private String trackingCode;
     private Boolean isReviewed;
+    private Double originalPrice;
+    private Double cost;
+    private Double discountAmount;
+    private String skuCode;
 }

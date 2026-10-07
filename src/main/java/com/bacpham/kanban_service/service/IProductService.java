@@ -36,4 +36,8 @@ public interface IProductService {
     );
 
     List<ProductResponse> getBestSellers();
+
+    List<ProductResponse> getNewArrivals(int limit);
+
+    List<ProductResponse> getFlashSaleProducts(int limit);
 }

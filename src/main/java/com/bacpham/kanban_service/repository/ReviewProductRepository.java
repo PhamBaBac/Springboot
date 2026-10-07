@@ -1,6 +1,7 @@
 package com.bacpham.kanban_service.repository;
 
 import com.bacpham.kanban_service.entity.Review;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -10,6 +11,15 @@ import java.util.List;
 
 @Repository
 public interface ReviewProductRepository extends JpaRepository<Review, String> {
+
+    @Query("""
+        SELECT r FROM Review r
+        LEFT JOIN FETCH r.createdBy
+        LEFT JOIN FETCH r.subProduct sp
+        WHERE r.star >= 4 AND r.comment IS NOT NULL AND TRIM(r.comment) != ''
+        ORDER BY r.createdAt DESC
+    """)
+    List<Review> findFeaturedReviews(Pageable pageable);
 
     List<Review> findBySubProductId(String id);
 

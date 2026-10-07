@@ -249,8 +249,57 @@ public class ProductServiceImpl implements IProductService {
                 .map(r -> (String) r[0])
                 .collect(Collectors.toList());
 
-        List<Product> products = productRepository.findAllById(productIds);
-        return products.stream()
+        if (productIds.isEmpty()) {
+            productIds = productRepository.findIdsByDeletedFalseOrdered(PageRequest.of(0, 8));
+        }
+
+        if (productIds.isEmpty()) {
+            return List.of();
+        }
+
+        List<Product> products = productRepository.findByIdsWithAssociations(productIds);
+        Map<String, Product> productMap = products.stream()
+                .collect(Collectors.toMap(Product::getId, java.util.function.Function.identity(), (p1, p2) -> p1));
+        return productIds.stream()
+                .map(productMap::get)
+                .filter(Objects::nonNull)
+                .map(productMapper::toProductResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<ProductResponse> getNewArrivals(int limit) {
+        int safeLimit = Math.min(Math.max(limit, 1), 24);
+        List<String> ids = productRepository.findIdsByDeletedFalseOrdered(PageRequest.of(0, safeLimit));
+        if (ids.isEmpty()) {
+            return List.of();
+        }
+        List<Product> products = productRepository.findByIdsWithAssociations(ids);
+        Map<String, Product> productMap = products.stream()
+                .collect(Collectors.toMap(Product::getId, java.util.function.Function.identity(), (p1, p2) -> p1));
+        return ids.stream()
+                .map(productMap::get)
+                .filter(Objects::nonNull)
+                .map(productMapper::toProductResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<ProductResponse> getFlashSaleProducts(int limit) {
+        int safeLimit = Math.min(Math.max(limit, 1), 24);
+        List<String> ids = productRepository.findFlashSaleProductIds(PageRequest.of(0, safeLimit));
+        if (ids == null || ids.isEmpty()) {
+            ids = productRepository.findIdsByDeletedFalseOrdered(PageRequest.of(0, safeLimit));
+        }
+        if (ids == null || ids.isEmpty()) {
+            return List.of();
+        }
+        List<Product> products = productRepository.findByIdsWithAssociations(ids);
+        Map<String, Product> productMap = products.stream()
+                .collect(Collectors.toMap(Product::getId, java.util.function.Function.identity(), (p1, p2) -> p1));
+        return ids.stream()
+                .map(productMap::get)
+                .filter(Objects::nonNull)
                 .map(productMapper::toProductResponse)
                 .collect(Collectors.toList());
     }

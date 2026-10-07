@@ -3,13 +3,15 @@ package com.bacpham.kanban_service.strategy.order;
 import com.bacpham.kanban_service.dto.request.UpdateStatusOrder;
 import com.bacpham.kanban_service.entity.Order;
 import com.bacpham.kanban_service.enums.OrderStatus;
+import com.bacpham.kanban_service.service.IPaymentTransactionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 /**
  * Xử lý khi đơn hàng chuyển sang CANCELLED:
- * Ghi nhận lý do hủy đơn và hoàn trả số lượng sản phẩm vào kho.
+ * Ghi nhận lý do hủy đơn, hoàn trả số lượng sản phẩm vào kho,
+ * và cập nhật các bút toán PENDING sang FAILED vì không thu được tiền.
  */
 @Slf4j
 @Component
@@ -18,6 +20,7 @@ public class CancelledStatusHandler implements OrderStatusHandler {
 
     private final InventoryRestocker inventoryRestocker;
     private final com.bacpham.kanban_service.service.IPromotionService promotionService;
+    private final IPaymentTransactionService paymentTransactionService;
 
     @Override
     public OrderStatus getTargetStatus() {
@@ -42,6 +45,10 @@ public class CancelledStatusHandler implements OrderStatusHandler {
             log.error("Lỗi khi hoàn trả mã khuyến mãi cho đơn hàng hủy {}: {}", order.getId(), ex.getMessage());
         }
 
-        log.info("Handled order cancellation for orderId: {}, reason: {}", order.getId(), reason);
+        // Cập nhật bút toán PENDING sang FAILED vì đơn hàng đã bị hủy
+        paymentTransactionService.failPendingPayment(order, reason);
+
+        log.info("Handled order cancellation and marked pending payment as FAILED for orderId: {}, reason: {}",
+                order.getId(), reason);
     }
 }

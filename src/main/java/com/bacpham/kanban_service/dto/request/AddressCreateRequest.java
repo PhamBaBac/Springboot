@@ -1,5 +1,7 @@
 package com.bacpham.kanban_service.dto.request;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 
 @Getter
@@ -16,5 +18,12 @@ public class AddressCreateRequest {
     private String province;
     private String district;
     private String ward;
-    private boolean isDefault; 
+
+    @JsonProperty("isDefault")
+    @JsonAlias({"isDefault", "default"})
+    private Boolean isDefault;
+
+    public boolean isDefault() {
+        return Boolean.TRUE.equals(isDefault);
+    }
 }

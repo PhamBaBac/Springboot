@@ -71,6 +71,7 @@ public enum ErrorCode {
     ORDER_PROCESSING_IN_PROGRESS(5006, "Đơn hàng đang được xử lý, vui lòng không gửi lại liên tục", HttpStatus.CONFLICT),
     ORDER_ALREADY_PROCESSED(5007, "Đơn hàng đã được tạo thành công trước đó", HttpStatus.OK),
     CANNOT_CANCEL_SHIPPED_ORDER(5008, "Đơn hàng đã được đóng gói hoặc đang vận chuyển, không thể tự hủy", HttpStatus.BAD_REQUEST),
+    ORDER_CANNOT_BE_DELETED_NOT_CANCELLED(5009, "Không thể xóa đơn hàng khi chưa hủy. Vui lòng hủy đơn", HttpStatus.BAD_REQUEST),
 
     MESSAGE_TOO_LONG(6001, "Tin nhắn quá dài, vui lòng rút gọn lại", HttpStatus.BAD_REQUEST),
     CHAT_HISTORY_NOT_FOUND(6002, "Không tìm thấy lịch sử cuộc trò chuyện", HttpStatus.NOT_FOUND),

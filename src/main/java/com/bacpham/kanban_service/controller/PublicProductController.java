@@ -116,4 +116,22 @@ public class PublicProductController {
                                 .build();
         }
 
+        @GetMapping("/newArrivals")
+        public ApiResponse<List<ProductResponse>> getNewArrivals(
+                        @RequestParam(value = "limit", required = false, defaultValue = "8") int limit) {
+                return ApiResponse.<List<ProductResponse>>builder()
+                                .data(productService.getNewArrivals(limit))
+                                .message("Lấy danh sách sản phẩm mới về thành công")
+                                .build();
+        }
+
+        @GetMapping("/flashSale")
+        public ApiResponse<List<ProductResponse>> getFlashSaleProducts(
+                        @RequestParam(value = "limit", required = false, defaultValue = "8") int limit) {
+                return ApiResponse.<List<ProductResponse>>builder()
+                                .data(productService.getFlashSaleProducts(limit))
+                                .message("Lấy danh sách sản phẩm flash sale thành công")
+                                .build();
+        }
+
 }

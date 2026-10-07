@@ -72,7 +72,7 @@ public interface OrderRepository extends JpaRepository<Order, String>, JpaSpecif
                 WHERE o.id = :orderId
                   AND o.user.id = :userId
                   AND o.orderStatus = :orderStatus
-                  AND i.subProduct.id = :subProductId
+                  AND (i.subProduct.id = :subProductId OR i.skuCode = :subProductId)
             """)
     boolean existsByIdAndUserIdAndOrderStatusAndItemsSubProductId(
             @Param("orderId") String orderId,

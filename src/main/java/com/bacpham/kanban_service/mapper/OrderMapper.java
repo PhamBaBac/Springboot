@@ -40,6 +40,10 @@ public interface OrderMapper {
     @Mapping(source = "item", target = "totalPrice", qualifiedByName = "resolveTotalPrice")
     @Mapping(source = "order.orderStatus", target = "orderStatus")
     @Mapping(source = "order.trackingCode", target = "trackingCode")
+    @Mapping(source = "originalPrice", target = "originalPrice")
+    @Mapping(source = "cost", target = "cost")
+    @Mapping(source = "discountAmount", target = "discountAmount")
+    @Mapping(source = "skuCode", target = "skuCode")
     OrderResponse toOrderResponse(OrderItem item);
 
     @Named("resolveRecipientName")
@@ -68,10 +72,10 @@ public interface OrderMapper {
 
     @Named("resolveSubProductId")
     default String resolveSubProductId(OrderItem item) {
-        if (item.getSkuCode() != null && !item.getSkuCode().isBlank()) {
-            return item.getSkuCode();
+        if (item.getSubProduct() != null && item.getSubProduct().getId() != null) {
+            return item.getSubProduct().getId();
         }
-        return item.getSubProduct() != null ? item.getSubProduct().getId() : null;
+        return item.getSkuCode();
     }
 
     @Named("resolveTitle")
@@ -103,10 +107,32 @@ public interface OrderMapper {
 
     @Named("resolveAttributes")
     default Map<String, String> resolveAttributes(OrderItem item) {
-        if (item.getAttributesSnapshot() != null && !item.getAttributesSnapshot().isEmpty()) {
-            return item.getAttributesSnapshot();
+        Map<String, String> raw = (item.getAttributesSnapshot() != null && !item.getAttributesSnapshot().isEmpty())
+                ? item.getAttributesSnapshot()
+                : (item.getSubProduct() != null ? item.getSubProduct().getAttributes() : null);
+        if (raw == null) {
+            return null;
         }
-        return item.getSubProduct() != null ? item.getSubProduct().getAttributes() : null;
+        Map<String, String> filtered = new java.util.LinkedHashMap<>();
+        for (Map.Entry<String, String> entry : raw.entrySet()) {
+            String key = entry.getKey();
+            if (key != null) {
+                String normalized = key.trim().toLowerCase().replaceAll("[-_]", "");
+                if ("discounttype".equals(normalized)
+                        || "discountvalue".equals(normalized)
+                        || "discountamount".equals(normalized)
+                        || "discount".equals(normalized)
+                        || "price".equals(normalized)
+                        || "cost".equals(normalized)
+                        || "stock".equals(normalized)
+                        || "qty".equals(normalized)
+                        || "reservedstock".equals(normalized)) {
+                    continue;
+                }
+                filtered.put(key, entry.getValue());
+            }
+        }
+        return filtered;
     }
 
     @Named("resolveImage")

@@ -66,13 +66,24 @@ public class GlobalExceptionHandler {
         return ResponseEntity.internalServerError().body(apiResponse);
     }
 
+    @ExceptionHandler(CommentProfanityException.class)
+    public ResponseEntity<ApiResponse<Void>> handleCommentProfanityException(CommentProfanityException ex) {
+        log.warn("Bình luận vi phạm từ cấm [từ vi phạm='{}']: {}", ex.getViolatedWord(), ex.getMessage());
+        ApiResponse<Void> response = new ApiResponse<>();
+        response.setCode(ex.getErrorCode().getCode());
+        response.setMessage(ex.getMessage());
+        return ResponseEntity.status(ex.getErrorCode().getStatusCode()).body(response);
+    }
+
     @ExceptionHandler(value = AppException.class)
     ResponseEntity<ApiResponse<Void>> handleAppException(AppException appException) {
         ErrorCode errorCode = appException.getErrorCode();
         log.warn("AppException [{}]: {}", errorCode != null ? errorCode.getCode() : "N/A", appException.getMessage());
         ApiResponse<Void> apiResponse = new ApiResponse<>();
         apiResponse.setCode(errorCode != null ? errorCode.getCode() : ErrorCode.UNCATEGORIZED.getCode());
-        apiResponse.setMessage(errorCode != null ? errorCode.getMessage() : appException.getMessage());
+        apiResponse.setMessage(appException.getMessage() != null && !appException.getMessage().isBlank()
+                ? appException.getMessage()
+                : (errorCode != null ? errorCode.getMessage() : "Unknown error"));
 
         return ResponseEntity.status(errorCode != null ? errorCode.getStatusCode() : HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(apiResponse);

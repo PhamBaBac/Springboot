@@ -48,4 +48,45 @@ public class AddressController {
                                 .data(addresses)
                                 .build();
         }
+
+        @PutMapping({"/update-address", "/{id}"})
+        public ApiResponse<AddressResponse> updateAddress(
+                        @AuthenticationPrincipal UserDetails userDetails,
+                        @RequestParam(value = "id", required = false) String paramId,
+                        @PathVariable(value = "id", required = false) String pathId,
+                        @RequestBody AddressCreateRequest request) {
+                User user = userRepository.findByEmail(userDetails.getUsername())
+                                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+                String addressId = paramId != null && !paramId.isBlank() ? paramId : pathId;
+                AddressResponse address = addressService.updateAddress(addressId, request, user.getId());
+                return ApiResponse.<AddressResponse>builder()
+                                .data(address)
+                                .message("Cập nhật địa chỉ thành công")
+                                .build();
+        }
+
+        @DeleteMapping("/{id}")
+        public ApiResponse<Void> deleteAddress(
+                        @AuthenticationPrincipal UserDetails userDetails,
+                        @PathVariable String id) {
+                User user = userRepository.findByEmail(userDetails.getUsername())
+                                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+                addressService.deleteAddress(id, user.getId());
+                return ApiResponse.<Void>builder()
+                                .message("Xóa địa chỉ thành công")
+                                .build();
+        }
+
+        @RequestMapping(value = "/{id}/set-default", method = {RequestMethod.PATCH, RequestMethod.PUT})
+        public ApiResponse<AddressResponse> setDefaultAddress(
+                        @AuthenticationPrincipal UserDetails userDetails,
+                        @PathVariable String id) {
+                User user = userRepository.findByEmail(userDetails.getUsername())
+                                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+                AddressResponse address = addressService.setDefaultAddress(id, user.getId());
+                return ApiResponse.<AddressResponse>builder()
+                                .data(address)
+                                .message("Đặt làm địa chỉ mặc định thành công")
+                                .build();
+        }
 }

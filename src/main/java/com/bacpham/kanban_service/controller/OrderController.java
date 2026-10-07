@@ -200,6 +200,14 @@ public class OrderController {
                 .message("Lấy sổ cái giao dịch của đơn hàng thành công")
                 .build();
     }
+
+    @PostMapping("/transactions/sync")
+    public ApiResponse<Void> syncTransactions() {
+        paymentTransactionService.syncPendingTransactions();
+        return ApiResponse.<Void>builder()
+                .message("Đồng bộ sổ cái bút toán thanh toán thành công")
+                .build();
+    }
 }
 
 

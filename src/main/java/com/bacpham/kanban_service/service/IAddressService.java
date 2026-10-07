@@ -10,4 +10,9 @@ public interface IAddressService {
 
     List<AddressResponse> getAddresses(String userId);
 
+    AddressResponse updateAddress(String id, AddressCreateRequest request, String userId);
+
+    void deleteAddress(String id, String userId);
+
+    AddressResponse setDefaultAddress(String id, String userId);
 }

@@ -178,7 +178,13 @@ public class VNPayPaymentStrategy implements PaymentStrategy {
                     double unitPrice = 0.0;
                     if (subProductRepository != null && item.getSubProductId() != null && !item.getSubProductId().isBlank()) {
                         unitPrice = subProductRepository.findById(item.getSubProductId())
-                                .map(sp -> (sp.getPrice() != null && sp.getPrice() >= 0) ? sp.getPrice() : 0.0)
+                                .map(sp -> {
+                                    double p = (sp.getPrice() != null && sp.getPrice() >= 0) ? sp.getPrice() : 0.0;
+                                    if (sp.getDiscount() != null && sp.getDiscount() > 0 && sp.getDiscount() < p) {
+                                        return sp.getDiscount();
+                                    }
+                                    return p;
+                                })
                                 .orElse(item.getPrice() != null ? item.getPrice() : 0.0);
                     } else if (item.getPrice() != null) {
                         unitPrice = item.getPrice();

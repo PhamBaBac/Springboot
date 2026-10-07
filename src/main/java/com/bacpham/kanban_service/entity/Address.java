@@ -1,6 +1,7 @@
 package com.bacpham.kanban_service.entity;
 
 import com.bacpham.kanban_service.helper.base.model.BaseModel;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -24,7 +25,9 @@ public class Address extends BaseModel {
     String district;
     String ward;
 
-    boolean isDefault;
+    @Builder.Default
+    @JsonProperty("isDefault")
+    boolean isDefault = false;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")

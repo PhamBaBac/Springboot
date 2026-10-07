@@ -26,4 +26,10 @@ public interface IPaymentTransactionService {
     List<PaymentTransactionResponse> getTransactionsByOrderId(String orderId);
 
     PageResponse<PaymentTransactionResponse> getPagedTransactions(int page, int pageSize);
+
+    void completePendingPayment(Order order);
+
+    void failPendingPayment(Order order, String reason);
+
+    void syncPendingTransactions();
 }

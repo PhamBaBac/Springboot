@@ -50,4 +50,15 @@ public class ReviewProductController {
                 .message("Lấy danh sách đánh giá thành công")
                 .build();
     }
+
+    @GetMapping("/featured")
+    public ApiResponse<List<ReviewProductResponse>> getFeaturedReviews(
+            @RequestParam(value = "limit", required = false, defaultValue = "8") int limit
+    ) {
+        List<ReviewProductResponse> responses = reviewProductService.getFeaturedReviews(limit);
+        return ApiResponse.<List<ReviewProductResponse>>builder()
+                .data(responses)
+                .message("Lấy danh sách đánh giá tiêu biểu thành công")
+                .build();
+    }
 }

@@ -53,6 +53,28 @@ public class NotificationSocketPublisher {
     }
 
     /**
+     * Broadcast realtime order status update to customer in their personal room
+     */
+    public void sendOrderStatusUpdateToUser(String userId, String orderId, String newStatus, String cancelReason) {
+        if (userId == null) return;
+        try {
+            String room = "user_" + userId.trim();
+            java.util.Map<String, Object> payload = new java.util.HashMap<>();
+            payload.put("orderId", orderId);
+            payload.put("orderStatus", newStatus);
+            if (cancelReason != null && !cancelReason.isBlank()) {
+                payload.put("cancelReason", cancelReason.trim());
+            }
+            socketIOServer.getRoomOperations(room)
+                    .sendEvent("order_status_updated", payload);
+            log.info("Đã broadcast socket event 'order_status_updated' tới room {}: orderId={}, newStatus={}",
+                    room, orderId, newStatus);
+        } catch (Exception e) {
+            log.error("Lỗi khi gửi socket order_status_updated tới user {}: {}", userId, e.getMessage(), e);
+        }
+    }
+
+    /**
      * Broadcast notification to all connected staff/admins in the ADMIN_CHANNEL
      * and also as a fallback to all connected sockets
      */

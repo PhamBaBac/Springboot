@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/v1/shipping")
+@RequestMapping({"/api/v1/shipping", "/shipping"})
 @RequiredArgsConstructor
 @Slf4j
 public class ShippingController {
@@ -44,13 +44,23 @@ public class ShippingController {
     }
 
     /**
+     * Endpoint kiểm tra trạng thái hoạt động của Webhook GHN
+     */
+    @GetMapping({"", "/", "/webhook"})
+    public ResponseEntity<Map<String, Object>> pingGhnWebhook() {
+        return ResponseEntity.ok(Map.of("code", 200, "message", "GHN webhook endpoint is active"));
+    }
+
+    /**
      * Endpoint nhận Webhook từ Giao Hàng Nhanh (GHN) khi có thay đổi trạng thái vận chuyển
      */
-    @PostMapping({"/","/webhook"})
-    public ResponseEntity<Map<String, Object>> handleGhnWebhook(@RequestBody Map<String, Object> payload) {
+    @PostMapping({"", "/", "/webhook"})
+    public ResponseEntity<Map<String, Object>> handleGhnWebhook(@RequestBody(required = false) Map<String, Object> payload) {
         log.info("Incoming GHN webhook callback: {}", payload);
         try {
-            ghnShippingService.handleWebhookEvent(payload);
+            if (payload != null && !payload.isEmpty()) {
+                ghnShippingService.handleWebhookEvent(payload);
+            }
         } catch (Exception e) {
             log.error("Error processing GHN webhook: {}", e.getMessage(), e);
         }

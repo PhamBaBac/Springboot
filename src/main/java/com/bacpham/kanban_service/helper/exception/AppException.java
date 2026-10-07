@@ -10,4 +10,9 @@ public class AppException extends RuntimeException {
         this.errorCode = errorCode;
     }
 
+    public AppException(ErrorCode errorCode, String customMessage) {
+        super(customMessage != null && !customMessage.isBlank() ? customMessage : (errorCode != null ? errorCode.getMessage() : "Unknown error"));
+        this.errorCode = errorCode;
+    }
+
 }

@@ -82,6 +82,11 @@ public interface SubProductRepository extends JpaRepository<SubProduct, String> 
     int directRestock(@Param("id") String id, @Param("quantity") int quantity);
 
     List<SubProduct> findAllByProductAndDeletedFalse(Product product);
+
+    Optional<SubProduct> findBySkuAndDeletedFalse(String sku);
+
+    Optional<SubProduct> findBySku(String sku);
+
     @Query("SELECT SUM(sp.stock) FROM SubProduct sp WHERE sp.product.id = :productId")
     Integer sumStockByProductId(@Param("productId") String productId);
 

@@ -8,4 +8,5 @@ import java.util.List;
 public interface IReviewProductService {
     void createReview(ReviewProductRequest request);
     List<ReviewProductResponse> getReviewsBySubProductIds(List<String> subProductIds);
+    List<ReviewProductResponse> getFeaturedReviews(int limit);
 }
