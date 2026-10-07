@@ -41,6 +41,13 @@ public class CreateShipmentRequest {
     String note;
 
     @Builder.Default
+    String carrier = "GHN";
+
+    String trackingCode;
+
+    Double shippingFee;
+
+    @Builder.Default
     String requiredNote = "CHOXEMHANGKHONGTHU";
 
     @NotEmpty(message = "Kiện hàng phải có ít nhất 1 sản phẩm")

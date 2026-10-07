@@ -7,6 +7,7 @@ import com.bacpham.kanban_service.helper.exception.ErrorCode;
 import com.bacpham.kanban_service.service.IGhnShippingService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import com.bacpham.kanban_service.dto.request.GhnWebhookPayload;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -55,10 +56,15 @@ public class ShippingController {
      * Endpoint nhận Webhook từ Giao Hàng Nhanh (GHN) khi có thay đổi trạng thái vận chuyển
      */
     @PostMapping({"", "/", "/webhook"})
-    public ResponseEntity<Map<String, Object>> handleGhnWebhook(@RequestBody(required = false) Map<String, Object> payload) {
-        log.info("Incoming GHN webhook callback: {}", payload);
+    public ResponseEntity<Map<String, Object>> handleGhnWebhook(
+            @RequestHeader(value = "X-GHN-Token", required = false) String customToken,
+            @RequestBody(required = false) GhnWebhookPayload payload) {
+        log.info("Incoming GHN webhook callback: type={}, orderCode={}, status={}",
+                payload != null ? payload.getType() : null,
+                payload != null ? payload.getOrderCode() : null,
+                payload != null ? payload.getStatus() : null);
         try {
-            if (payload != null && !payload.isEmpty()) {
+            if (payload != null) {
                 ghnShippingService.handleWebhookEvent(payload);
             }
         } catch (Exception e) {

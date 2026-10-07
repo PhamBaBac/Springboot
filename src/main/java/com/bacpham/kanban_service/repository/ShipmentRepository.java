@@ -19,12 +19,15 @@ public interface ShipmentRepository extends JpaRepository<Shipment, String> {
 
     @Query("SELECT s FROM Shipment s WHERE " +
            "(:status IS NULL OR s.shippingStatus = :status) AND " +
+           "(:carrier IS NULL OR UPPER(s.carrier) = UPPER(:carrier)) AND " +
            "(:search IS NULL OR LOWER(s.shipmentCode) LIKE LOWER(CONCAT('%', :search, '%')) " +
            "OR LOWER(s.trackingCode) LIKE LOWER(CONCAT('%', :search, '%')) " +
+           "OR LOWER(s.carrier) LIKE LOWER(CONCAT('%', :search, '%')) " +
            "OR LOWER(s.order.id) LIKE LOWER(CONCAT('%', :search, '%'))) " +
            "ORDER BY s.createdAt DESC")
     Page<Shipment> findShipmentsWithFilter(
             @Param("status") String status,
+            @Param("carrier") String carrier,
             @Param("search") String search,
             Pageable pageable
     );

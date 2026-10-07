@@ -38,7 +38,13 @@ public interface IGhnShippingService {
 
     /**
      * Xử lý webhook từ GHN gửi về khi trạng thái vận đơn thay đổi
-     * @param payload Dữ liệu sự kiện từ GHN
+     * @param payload Dữ liệu sự kiện từ GHN đã được chuẩn hóa DTO
+     */
+    void handleWebhookEvent(com.bacpham.kanban_service.dto.request.GhnWebhookPayload payload);
+
+    /**
+     * Xử lý webhook từ GHN gửi về dạng Map thô
+     * @param payload Dữ liệu sự kiện thô từ GHN
      */
     void handleWebhookEvent(Map<String, Object> payload);
 }

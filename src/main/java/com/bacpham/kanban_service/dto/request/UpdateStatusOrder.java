@@ -15,4 +15,5 @@ public class UpdateStatusOrder {
     OrderStatus orderStatus;
     String cancelReason;
     String trackingCode;
+    String carrier;
 }

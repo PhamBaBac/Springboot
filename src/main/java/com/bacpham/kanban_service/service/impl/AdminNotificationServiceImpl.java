@@ -136,6 +136,12 @@ public class AdminNotificationServiceImpl implements IAdminNotificationService {
         }
         AdminNotification saved = repository.saveAndFlush(notification);
         log.info("Đã tạo thông báo admin mới: id={}, type={}, title={}", saved.getId(), saved.getType(), saved.getTitle());
-        return mapper.toAdminNotificationResponse(saved);
+        AdminNotificationResponse response = mapper.toAdminNotificationResponse(saved);
+        try {
+            socketPublisher.broadcastToAdmin(response);
+        } catch (Exception e) {
+            log.warn("Không thể broadcast socket thông báo admin: {}", e.getMessage());
+        }
+        return response;
     }
 }

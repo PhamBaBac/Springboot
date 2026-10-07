@@ -43,6 +43,9 @@ public class Order extends BaseModel {
     @Column(name = "tracking_code")
     private String trackingCode;  
 
+    @Column(name = "carrier", length = 50)
+    private String carrier;
+
     @Column(name = "shipping_status")
     private String shippingStatus;   
 

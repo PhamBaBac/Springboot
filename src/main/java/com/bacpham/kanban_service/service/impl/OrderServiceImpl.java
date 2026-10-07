@@ -596,6 +596,10 @@ public class OrderServiceImpl implements IOrderService {
             order.setTrackingCode(status.getTrackingCode().trim());
         }
 
+        if (status.getCarrier() != null && !status.getCarrier().isBlank()) {
+            order.setCarrier(status.getCarrier().trim());
+        }
+
         if (newStatus != oldStatus) {
             orderStateMachine.transition(order, newStatus, status);
 

@@ -59,17 +59,25 @@ public class ShipmentServiceImpl implements IShipmentService {
             codAmount = order.getPaymentType() == PaymentType.COD ? order.getTotal() : 0.0;
         }
 
+        String carrier = (request.getCarrier() != null && !request.getCarrier().isBlank())
+                ? request.getCarrier().trim().toUpperCase()
+                : "GHN";
+
+        Double fee = request.getShippingFee() != null
+                ? request.getShippingFee()
+                : (order.getShippingFee() != null ? order.getShippingFee() : 0.0);
+
         Shipment shipment = Shipment.builder()
                 .order(order)
                 .shipmentCode(shipmentCode)
-                .carrier("GHN")
+                .carrier(carrier)
                 .shippingStatus("ready_to_pick")
-                .weight(request.getWeight())
-                .length(request.getLength())
-                .width(request.getWidth())
-                .height(request.getHeight())
+                .weight(request.getWeight() != null ? request.getWeight() : 200)
+                .length(request.getLength() != null ? request.getLength() : 20)
+                .width(request.getWidth() != null ? request.getWidth() : 15)
+                .height(request.getHeight() != null ? request.getHeight() : 10)
                 .codAmount(codAmount)
-                .shippingFee(order.getShippingFee() != null ? order.getShippingFee() : 0.0)
+                .shippingFee(fee)
                 .note(request.getNote())
                 .requiredNote(request.getRequiredNote() != null ? request.getRequiredNote() : "CHOXEMHANGKHONGTHU")
                 .items(new ArrayList<>())
@@ -98,42 +106,67 @@ public class ShipmentServiceImpl implements IShipmentService {
 
         shipment = shipmentRepository.save(shipment);
 
-        try {
-            String trackingCode = ghnShippingService.createShippingOrderFromShipment(shipment);
-            if (trackingCode != null && !trackingCode.isBlank()) {
-                shipment.setTrackingCode(trackingCode);
-                shipment.setShippingStatus("ready_to_pick");
+        String trackingCode = null;
 
-                order.setTrackingCode(trackingCode);
-                order.setShippingStatus("ready_to_pick");
-                if (order.getOrderStatus() == OrderStatus.PENDING) {
-                    orderStateMachine.transition(order, OrderStatus.PROCESSING,
-                            UpdateStatusOrder.builder().orderStatus(OrderStatus.PROCESSING).trackingCode(trackingCode).build());
-                }
-                orderRepository.save(order);
-                shipment = shipmentRepository.save(shipment);
-                log.info("Tạo Shipment {} thành công với trackingCode {}", shipmentCode, trackingCode);
+        if ("GHN".equalsIgnoreCase(carrier)) {
+            try {
+                trackingCode = ghnShippingService.createShippingOrderFromShipment(shipment);
+            } catch (Exception e) {
+                log.error("Không thể bắn đơn sang GHN cho Shipment {}: {}", shipmentCode, e.getMessage());
+                throw new RuntimeException("Tạo vận đơn GHN thất bại: " + e.getMessage(), e);
+            }
+        } else if ("SHOP_DELIVERY".equalsIgnoreCase(carrier)) {
+            trackingCode = (request.getTrackingCode() != null && !request.getTrackingCode().isBlank())
+                    ? request.getTrackingCode().trim()
+                    : ("SHOP-" + shipmentCode);
+            log.info("Tạo vận đơn tự giao bởi cửa hàng: {}", trackingCode);
+        } else {
+            trackingCode = (request.getTrackingCode() != null && !request.getTrackingCode().isBlank())
+                    ? request.getTrackingCode().trim()
+                    : (carrier + "-" + shipmentCode);
+            log.info("Tạo vận đơn cho đối tác {}: {}", carrier, trackingCode);
+        }
 
-                if (order.getUser() != null && order.getUser().getId() != null) {
-                    try {
-                        String shortId = order.getId().length() > 8 ? order.getId().substring(0, 8).toUpperCase() : order.getId();
-                        userNotificationService.createNotification(UserNotificationCreateRequest.builder()
-                                .userId(order.getUser().getId())
-                                .title("Đơn hàng #" + shortId + " đang được chuẩn bị")
-                                .content(String.format("Đơn hàng #%s đã được tạo vận đơn (%s - Mã vận đơn: %s). Đang chuẩn bị giao cho đơn vị vận chuyển.",
-                                        shortId, shipment.getCarrier() != null ? shipment.getCarrier() : "GHN", trackingCode))
-                                .type(UserNotificationType.ORDER_STATUS)
-                                .targetUrl("/profile?tab=orders")
-                                .referenceId(order.getId())
-                                .build());
-                    } catch (Exception ex) {
-                        log.warn("Không thể gửi thông báo cho user {}: {}", order.getUser().getId(), ex.getMessage());
-                    }
+        if (trackingCode != null && !trackingCode.isBlank()) {
+            shipment.setTrackingCode(trackingCode);
+            shipment.setShippingStatus("ready_to_pick");
+
+            order.setTrackingCode(trackingCode);
+            order.setCarrier(carrier);
+            order.setShippingStatus("ready_to_pick");
+            if (order.getOrderStatus() == OrderStatus.PENDING) {
+                orderStateMachine.transition(order, OrderStatus.PROCESSING,
+                        UpdateStatusOrder.builder().orderStatus(OrderStatus.PROCESSING).trackingCode(trackingCode).carrier(carrier).build());
+            }
+            orderRepository.save(order);
+            shipment = shipmentRepository.save(shipment);
+            log.info("Tạo Shipment {} thành công với carrier {} và trackingCode {}", shipmentCode, carrier, trackingCode);
+
+            if (order.getUser() != null && order.getUser().getId() != null) {
+                try {
+                    String shortId = order.getId().length() > 8 ? order.getId().substring(0, 8).toUpperCase() : order.getId();
+                    String carrierDisplayName = switch (carrier) {
+                        case "SHOP_DELIVERY" -> "Cửa hàng tự giao";
+                        case "VIETTEL_POST" -> "Viettel Post";
+                        case "GHTK" -> "Giao Hàng Tiết Kiệm (GHTK)";
+                        case "J_AND_T" -> "J&T Express";
+                        case "VNPOST" -> "VNPost Bưu điện";
+                        case "GHN" -> "Giao Hàng Nhanh (GHN)";
+                        default -> carrier;
+                    };
+                    userNotificationService.createNotification(UserNotificationCreateRequest.builder()
+                            .userId(order.getUser().getId())
+                            .title("Đơn hàng #" + shortId + " đang được chuẩn bị")
+                            .content(String.format("Đơn hàng #%s đã được tạo vận đơn (%s - Mã vận đơn: %s). Đang chuẩn bị giao hàng.",
+                                    shortId, carrierDisplayName, trackingCode))
+                            .type(UserNotificationType.ORDER_STATUS)
+                            .targetUrl("/profile?tab=orders")
+                            .referenceId(order.getId())
+                            .build());
+                } catch (Exception ex) {
+                    log.warn("Không thể gửi thông báo cho user {}: {}", order.getUser().getId(), ex.getMessage());
                 }
             }
-        } catch (Exception e) {
-            log.error("Không thể bắn đơn sang GHN cho Shipment {}: {}", shipmentCode, e.getMessage());
-            throw new RuntimeException("Tạo vận đơn GHN thất bại: " + e.getMessage(), e);
         }
 
         return mapToShipmentResponse(shipment);
@@ -151,16 +184,16 @@ public class ShipmentServiceImpl implements IShipmentService {
     @Override
     @Transactional(readOnly = true)
     public com.bacpham.kanban_service.dto.response.PageResponse<ShipmentResponse> getShipmentsPage(
-            int page, int pageSize, String status, String search) {
+            int page, int pageSize, String status, String carrier, String search) {
         org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(
                 Math.max(0, page - 1), pageSize);
 
         String cleanStatus = (status != null && !status.isBlank() && !status.equalsIgnoreCase("ALL")) ? status.trim() : null;
+        String cleanCarrier = (carrier != null && !carrier.isBlank() && !carrier.equalsIgnoreCase("ALL")) ? carrier.trim() : null;
         String cleanSearch = (search != null && !search.isBlank()) ? search.trim() : null;
 
         org.springframework.data.domain.Page<Shipment> shipmentPage = shipmentRepository.findShipmentsWithFilter(
-                cleanStatus, cleanSearch, pageable);
-
+                cleanStatus, cleanCarrier, cleanSearch, pageable);
         List<ShipmentResponse> items = shipmentPage.getContent().stream()
                 .map(this::mapToShipmentResponse)
                 .collect(Collectors.toList());

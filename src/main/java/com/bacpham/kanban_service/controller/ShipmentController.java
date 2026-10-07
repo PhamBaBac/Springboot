@@ -43,9 +43,10 @@ public class ShipmentController {
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int pageSize,
             @RequestParam(required = false) String status,
+            @RequestParam(required = false) String carrier,
             @RequestParam(required = false) String search
     ) {
-        var res = shipmentService.getShipmentsPage(page, pageSize, status, search);
+        var res = shipmentService.getShipmentsPage(page, pageSize, status, carrier, search);
         return ApiResponse.<com.bacpham.kanban_service.dto.response.PageResponse<ShipmentResponse>>builder()
                 .data(res)
                 .build();

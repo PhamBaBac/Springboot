@@ -23,6 +23,7 @@ public interface OrderMapper {
     @Mapping(source = "items", target = "orderResponses")
     @Mapping(source = "cancelReason", target = "cancelReason")
     @Mapping(source = "trackingCode", target = "trackingCode")
+    @Mapping(source = "order", target = "carrier", qualifiedByName = "resolveCarrier")
     @Mapping(source = "shippingStatus", target = "shippingStatus")
     @Mapping(source = "createdAt", target = "createdAt")
     OrderDetailResponse toOrderDetailResponse(Order order);
@@ -45,6 +46,17 @@ public interface OrderMapper {
     @Mapping(source = "discountAmount", target = "discountAmount")
     @Mapping(source = "skuCode", target = "skuCode")
     OrderResponse toOrderResponse(OrderItem item);
+
+    @Named("resolveCarrier")
+    default String resolveCarrier(Order order) {
+        if (order.getCarrier() != null && !order.getCarrier().isBlank()) {
+            return order.getCarrier();
+        }
+        if (order.getShipments() != null && !order.getShipments().isEmpty()) {
+            return order.getShipments().get(0).getCarrier();
+        }
+        return null;
+    }
 
     @Named("resolveRecipientName")
     default String resolveRecipientName(Order order) {

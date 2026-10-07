@@ -9,7 +9,7 @@ import java.util.List;
 public interface IShipmentService {
     ShipmentResponse createShipment(CreateShipmentRequest request);
     List<ShipmentResponse> getShipmentsByOrderId(String orderId);
-    com.bacpham.kanban_service.dto.response.PageResponse<ShipmentResponse> getShipmentsPage(int page, int pageSize, String status, String search);
+    com.bacpham.kanban_service.dto.response.PageResponse<ShipmentResponse> getShipmentsPage(int page, int pageSize, String status, String carrier, String search);
     ShipmentResponse getShipmentById(String shipmentId);
     Double calculateShippingFee(CalculateShippingFeeRequest request);
 }

@@ -24,6 +24,7 @@ public class OrderDetailResponse {
     private List<OrderResponse> orderResponses;
     private String cancelReason;
     private String trackingCode;
+    private String carrier;
     private String shippingStatus;
     private Double total;
     private Double subtotal;

@@ -19,30 +19,30 @@ public class GhnStatusMapper {
      * @return Ten tieng Viet mo ta trang thai
      */
     public String toDisplayName(String status) {
-        if (status == null) return "Khong xac dinh";
+        if (status == null) return "Không xác định";
         return switch (status.toLowerCase()) {
-            case "ready_to_pick"          -> "Moi tao don - Cho lay hang";
-            case "picking"                -> "Shipper dang di lay hang";
-            case "cancel"                 -> "Don hang da huy";
-            case "money_collect_picking"  -> "Dang thu tien nguoi gui";
-            case "picked"                 -> "Da lay hang thanh cong";
-            case "storing"                -> "Hang da nhap kho GHN";
-            case "transporting"           -> "Dang luan chuyen hang giua cac kho";
-            case "sorting"                -> "Dang phan loai hang hoa";
-            case "delivering"             -> "Shipper dang tren duong giao hang";
-            case "money_collect_delivering" -> "Shipper dang thu tien khi giao";
-            case "delivered"              -> "Giao hang thanh cong";
-            case "delivery_fail"          -> "Giao hang khong thanh cong";
-            case "waiting_to_return"      -> "Cho xac nhan chuyen hoan";
-            case "return"                 -> "Dang chuyen hoan ve nguoi gui";
-            case "return_transporting"    -> "Dang luan chuyen hang hoan";
-            case "return_sorting"         -> "Dang phan loai hang hoan";
-            case "returning"              -> "Shipper dang tra lai hang cho shop";
-            case "return_fail"            -> "Tra hang khong thanh cong";
-            case "returned"               -> "Da hoan tra hang ve shop";
-            case "exception"              -> "Don hang gap su co ngoai le";
-            case "damage"                 -> "Hang hoa bi hu hong";
-            case "lost"                   -> "Hang hoa bi that lac";
+            case "ready_to_pick"          -> "Mới tạo đơn - Chờ lấy hàng";
+            case "picking"                -> "Shipper đang đi lấy hàng";
+            case "cancel"                 -> "Đơn hàng đã hủy";
+            case "money_collect_picking"  -> "Đang thu tiền người gửi";
+            case "picked"                 -> "Đã lấy hàng thành công";
+            case "storing"                -> "Hàng đã nhập kho GHN";
+            case "transporting"           -> "Đang luân chuyển hàng giữa các kho";
+            case "sorting"                -> "Đang phân loại hàng hóa";
+            case "delivering"             -> "Shipper đang trên đường giao hàng";
+            case "money_collect_delivering" -> "Shipper đang giao hàng & thu tiền";
+            case "delivered"              -> "Giao hàng thành công";
+            case "delivery_fail"          -> "Giao hàng không thành công";
+            case "waiting_to_return"      -> "Chờ xác nhận chuyển hoàn";
+            case "return"                 -> "Đang chuyển hoàn về người gửi";
+            case "return_transporting"    -> "Đang luân chuyển hàng hoàn";
+            case "return_sorting"         -> "Đang phân loại hàng hoàn";
+            case "returning"              -> "Shipper đang trả lại hàng cho shop";
+            case "return_fail"            -> "Trả hàng không thành công";
+            case "returned"               -> "Đã hoàn trả hàng về shop";
+            case "exception"              -> "Đơn hàng gặp sự cố ngoại lệ";
+            case "damage"                 -> "Hàng hóa bị hư hỏng";
+            case "lost"                   -> "Hàng hóa bị thất lạc";
             default                       -> status;
         };
     }

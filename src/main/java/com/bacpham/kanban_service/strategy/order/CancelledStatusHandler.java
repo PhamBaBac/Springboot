@@ -21,6 +21,7 @@ public class CancelledStatusHandler implements OrderStatusHandler {
     private final InventoryRestocker inventoryRestocker;
     private final com.bacpham.kanban_service.service.IPromotionService promotionService;
     private final IPaymentTransactionService paymentTransactionService;
+    private final com.bacpham.kanban_service.repository.ShipmentRepository shipmentRepository;
 
     @Override
     public OrderStatus getTargetStatus() {
@@ -34,9 +35,23 @@ public class CancelledStatusHandler implements OrderStatusHandler {
             reason = "Hủy bởi Quản trị viên";
         }
         order.setCancelReason(reason);
-        if (order.getShippingStatus() != null && !order.getShippingStatus().isBlank()) {
-            order.setShippingStatus("cancel");
+        order.setShippingStatus("cancel");
+
+        if (order.getShipments() != null) {
+            for (com.bacpham.kanban_service.entity.Shipment s : order.getShipments()) {
+                s.setShippingStatus("cancel");
+            }
         }
+        try {
+            var shipments = shipmentRepository.findByOrderId(order.getId());
+            for (var s : shipments) {
+                s.setShippingStatus("cancel");
+                shipmentRepository.save(s);
+            }
+        } catch (Exception ex) {
+            log.warn("Không thể đồng bộ Shipment sang cancel cho order {}: {}", order.getId(), ex.getMessage());
+        }
+
         inventoryRestocker.restockOrderItems(order);
 
         try {
