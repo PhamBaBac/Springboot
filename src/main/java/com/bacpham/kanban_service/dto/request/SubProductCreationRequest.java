@@ -2,6 +2,7 @@ package com.bacpham.kanban_service.dto.request;
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -22,5 +23,5 @@ public class SubProductCreationRequest {
     Integer qty;
     Double cost;
     Map<String, String> attributes;
-    Set<String> images;
+    List<String> images;
 }

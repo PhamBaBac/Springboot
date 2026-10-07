@@ -89,7 +89,15 @@ public class ProductServiceImpl implements IProductService {
         }
 
         String cacheKey = String.format("product:page:%d:%d", page, pageSize);
-        PageResponse<ProductResponse> cached = redisService.get(cacheKey);
+        PageResponse<ProductResponse> cached = null;
+        try {
+            cached = redisService.get(cacheKey);
+        } catch (Exception e) {
+            log.warn("Redis get failed for cacheKey: {}, evicting: {}", cacheKey, e.getMessage());
+            try {
+                redisService.delete(cacheKey);
+            } catch (Exception ignored) {}
+        }
 
         if (cached != null) {
             log.info("Returning cached product page for key");

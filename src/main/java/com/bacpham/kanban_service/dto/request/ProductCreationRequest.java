@@ -2,6 +2,7 @@ package com.bacpham.kanban_service.dto.request;
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;
+import java.util.List;
 import java.util.Set;
 
 @Getter
@@ -19,6 +20,6 @@ public class ProductCreationRequest {
     Set<String> categories;
     String supplierId;
     Set<SubProductCreationRequest> subProducts;
-    Set<String> images;
+    List<String> images;
 }
 

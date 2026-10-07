@@ -4,6 +4,7 @@ import lombok.*;
 import lombok.experimental.FieldDefaults;
 
 import java.io.Serializable;
+import java.util.List;
 import java.util.Set;
 
 @Getter
@@ -24,5 +25,5 @@ public class ProductResponse implements Serializable {
     Set<CategoryResponse> categories;
     Set<FilterSubProductResponse> subProducts;
     String supplierId;
-    Set<String> images;
+    List<String> images;
 }

@@ -3,7 +3,7 @@ package com.bacpham.kanban_service.dto.response;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
-import java.util.Set;
+import java.util.List;
 
 @Getter
 @Setter
@@ -14,5 +14,5 @@ import java.util.Set;
 public class ProductAiResponse {
     String id;
     String title;
-    Set<String> images;
+    List<String> images;
 }
