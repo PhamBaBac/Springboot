@@ -7,10 +7,11 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class SocketConfig {
     @Bean
-    public SocketIOServer socketIOServer() {
+    public SocketIOServer socketIOServer(SocketAuthorizationListener authorizationListener) {
         com.corundumstudio.socketio.Configuration config = new com.corundumstudio.socketio.Configuration();
         config.setPort(8099);
         config.setOrigin("*");
+        config.setAuthorizationListener(authorizationListener);
         return new SocketIOServer(config);
     }
 }

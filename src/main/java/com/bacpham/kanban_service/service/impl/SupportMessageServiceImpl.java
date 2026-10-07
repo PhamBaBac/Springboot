@@ -3,6 +3,7 @@ package com.bacpham.kanban_service.service.impl;
 import com.bacpham.kanban_service.dto.request.SupportMessageRequest;
 import com.bacpham.kanban_service.dto.response.SupportMessageResponse;
 import com.bacpham.kanban_service.enums.MessageStatus;
+import com.bacpham.kanban_service.enums.MessageType;
 import com.bacpham.kanban_service.enums.Role;
 import com.bacpham.kanban_service.mapper.SupportMessageMapper;
 import com.bacpham.kanban_service.entity.SupportMessage;
@@ -30,12 +31,21 @@ public class SupportMessageServiceImpl implements ISupportMessageService {
     public SupportMessage saveMessage(SupportMessageRequest request) {
         String conversationId = generateConversationId(request);
 
+        MessageType messageType = request.type();
+        if (messageType == null) {
+            messageType = (request.images() != null && !request.images().isEmpty())
+                    ? MessageType.IMAGE
+                    : MessageType.TEXT;
+        }
+
         SupportMessage message = SupportMessage.builder()
                 .conversationId(conversationId)
                 .senderId(request.senderId())
                 .receiverId(request.receiverId())
                 .role(request.role())
+                .type(messageType)
                 .content(request.content())
+                .images(request.images())
                 .avatar(request.avatar())
                 .username(request.username())
                 .status(MessageStatus.PENDING)
@@ -94,12 +104,24 @@ public class SupportMessageServiceImpl implements ISupportMessageService {
             String customerAvatar = customerMsgOpt.map(SupportMessage::getAvatar)
                     .orElseGet(() -> lastMsgOpt.map(SupportMessage::getAvatar).orElse(null));
 
+            String lastMessageText = lastMsgOpt.map(msg -> {
+                boolean hasImages = msg.getImages() != null && !msg.getImages().isEmpty();
+                if (hasImages || msg.getType() == MessageType.IMAGE) {
+                    int count = msg.getImages() != null ? msg.getImages().size() : 1;
+                    String imgLabel = count > 1 ? "[" + count + " hình ảnh]" : "[Hình ảnh]";
+                    return (msg.getContent() != null && !msg.getContent().isBlank())
+                            ? imgLabel + " " + msg.getContent()
+                            : imgLabel;
+                }
+                return msg.getContent() != null ? msg.getContent() : "";
+            }).orElse("");
+
             return com.bacpham.kanban_service.dto.response.ConversationSummaryResponse.builder()
                     .conversationId(convId)
                     .customerId(customerId)
                     .customerName(customerName)
                     .customerAvatar(customerAvatar)
-                    .lastMessage(lastMsgOpt.map(SupportMessage::getContent).orElse(""))
+                    .lastMessage(lastMessageText)
                     .lastMessageTime(lastMsgOpt.map(SupportMessage::getCreatedAt).orElse(null))
                     .lastSenderRole(lastMsgOpt.map(SupportMessage::getRole).orElse(Role.USER))
                     .unreadCount(unreadCount != null ? unreadCount : 0L)

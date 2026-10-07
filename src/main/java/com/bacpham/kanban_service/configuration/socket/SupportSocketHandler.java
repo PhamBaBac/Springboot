@@ -1,19 +1,23 @@
 package com.bacpham.kanban_service.configuration.socket;
 
+import com.bacpham.kanban_service.configuration.security.JwtService;
 import com.bacpham.kanban_service.dto.request.SupportMessageRequest;
 import com.bacpham.kanban_service.dto.response.SupportMessageResponse;
 import com.bacpham.kanban_service.entity.SupportMessage;
+import com.bacpham.kanban_service.entity.User;
 import com.bacpham.kanban_service.enums.MessageStatus;
+import com.bacpham.kanban_service.enums.MessageType;
+import com.bacpham.kanban_service.enums.NotificationPriority;
+import com.bacpham.kanban_service.enums.NotificationType;
 import com.bacpham.kanban_service.enums.Role;
+import com.bacpham.kanban_service.event.NotificationEvent;
 import com.bacpham.kanban_service.mapper.SupportMessageMapper;
 import com.bacpham.kanban_service.service.ISupportMessageService;
+import com.bacpham.kanban_service.service.UserCacheService;
 import com.corundumstudio.socketio.SocketIOServer;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import com.bacpham.kanban_service.enums.NotificationPriority;
-import com.bacpham.kanban_service.enums.NotificationType;
-import com.bacpham.kanban_service.event.NotificationEvent;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
@@ -32,6 +36,8 @@ public class SupportSocketHandler {
     private final ISupportMessageService supportMessageService;
     private final SupportMessageMapper supportMessageMapper;
     private final ApplicationEventPublisher eventPublisher;
+    private final JwtService jwtService;
+    private final UserCacheService userCacheService;
 
     public static final String ADMIN_CHANNEL = "admin_support_channel";
 
@@ -45,42 +51,122 @@ public class SupportSocketHandler {
     @PostConstruct
     public void registerListeners() {
         socketIOServer.addConnectListener(client -> {
+            String token = SocketAuthorizationListener.extractToken(client.getHandshakeData());
+            if (token != null) {
+                try {
+                    String email = jwtService.extractUsername(token);
+                    if (email != null && !email.isBlank()) {
+                        User user = userCacheService.getUserByEmail(email);
+                        if (user != null) {
+                            // Lưu danh tính người dùng vào session của client socket
+                            client.set("userId", user.getId());
+                            client.set("email", user.getEmail());
+                            client.set("role", user.getRole());
+                            client.set("username", user.getFirstname() + " " + user.getLastname());
+                            client.set("avatar", user.getAvatarUrl());
+
+                            // Tự động gia nhập room cá nhân của chính user
+                            String personalRoom = "user_" + user.getId();
+                            client.joinRoom(personalRoom);
+
+                            log.info("Socket client connected: sessionId={}, email={}, role={}, auto-joined room {}",
+                                    client.getSessionId(), user.getEmail(), user.getRole(), personalRoom);
+                            return;
+                        }
+                    }
+                } catch (Exception e) {
+                    log.error("Lỗi khởi tạo session socket cho client {}: {}", client.getSessionId(), e.getMessage());
+                }
+            }
             log.info("Socket client connected: sessionId={}", client.getSessionId());
         });
 
         socketIOServer.addDisconnectListener(client -> {
-            log.info("Socket client disconnected: sessionId={}", client.getSessionId());
+            log.info("Socket client disconnected: sessionId={}, userId={}",
+                    client.getSessionId(), client.get("userId"));
         });
 
+        // 1. Phân quyền kênh Quản trị viên (Chỉ ADMIN và MANAGER được phép vào)
         socketIOServer.addEventListener("join_admin_channel", Map.class, (client, data, ackSender) -> {
+            Role role = client.get("role");
+            if (role != Role.ADMIN && role != Role.MANAGER) {
+                log.warn("Cảnh báo bảo mật: Client {} (role={}) cố tình vào kênh ADMIN mà không có quyền!",
+                        client.getSessionId(), role);
+                client.sendEvent("permission_denied", Map.of(
+                        "message", "Bạn không có quyền truy cập kênh quản trị viên!"
+                ));
+                return;
+            }
             client.joinRoom(ADMIN_CHANNEL);
-            log.info("Staff client {} joined room {}", client.getSessionId(), ADMIN_CHANNEL);
+            log.info("Nhân viên {} (role={}) đã vào room {}", client.getSessionId(), role, ADMIN_CHANNEL);
         });
 
+        // 2. Kênh thông báo cá nhân người dùng
         socketIOServer.addEventListener("join_user_channel", Map.class, (client, data, ackSender) -> {
-            String userId = data != null ? (String) data.get("userId") : null;
-            if (userId != null && !userId.isBlank()) {
-                String room = "user_" + userId.trim();
+            String sessionUserId = client.get("userId");
+            Role role = client.get("role");
+            String requestedUserId = data != null ? (String) data.get("userId") : null;
+
+            if (sessionUserId == null) {
+                log.warn("Client {} chưa xác thực gọi join_user_channel", client.getSessionId());
+                return;
+            }
+
+            // User thường chỉ được vào room cá nhân của chính mình.
+            // Admin/Manager được phép vào room người dùng để hỗ trợ realtime.
+            if (requestedUserId == null || requestedUserId.isBlank() || requestedUserId.equals(sessionUserId)) {
+                String room = "user_" + sessionUserId;
                 client.joinRoom(room);
-                log.info("Client {} joined user room {}", client.getSessionId(), room);
+                log.info("Client {} (role={}) joined personal room {}", client.getSessionId(), role, room);
+            } else if (role == Role.ADMIN || role == Role.MANAGER) {
+                String room = "user_" + requestedUserId.trim();
+                client.joinRoom(room);
+                log.info("Staff {} joined user room {}", client.getSessionId(), room);
+            } else {
+                log.warn("Cảnh báo: User {} cố tình join room của User {} khác -> Bị từ chối!",
+                        sessionUserId, requestedUserId);
+                client.sendEvent("permission_denied", Map.of(
+                        "message", "Bạn không có quyền truy cập kênh của người dùng khác!"
+                ));
             }
         });
 
         socketIOServer.addEventListener("leave_user_channel", Map.class, (client, data, ackSender) -> {
-            String userId = data != null ? (String) data.get("userId") : null;
-            if (userId != null && !userId.isBlank()) {
-                String room = "user_" + userId.trim();
+            String sessionUserId = client.get("userId");
+            if (sessionUserId != null) {
+                String room = "user_" + sessionUserId;
                 client.leaveRoom(room);
                 log.info("Client {} left user room {}", client.getSessionId(), room);
             }
         });
+
+        // 3. Phân quyền cuộc trò chuyện hỗ trợ
         socketIOServer.addEventListener("join_conversation", Map.class, (client, data, ackSender) -> {
             String conversationId = data != null ? (String) data.get("conversationId") : null;
-            if (conversationId != null && !conversationId.isBlank()) {
-                String room = "conversation_" + conversationId;
-                client.joinRoom(room);
-                log.info("Client {} joined room {}", client.getSessionId(), room);
+            if (conversationId == null || conversationId.isBlank()) {
+                return;
             }
+
+            String sessionUserId = client.get("userId");
+            Role role = client.get("role");
+
+            // Khách hàng thường (USER) chỉ được vào cuộc trò chuyện của chính mình ("user_" + sessionUserId)
+            // ADMIN và MANAGER được phép tham gia mọi cuộc trò chuyện để tư vấn
+            if (role == Role.USER && sessionUserId != null) {
+                String allowedRoom = "user_" + sessionUserId;
+                if (!conversationId.equals(allowedRoom) && !conversationId.equals(sessionUserId)) {
+                    log.warn("Cảnh báo: User {} cố tình tham gia conversation của người khác ({})",
+                            sessionUserId, conversationId);
+                    client.sendEvent("permission_denied", Map.of(
+                            "message", "Bạn không có quyền tham gia cuộc trò chuyện này!"
+                    ));
+                    return;
+                }
+            }
+
+            String room = "conversation_" + conversationId;
+            client.joinRoom(room);
+            log.info("Client {} (role={}) joined room {}", client.getSessionId(), role, room);
         });
 
         socketIOServer.addEventListener("leave_conversation", Map.class, (client, data, ackSender) -> {
@@ -92,14 +178,50 @@ public class SupportSocketHandler {
             }
         });
 
+        // 4. Gửi tin nhắn chat bảo mật (ngăn mạo danh senderId và role)
         socketIOServer.addEventListener("send_message", SocketChatMessage.class, (client, messageData, ackSender) -> {
-            if (messageData == null || messageData.getContent() == null || messageData.getContent().trim().isEmpty()) {
+            if (messageData == null) {
                 return;
             }
 
-            Role role = messageData.getRole() != null ? messageData.getRole() : Role.USER;
+            boolean hasContent = messageData.getContent() != null && !messageData.getContent().trim().isEmpty();
+            List<String> sanitizedImages = null;
+            if (messageData.getImages() != null && !messageData.getImages().isEmpty()) {
+                sanitizedImages = messageData.getImages().stream()
+                        .filter(url -> url != null && !url.isBlank())
+                        .limit(5)
+                        .toList();
+            }
+            boolean hasImages = sanitizedImages != null && !sanitizedImages.isEmpty();
 
-            String senderId = messageData.getSenderId();
+            if (!hasContent && !hasImages) {
+                return;
+            }
+
+            String sessionUserId = client.get("userId");
+            Role sessionRole = client.get("role");
+            String sessionUsername = client.get("username");
+            String sessionAvatar = client.get("avatar");
+
+            // Danh tính bắt buộc lấy từ Session đã xác thực qua JWT
+            Role role = sessionRole != null ? sessionRole : (messageData.getRole() != null ? messageData.getRole() : Role.USER);
+            String senderId = sessionUserId != null ? sessionUserId : messageData.getSenderId();
+            String username = (messageData.getUsername() != null && !messageData.getUsername().isBlank())
+                    ? messageData.getUsername() : (sessionUsername != null ? sessionUsername : "Khách hàng");
+            String avatar = (messageData.getAvatar() != null && !messageData.getAvatar().isBlank())
+                    ? messageData.getAvatar() : sessionAvatar;
+
+            // Khách hàng chỉ được gửi tin nhắn trong cuộc trò chuyện của chính mình
+            if (role == Role.USER && sessionUserId != null) {
+                String convId = messageData.getConversationId();
+                String allowedRoom = "user_" + sessionUserId;
+                if (convId == null || (!convId.equals(allowedRoom) && !convId.equals(sessionUserId))) {
+                    log.warn("User {} cố tình gửi tin nhắn vào conversation của người khác: {}",
+                            sessionUserId, convId);
+                    return;
+                }
+            }
+
             if (role == Role.USER && senderId != null && !senderId.isBlank()) {
                 long now = System.currentTimeMillis();
                 List<Long> timestamps = rateLimitMap.computeIfAbsent(senderId, k -> new CopyOnWriteArrayList<>());
@@ -114,17 +236,25 @@ public class SupportSocketHandler {
                 timestamps.add(now);
             }
 
-            log.info("Received socket message: from={}, role={}, conv={}",
-                    messageData.getUsername(), role, messageData.getConversationId());
+            MessageType messageType = messageData.getType() != null
+                    ? messageData.getType()
+                    : (hasImages ? MessageType.IMAGE : MessageType.TEXT);
+
+            String trimmedContent = hasContent ? messageData.getContent().trim() : "";
+
+            log.info("Received socket message: from={}, role={}, conv={}, type={}, imagesCount={}",
+                    username, role, messageData.getConversationId(), messageType, (sanitizedImages != null ? sanitizedImages.size() : 0));
 
             SupportMessageRequest request = SupportMessageRequest.builder()
                     .conversationId(messageData.getConversationId())
-                    .senderId(messageData.getSenderId())
+                    .senderId(senderId)
                     .receiverId(messageData.getReceiverId())
-                    .content(messageData.getContent().trim())
+                    .content(trimmedContent)
+                    .type(messageType)
+                    .images(sanitizedImages)
                     .role(role)
-                    .avatar(messageData.getAvatar())
-                    .username(messageData.getUsername())
+                    .avatar(avatar)
+                    .username(username)
                     .status(MessageStatus.SENT)
                     .createdAt(new Date())
                     .build();
@@ -147,11 +277,18 @@ public class SupportSocketHandler {
                         lastNotificationTimeMap.put(convId, now);
                     }
 
-                    String senderName = messageData.getUsername() != null && !messageData.getUsername().isBlank()
-                            ? messageData.getUsername() : "Khách hàng";
-                    String snippet = messageData.getContent() != null && messageData.getContent().length() > 60
-                            ? messageData.getContent().substring(0, 57) + "..."
-                            : messageData.getContent();
+                    String senderName = username != null && !username.isBlank() ? username : "Khách hàng";
+                    String snippet;
+                    if (hasImages) {
+                        String imgLabel = sanitizedImages.size() > 1 ? "[" + sanitizedImages.size() + " hình ảnh]" : "[Hình ảnh]";
+                        snippet = hasContent
+                                ? (trimmedContent.length() > 50 ? imgLabel + " " + trimmedContent.substring(0, 47) + "..." : imgLabel + " " + trimmedContent)
+                                : imgLabel;
+                    } else {
+                        snippet = trimmedContent.length() > 60
+                                ? trimmedContent.substring(0, 57) + "..."
+                                : trimmedContent;
+                    }
 
                     eventPublisher.publishEvent(NotificationEvent.of(
                             this,
