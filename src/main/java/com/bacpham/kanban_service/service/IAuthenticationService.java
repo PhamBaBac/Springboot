@@ -4,6 +4,7 @@ import java.io.IOException;
 
 import com.bacpham.kanban_service.dto.request.AuthenticationRequest;
 import com.bacpham.kanban_service.dto.request.RegisterRequest;
+import com.bacpham.kanban_service.dto.request.SendCodeRequest;
 import com.bacpham.kanban_service.dto.request.VerificationRequest;
 import com.bacpham.kanban_service.dto.response.AuthenticationResponse;
 
@@ -21,6 +22,8 @@ public interface IAuthenticationService {
     AuthenticationResponse verifyCode(VerificationRequest verificationRequest, HttpServletResponse response);
 
     void sendCodeEmail(String email) throws MessagingException;
+
+    void sendCodeEmail(SendCodeRequest request) throws MessagingException;
 
 
     void logout(HttpServletRequest request, HttpServletResponse response) throws IOException;

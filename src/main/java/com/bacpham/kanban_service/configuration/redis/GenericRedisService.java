@@ -110,4 +110,11 @@ public class GenericRedisService<K, F, V> {
         }
     }
 
+    public Long increment(K key) {
+        return redisTemplate.opsForValue().increment(key);
+    }
+
+    public Long increment(K key, long delta) {
+        return redisTemplate.opsForValue().increment(key, delta);
+    }
 }

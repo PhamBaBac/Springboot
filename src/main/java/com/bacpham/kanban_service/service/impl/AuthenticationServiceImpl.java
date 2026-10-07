@@ -29,6 +29,7 @@ import com.bacpham.kanban_service.configuration.redis.GenericRedisService;
 import com.bacpham.kanban_service.configuration.security.JwtService;
 import com.bacpham.kanban_service.dto.request.AuthenticationRequest;
 import com.bacpham.kanban_service.dto.request.RegisterRequest;
+import com.bacpham.kanban_service.dto.request.SendCodeRequest;
 import com.bacpham.kanban_service.dto.request.VerificationRequest;
 import com.bacpham.kanban_service.dto.response.AuthenticationResponse;
 import com.bacpham.kanban_service.entity.User;
@@ -36,6 +37,7 @@ import com.bacpham.kanban_service.helper.exception.AppException;
 import com.bacpham.kanban_service.helper.exception.ErrorCode;
 import com.bacpham.kanban_service.repository.UserRepository;
 import com.bacpham.kanban_service.service.IAuthenticationService;
+import com.bacpham.kanban_service.service.TurnstileService;
 import com.bacpham.kanban_service.tfa.TwoFactorAuthenticationService;
 import com.bacpham.kanban_service.utils.email.EmailService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -72,11 +74,17 @@ public class AuthenticationServiceImpl implements IAuthenticationService {
     private final TwoFactorAuthenticationService tfaService;
     private final EmailService emailService;
     private final GenericRedisService<String, String, String> redisService;
+    private final TurnstileService turnstileService;
     @Value("${application.cookie.secure:false}")
     private boolean isCookieSecure;
 
     @Override
     public void register(RegisterRequest request) {
+        // Kiểm tra Captcha chống bot tạo tài khoản tự động
+        if (!turnstileService.verify(request.getCaptchaToken(), null)) {
+            throw new AppException(ErrorCode.INVALID_CAPTCHA);
+        }
+
         if (request.getRole() == null) {
             request.setRole(Role.USER);
         }
@@ -115,9 +123,49 @@ public class AuthenticationServiceImpl implements IAuthenticationService {
 
     @Override
     public AuthenticationResponse authenticate(AuthenticationRequest request, HttpServletResponse response) {
-        authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
-        );
+        String email = request.getEmail() != null ? request.getEmail().trim().toLowerCase() : "";
+        String lockKey = "login_lock:" + email;
+        if (redisService.get(lockKey) != null) {
+            throw new AppException(ErrorCode.ACCOUNT_TEMPORARILY_LOCKED);
+        }
+
+        String failedKey = "login_failed:" + email;
+        String failedAttemptsStr = redisService.get(failedKey);
+        int failedAttempts = 0;
+        if (failedAttemptsStr != null) {
+            try {
+                failedAttempts = Integer.parseInt(failedAttemptsStr);
+            } catch (NumberFormatException ignored) {}
+        }
+
+        // Nếu nhập sai từ 3 lần trở lên -> Bắt buộc giải mã Captcha
+        if (failedAttempts >= 3) {
+            if (!turnstileService.verify(request.getCaptchaToken(), null)) {
+                throw new AppException(ErrorCode.CAPTCHA_REQUIRED, "Phát hiện đăng nhập sai nhiều lần. Vui lòng xác thực mã bảo vệ.");
+            }
+        }
+
+        try {
+            authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
+            );
+        } catch (org.springframework.security.core.AuthenticationException ex) {
+            Long attempts = redisService.increment(failedKey);
+            if (attempts != null && attempts == 1) {
+                redisService.setTimeToLive(failedKey, 15, TimeUnit.MINUTES);
+            }
+            if (attempts != null && attempts >= 5) {
+                redisService.set(lockKey, "locked");
+                redisService.setTimeToLive(lockKey, 15, TimeUnit.MINUTES);
+                redisService.delete(failedKey);
+                throw new AppException(ErrorCode.ACCOUNT_TEMPORARILY_LOCKED);
+            }
+            throw new AppException(ErrorCode.INVALID_CREDENTIALS);
+        }
+
+        // Đăng nhập thành công -> Xóa bộ đếm và trạng thái khóa
+        redisService.delete(failedKey);
+        redisService.delete(lockKey);
 
         User user = repository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
@@ -251,6 +299,17 @@ public class AuthenticationServiceImpl implements IAuthenticationService {
                     .build();
             response.addHeader(HttpHeaders.SET_COOKIE, cleanCookie.toString());
         }
+    }
+
+    @Override
+    public void sendCodeEmail(SendCodeRequest request) throws MessagingException {
+        if (request == null) {
+            throw new AppException(ErrorCode.INVALID_INPUT);
+        }
+        if (!turnstileService.verify(request.getCaptchaToken(), null)) {
+            throw new AppException(ErrorCode.INVALID_CAPTCHA);
+        }
+        sendCodeEmail(request.getEmail());
     }
 
     @Override

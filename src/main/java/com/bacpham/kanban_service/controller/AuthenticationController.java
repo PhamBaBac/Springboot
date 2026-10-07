@@ -1,5 +1,6 @@
 package com.bacpham.kanban_service.controller;
 
+import com.bacpham.kanban_service.configuration.ratelimit.RateLimit;
 import com.bacpham.kanban_service.dto.request.*;
 import com.bacpham.kanban_service.dto.response.AuthenticationResponse;
 import com.bacpham.kanban_service.service.IAuthenticationService;
@@ -25,6 +26,7 @@ public class AuthenticationController {
     private final IRedisCartService redisCartService;
 
     @PostMapping("/register")
+    @RateLimit(limit = 5, duration = 60, prefix = "auth_register", message = "Bạn đã thử đăng ký quá nhiều lần. Vui lòng thử lại sau ít phút.")
     public ApiResponse<?> register(
             @Valid @RequestBody RegisterRequest request
     ) {
@@ -36,14 +38,16 @@ public class AuthenticationController {
     }
 
     @PostMapping("/send-code-email")
+    @RateLimit(limit = 3, duration = 60, prefix = "auth_send_code", message = "Bạn đã gửi yêu cầu nhận mã quá nhiều lần. Vui lòng chờ 1 phút.")
     public ApiResponse<?> sendCodeEmail(@RequestBody SendCodeRequest request) throws MessagingException {
-        service.sendCodeEmail(request.getEmail());
+        service.sendCodeEmail(request);
         return ApiResponse.builder()
                 .message("Gửi mã xác thực thành công")
                 .build();
     }
 
     @PostMapping("/authenticate")
+    @RateLimit(limit = 10, duration = 60, prefix = "auth_login", message = "Quá nhiều yêu cầu đăng nhập từ thiết bị của bạn. Vui lòng thử lại sau ít phút.")
     public ResponseEntity<ApiResponse<?>> authenticate(
             @RequestBody AuthenticationRequest request,
             @RequestHeader(value = "X-Session-Id", required = false) String sessionId,
@@ -107,6 +111,7 @@ public class AuthenticationController {
                 .build();
     }
     @PostMapping("/verify-code-email")
+    @RateLimit(limit = 10, duration = 60, prefix = "auth_verify_otp", message = "Bạn đã nhập mã xác thực quá nhiều lần. Vui lòng thử lại sau.")
     public ApiResponse<?> verifyCodeEmail(
             @RequestBody VerificationRequest request,
             HttpServletResponse response

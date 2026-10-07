@@ -76,6 +76,10 @@ application:
   oauth2:
     authorized-redirect-uri: ${OAUTH2_AUTHORIZED_REDIRECT_URI:http://localhost:3004/}
   security:
+    turnstile:
+      secret-key: ${TURNSTILE_SECRET_KEY:1x0000000000000000000000000000000AA}
+      verify-url: ${TURNSTILE_VERIFY_URL:https://challenges.cloudflare.com/turnstile/v0/siteverify}
+      enabled: ${TURNSTILE_ENABLED:true}
     jwt:
       secret-key: ${KEY_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
       expiration: ${JWT_EXPIRATION:86400000}

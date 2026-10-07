@@ -35,4 +35,6 @@ public class RegisterRequest {
     private Role role = Role.USER;
 
     private boolean mfaEnabled;
+
+    private String captchaToken;
 }
