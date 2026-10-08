@@ -166,6 +166,34 @@ public interface ProductRepository extends JpaRepository<Product, String>, JpaSp
     );
 
     @Query("""
+        SELECT p.id FROM Product p
+        WHERE p.deleted = false
+          AND p.id <> :productId
+          AND EXISTS (
+              SELECT 1 FROM p.categories c WHERE c.id IN :categoryIds
+          )
+        ORDER BY p.createdAt DESC
+        """)
+    List<String> findRelatedProductIds(
+            @Param("categoryIds") java.util.Collection<String> categoryIds,
+            @Param("productId") String productId,
+            Pageable pageable
+    );
+
+    @Query("""
+        SELECT p.id FROM Product p
+        WHERE p.deleted = false
+          AND p.id <> :productId
+          AND p.supplier.id = :supplierId
+        ORDER BY p.createdAt DESC
+        """)
+    List<String> findRelatedProductIdsBySupplier(
+            @Param("supplierId") String supplierId,
+            @Param("productId") String productId,
+            Pageable pageable
+    );
+
+    @Query("""
     SELECT new com.bacpham.kanban_service.dto.response.LowQuantityProductResponse(
         p.id,
         p.slug,

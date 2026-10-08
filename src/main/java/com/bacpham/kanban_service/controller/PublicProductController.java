@@ -3,7 +3,6 @@ package com.bacpham.kanban_service.controller;
 import com.bacpham.kanban_service.dto.request.ApiResponse;
 import com.bacpham.kanban_service.dto.response.PageResponse;
 import com.bacpham.kanban_service.dto.response.ProductResponse;
-import com.bacpham.kanban_service.gemini.service.RecommendationService;
 import com.bacpham.kanban_service.service.IProductService;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -22,7 +21,6 @@ import java.util.List;
 @Slf4j
 public class PublicProductController {
         IProductService productService;
-        RecommendationService recommendationService;
 
         @GetMapping
         ApiResponse<List<ProductResponse>> getProducts() {
@@ -57,6 +55,7 @@ public class PublicProductController {
                         @RequestParam(value = "catIds", required = false) List<String> catIds,
                         @RequestParam(value = "search", required = false) String search,
                         @RequestParam(value = "price", required = false) List<Double> price,
+                        @RequestParam(value = "sortBy", required = false) String sortBy,
                         @RequestParam(value = "page", defaultValue = "1") int page,
                         @RequestParam(value = "pageSize", defaultValue = "12") int pageSize) {
                 Pageable pageable = PageRequest.of(page - 1, pageSize);
@@ -65,6 +64,7 @@ public class PublicProductController {
                                 catIds,
                                 search,
                                 price,
+                                sortBy,
                                 pageable);
 
                 PageResponse<ProductResponse> response = PageResponse.<ProductResponse>builder()
@@ -85,8 +85,8 @@ public class PublicProductController {
         public ApiResponse<List<ProductResponse>> getRelatedProducts(
                         @PathVariable String id,
                         @RequestParam(value = "limit", required = false, defaultValue = "4") int limit) {
-                int safeLimit = Math.min(Math.max(limit, 1), 4);
-                List<ProductResponse> related = recommendationService.getRelatedProductsByAi(id, safeLimit);
+                int safeLimit = Math.min(Math.max(limit, 1), 8);
+                List<ProductResponse> related = productService.getRelatedProducts(id, safeLimit);
                 return ApiResponse.<List<ProductResponse>>builder()
                                 .data(related)
                                 .message("Lấy danh sách sản phẩm liên quan thành công")

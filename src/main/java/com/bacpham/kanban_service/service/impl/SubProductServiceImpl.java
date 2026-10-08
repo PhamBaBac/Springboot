@@ -5,7 +5,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import java.util.concurrent.TimeUnit;
+
 import org.springframework.stereotype.Service;
+
+import com.bacpham.kanban_service.configuration.redis.GenericRedisService;
 
 import com.bacpham.kanban_service.dto.request.SubProductCreationRequest;
 import com.bacpham.kanban_service.dto.response.SubProductResponse;
@@ -31,6 +35,7 @@ public class SubProductServiceImpl implements ISubProductService {
     SubProductRepository subProductRepository;
     ProductRepository productRepository;
     SubProductMapper subProductMapper;
+    GenericRedisService<String, String, Object> redisService;
 
     public SubProductResponse createSubProduct(SubProductCreationRequest request) {
         SubProduct subProduct = subProductMapper.toSubProduct(request);
@@ -60,6 +65,7 @@ public class SubProductServiceImpl implements ISubProductService {
         }
 
         subProduct = subProductRepository.save(subProduct);
+        evictProductCache();
 
         return subProductMapper.toSubProductResponse(subProduct);
     }
@@ -78,15 +84,42 @@ public class SubProductServiceImpl implements ISubProductService {
             search = null;
         }
 
+        String catPart = (catIds != null && !catIds.isEmpty())
+                ? String.join(",", catIds.stream().sorted().toList())
+                : "all";
+        String searchPart = (search != null && !search.isBlank())
+                ? search.trim().toLowerCase()
+                : "none";
+        String cacheKey = "shop:filters:" + catPart + ":" + searchPart;
+
+        try {
+            Object cached = redisService.get(cacheKey);
+            if (cached instanceof Map) {
+                return (Map<String, List<?>>) cached;
+            }
+        } catch (Exception e) {
+            log.warn("Redis get failed for filter values key: {}, evicting: {}", cacheKey, e.getMessage());
+            try {
+                redisService.delete(cacheKey);
+            } catch (Exception ignored) {}
+        }
+
         Map<String, List<?>> result = new HashMap<>();
         if (catIds != null) {
             result.put("prices", subProductRepository.findDistinctPricesByCatIds(catIds, search));
         } else {
             result.put("prices", subProductRepository.findDistinctPricesWithoutCatIds(search));
         }
+
+        try {
+            redisService.set(cacheKey, result);
+            redisService.setTimeToLive(cacheKey, 2, TimeUnit.HOURS);
+        } catch (Exception e) {
+            log.warn("Redis set failed for filter values key: {}", cacheKey, e);
+        }
+
         return result;
     }
-
 
     public void delete(String id) {
         SubProduct subProduct = subProductRepository.findById(id)
@@ -94,6 +127,7 @@ public class SubProductServiceImpl implements ISubProductService {
 
         subProduct.setDeleted(true);
         subProductRepository.save(subProduct);
+        evictProductCache();
     }
 
     public SubProductResponse updateSubProduct(SubProductCreationRequest request) {
@@ -125,8 +159,24 @@ public class SubProductServiceImpl implements ISubProductService {
         }
         syncAttributes(subProduct, request);
         subProduct = subProductRepository.save(subProduct);
+        evictProductCache();
 
         return subProductMapper.toSubProductResponse(subProduct);
+    }
+
+    private void evictProductCache() {
+        try {
+            redisService.deleteKeysMatching("shop:products:*");
+            redisService.deleteKeysMatching("product:page:*");
+            redisService.deleteKeysMatching("shop:filters:*");
+            // Phase 2: invalidate home-aggregate & product detail caches
+            redisService.deleteKeysMatching("home:bestSellers*");
+            redisService.deleteKeysMatching("home:newArrivals:*");
+            redisService.deleteKeysMatching("home:flashSale:*");
+            redisService.deleteKeysMatching("product:detail:*");
+        } catch (Exception e) {
+            log.warn("Failed to evict product cache: {}", e.getMessage());
+        }
     }
 
     private void syncAttributes(SubProduct subProduct, SubProductCreationRequest request) {

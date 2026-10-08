@@ -47,27 +47,45 @@ public class CategoryServiceImpl implements ICategoryService {
 
         CategoryResponse response = categoryMapper.toCategoryResponse(category);
         redisService.delete("categories");
+        redisService.deleteKeysMatching("shop:products:*");
 
         return response;
     }
 
     public List<CategoryResponse> getCategories() {
         String key = "categories";
+        try {
+            Map<String, CategoryResponse> cached = redisService.getField(key);
+            if (cached != null && !cached.isEmpty()) {
+                return new ArrayList<>(cached.values());
+            }
+        } catch (Exception e) {
+            log.warn("Redis get failed for categories, evicting: {}", e.getMessage());
+            try {
+                redisService.delete(key);
+            } catch (Exception ignored) {}
+        }
+
         List<Category> categoriesFromDb = categoryRepository.findAllByDeletedFalse();
         List<CategoryResponse> responses = categoriesFromDb.stream()
                 .map(categoryMapper::toCategoryResponse)
                 .toList();
 
-        redisService.delete(key);
-        if (!responses.isEmpty()) {
-            Map<String, CategoryResponse> toCache = responses.stream()
-                    .collect(Collectors.toMap(
-                            c -> c.getId(),
-                            c -> c
-                    ));
-            redisService.hashSetAll(key, toCache);
-            redisService.setTimeToLive(key, 1, TimeUnit.HOURS);
+        try {
+            if (!responses.isEmpty()) {
+                Map<String, CategoryResponse> toCache = responses.stream()
+                        .collect(Collectors.toMap(
+                                CategoryResponse::getId,
+                                c -> c,
+                                (existing, replacing) -> existing
+                        ));
+                redisService.hashSetAll(key, toCache);
+                redisService.setTimeToLive(key, 4, TimeUnit.HOURS);
+            }
+        } catch (Exception e) {
+            log.warn("Redis set failed for categories: {}", e.getMessage());
         }
+
         return responses;
     }
 
@@ -151,8 +169,9 @@ public class CategoryServiceImpl implements ICategoryService {
                 .orElseThrow(() -> new AppException(ErrorCode.CATEGORY_NOT_FOUND));
         category.setDeleted(true);
         categoryRepository.save(category);
-        
+
         redisService.delete("categories");
+        redisService.deleteKeysMatching("shop:products:*");
     }
 
     public CategoryResponse updateCategory(String categoryId, CategoryRequest request) {
@@ -161,11 +180,12 @@ public class CategoryServiceImpl implements ICategoryService {
 
         categoryMapper.updateCategoryFromRequest(request, category);
         category = categoryRepository.save(category);
-        
+
         CategoryResponse response = categoryMapper.toCategoryResponse(category);
-        
+
         redisService.delete("categories");
-        
+        redisService.deleteKeysMatching("shop:products:*");
+
         return response;
     }
 }

@@ -35,9 +35,19 @@ public interface IProductService {
             Pageable pageable
     );
 
+    Page<ProductResponse> getFilteredProducts(
+            List<String> categoryIds,
+            String search,
+            List<Double> priceRange,
+            String sortBy,
+            Pageable pageable
+    );
+
     List<ProductResponse> getBestSellers();
 
     List<ProductResponse> getNewArrivals(int limit);
 
     List<ProductResponse> getFlashSaleProducts(int limit);
+
+    List<ProductResponse> getRelatedProducts(String productId, int limit);
 }

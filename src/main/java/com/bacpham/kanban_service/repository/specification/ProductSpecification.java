@@ -131,9 +131,11 @@ public class ProductSpecification {
                 priceSubquery.select(cb.min(effectivePrice))
                         .where(
                                 cb.equal(subRoot.get("product"), root),
+                                cb.isNotNull(subRoot.get("price")),
+                                cb.gt(subRoot.get("price"), 0),
                                 cb.or(cb.isNull(subRoot.get("deleted")), cb.isFalse(subRoot.get("deleted"))));
 
-                query.orderBy(cb.asc(priceSubquery), cb.desc(root.get("createdAt")));
+                query.orderBy(cb.asc(cb.coalesce(priceSubquery, 999999999.0)), cb.desc(root.get("createdAt")));
                 break;
             }
 
@@ -149,12 +151,14 @@ public class ProductSpecification {
                         .otherwise(subRoot.get("price"))
                         .as(Double.class);
 
-                priceSubquery.select(cb.min(effectivePrice))
+                priceSubquery.select(cb.max(effectivePrice))
                         .where(
                                 cb.equal(subRoot.get("product"), root),
+                                cb.isNotNull(subRoot.get("price")),
+                                cb.gt(subRoot.get("price"), 0),
                                 cb.or(cb.isNull(subRoot.get("deleted")), cb.isFalse(subRoot.get("deleted"))));
 
-                query.orderBy(cb.desc(priceSubquery), cb.desc(root.get("createdAt")));
+                query.orderBy(cb.desc(cb.coalesce(priceSubquery, 0.0)), cb.desc(root.get("createdAt")));
                 break;
             }
 

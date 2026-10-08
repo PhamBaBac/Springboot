@@ -58,7 +58,7 @@ public class GlobalExceptionHandler {
             return ResponseEntity.status(errorCode.getStatusCode()).body(apiResponse);
         }
 
-        log.error("Unhandled Exception [{}]: {}", e.getClass().getSimpleName(), e.getMessage());
+        log.error("Unhandled Exception [{}]: {}", e.getClass().getSimpleName(), e.getMessage(), e);
         ApiResponse<Void> apiResponse = new ApiResponse<>();
         apiResponse.setCode(ErrorCode.UNCATEGORIZED.getCode());
         apiResponse.setMessage("Đã xảy ra lỗi trong quá trình xử lý. Vui lòng thử lại sau.");

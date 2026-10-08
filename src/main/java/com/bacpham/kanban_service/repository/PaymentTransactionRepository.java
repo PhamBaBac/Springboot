@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -22,6 +23,7 @@ public interface PaymentTransactionRepository extends JpaRepository<PaymentTrans
     Page<PaymentTransaction> findAllByOrderByCreatedAtDesc(Pageable pageable);
 
     @Modifying
+    @Transactional
     @Query("UPDATE PaymentTransaction pt SET pt.status = com.bacpham.kanban_service.enums.TransactionStatus.SUCCESS, pt.note = 'Đã thu tiền COD khi hoàn thành đơn hàng' " +
            "WHERE pt.status = com.bacpham.kanban_service.enums.TransactionStatus.PENDING " +
            "AND pt.transactionType = com.bacpham.kanban_service.enums.TransactionType.PAYMENT " +
@@ -29,6 +31,7 @@ public interface PaymentTransactionRepository extends JpaRepository<PaymentTrans
     int syncCompletedOrdersTransactions();
 
     @Modifying
+    @Transactional
     @Query("UPDATE PaymentTransaction pt SET pt.status = com.bacpham.kanban_service.enums.TransactionStatus.FAILED, pt.note = 'Hủy bút toán theo đơn hàng đã hủy' " +
            "WHERE pt.status = com.bacpham.kanban_service.enums.TransactionStatus.PENDING " +
            "AND pt.transactionType = com.bacpham.kanban_service.enums.TransactionType.PAYMENT " +
