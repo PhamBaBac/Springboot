@@ -21,5 +21,6 @@ public class ProductCreationRequest {
     String supplierId;
     Set<SubProductCreationRequest> subProducts;
     List<String> images;
+    Boolean isNew;
 }
 

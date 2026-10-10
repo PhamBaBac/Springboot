@@ -60,7 +60,7 @@ public class AuthenticationServiceImpl implements IAuthenticationService {
     public static final String REFRESH_TOKEN_COOKIE_USER = "refreshTokenUser";
 
     public static String getRefreshTokenCookieName(Role role) {
-        return (role == Role.ADMIN) ? REFRESH_TOKEN_COOKIE_ADMIN : REFRESH_TOKEN_COOKIE_USER;
+        return (role == Role.ADMIN || role == Role.MANAGER) ? REFRESH_TOKEN_COOKIE_ADMIN : REFRESH_TOKEN_COOKIE_USER;
     }
 
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
@@ -130,13 +130,13 @@ public class AuthenticationServiceImpl implements IAuthenticationService {
         }
 
         String failedKey = "login_failed:" + email;
-        String failedAttemptsStr = redisService.get(failedKey);
         int failedAttempts = 0;
-        if (failedAttemptsStr != null) {
-            try {
+        try {
+            String failedAttemptsStr = redisService.getAsString(failedKey);
+            if (failedAttemptsStr != null) {
                 failedAttempts = Integer.parseInt(failedAttemptsStr);
-            } catch (NumberFormatException ignored) {}
-        }
+            }
+        } catch (NumberFormatException ignored) {}
 
         // Nếu nhập sai từ 3 lần trở lên -> Bắt buộc giải mã Captcha
         if (failedAttempts >= 3) {
@@ -159,6 +159,9 @@ public class AuthenticationServiceImpl implements IAuthenticationService {
                 redisService.setTimeToLive(lockKey, 15, TimeUnit.MINUTES);
                 redisService.delete(failedKey);
                 throw new AppException(ErrorCode.ACCOUNT_TEMPORARILY_LOCKED);
+            }
+            if (attempts != null && attempts >= 3) {
+                throw new AppException(ErrorCode.CAPTCHA_REQUIRED, "Tài khoản hoặc mật khẩu không chính xác. Vui lòng xác thực mã bảo vệ.");
             }
             throw new AppException(ErrorCode.INVALID_CREDENTIALS);
         }
@@ -244,7 +247,7 @@ public class AuthenticationServiceImpl implements IAuthenticationService {
                     || (origin != null && origin.contains("5173"))
                     || (referer != null && referer.contains("5173"));
 
-            if (isAdminClient && user.getRole() != Role.ADMIN) {
+            if (isAdminClient && user.getRole() != Role.ADMIN && user.getRole() != Role.MANAGER) {
                 log.warn("Từ chối truy cập khi làm mới phiên: người dùng {} với vai trò {} cố gắng làm mới phiên quản trị", user.getEmail(), user.getRole());
                 writeErrorResponse(response, "Từ chối truy cập: Tài khoản không có quyền quản trị viên", HttpServletResponse.SC_FORBIDDEN);
                 return;
@@ -289,7 +292,26 @@ public class AuthenticationServiceImpl implements IAuthenticationService {
             }
         }
 
-        for (String cookieName : List.of(REFRESH_TOKEN_COOKIE_ADMIN, REFRESH_TOKEN_COOKIE_USER, REFRESH_TOKEN_COOKIE_NAME, "refresh_token")) {
+        String clientType = request.getHeader("X-Client-Type");
+        String origin = request.getHeader("Origin");
+        String referer = request.getHeader("Referer");
+        boolean isAdminClient = "admin".equalsIgnoreCase(clientType)
+                || (origin != null && origin.contains("5173"))
+                || (referer != null && referer.contains("5173"));
+        boolean isUserClient = "user".equalsIgnoreCase(clientType)
+                || (origin != null && (origin.contains("3000") || origin.contains("3004")))
+                || (referer != null && (referer.contains("3000") || referer.contains("3004")));
+
+        List<String> cookiesToClear;
+        if (isAdminClient && !isUserClient) {
+            cookiesToClear = List.of(REFRESH_TOKEN_COOKIE_ADMIN);
+        } else if (isUserClient && !isAdminClient) {
+            cookiesToClear = List.of(REFRESH_TOKEN_COOKIE_USER);
+        } else {
+            cookiesToClear = List.of(REFRESH_TOKEN_COOKIE_ADMIN, REFRESH_TOKEN_COOKIE_USER, REFRESH_TOKEN_COOKIE_NAME, "refresh_token");
+        }
+
+        for (String cookieName : cookiesToClear) {
             ResponseCookie cleanCookie = ResponseCookie.from(cookieName, "")
                     .httpOnly(true)
                     .secure(isCookieSecure)
@@ -518,6 +540,11 @@ public class AuthenticationServiceImpl implements IAuthenticationService {
             }
             for (Cookie c : cookies) {
                 if (REFRESH_TOKEN_COOKIE_NAME.equals(c.getName()) || "refresh_token".equalsIgnoreCase(c.getName())) {
+                    return c.getValue();
+                }
+            }
+            for (Cookie c : cookies) {
+                if (REFRESH_TOKEN_COOKIE_USER.equals(c.getName())) {
                     return c.getValue();
                 }
             }

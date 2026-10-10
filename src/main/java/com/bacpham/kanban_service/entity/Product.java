@@ -7,6 +7,8 @@ import lombok.experimental.FieldDefaults;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Set;
 
@@ -56,5 +58,19 @@ public class Product extends BaseModel {
     @JoinColumn(name = "supplier_id", nullable = false)
     Supplier supplier;
 
+    /** Admin bật tay để force hiển thị badge "Hàng mới" */
+    @Column(name = "is_new", nullable = false, columnDefinition = "BOOLEAN DEFAULT FALSE")
+    Boolean isNew = false;
+
+    /**
+     * Kết hợp: isNew=true  → luôn là hàng mới
+     * isNew=false + tạo trong vòng 30 ngày → tự động là hàng mới
+     */
+    @Transient
+    public boolean computedIsNew() {
+        if (Boolean.TRUE.equals(isNew)) return true;
+        if (getCreatedAt() == null) return false;
+        return ChronoUnit.DAYS.between(getCreatedAt().toInstant(), Instant.now()) <= 30;
+    }
 
 }

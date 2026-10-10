@@ -63,6 +63,11 @@ public class GenericRedisService<K, F, V> {
         return redisTemplate.opsForValue().get(key);
     }
 
+    public String getAsString(K key) {
+        Object val = redisTemplate.opsForValue().get(key);
+        return val != null ? String.valueOf(val) : null;
+    }
+
     public Map<F, V> getField(K key) {
         return hashOperations.entries(key);
     }

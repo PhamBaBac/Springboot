@@ -54,6 +54,7 @@ import com.bacpham.kanban_service.service.IUserNotificationService;
 import com.bacpham.kanban_service.service.IOrderStatusHistoryService;
 import com.bacpham.kanban_service.service.IPaymentTransactionService;
 import com.bacpham.kanban_service.configuration.socket.NotificationSocketPublisher;
+import com.bacpham.kanban_service.configuration.redis.GenericRedisService;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
@@ -78,6 +79,7 @@ public class OrderServiceImpl implements IOrderService {
     private final ApplicationEventPublisher eventPublisher;
     private final IUserNotificationService userNotificationService;
     private final NotificationSocketPublisher notificationSocketPublisher;
+    private final GenericRedisService redisService;
 
     @Override
     @Transactional
@@ -610,6 +612,13 @@ public class OrderServiceImpl implements IOrderService {
             if (newStatus == OrderStatus.COMPLETED) {
                 notifTitle = "Đơn hàng #" + shortId + " đã giao thành công";
                 notifContent = "Đơn hàng #" + shortId + " của bạn đã được giao thành công. Cảm ơn bạn đã tin tưởng và mua sắm tại cửa hàng!";
+                
+                // Clear the cache so that the home page immediately reflects the new best sellers
+                try {
+                    redisService.deleteKeysMatching("home:bestSellers*");
+                } catch (Exception e) {
+                    log.warn("Failed to clear bestSellers cache: {}", e.getMessage());
+                }
             } else if (newStatus == OrderStatus.CANCELLED) {
                 String reason = (status.getCancelReason() != null && !status.getCancelReason().isBlank())
                         ? status.getCancelReason().trim()

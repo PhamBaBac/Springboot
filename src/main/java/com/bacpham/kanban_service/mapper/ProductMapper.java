@@ -24,6 +24,7 @@ public interface ProductMapper {
 
     @Mapping(source = "supplier.id", target = "supplierId")
     @Mapping(source = "subProducts", target = "subProducts")
+    @Mapping(target = "isNew", expression = "java(product.computedIsNew())")
     ProductResponse toProductResponse(Product product);
 
     ProductAiResponse toProductAiResponse(Product product);

@@ -66,6 +66,7 @@ public enum ErrorCode {
     INVALID_PROMOTION_VALUE(4006, "Giá trị khuyến mãi không hợp lệ", HttpStatus.BAD_REQUEST),
     PROMOTION_CODE_ALREADY_EXISTS(4007, "Mã khuyến mãi này đã tồn tại trong hệ thống", HttpStatus.BAD_REQUEST),
     PROMOTION_MIN_ORDER_AMOUNT_NOT_MET(4008, "Đơn hàng chưa đạt giá trị tối thiểu để áp dụng mã khuyến mãi này", HttpStatus.BAD_REQUEST),
+    PROMOTION_NOT_STARTED(4009, "Mã khuyến mãi chưa đến thời gian áp dụng", HttpStatus.BAD_REQUEST),
 
     CART_NOT_FOUND(5001, "Không tìm thấy giỏ hàng", HttpStatus.NOT_FOUND),
     INSUFFICIENT_STOCK(5002, "Số lượng sản phẩm trong kho không đủ", HttpStatus.BAD_REQUEST),

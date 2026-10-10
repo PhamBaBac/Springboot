@@ -22,6 +22,7 @@ public class ProductResponse implements Serializable {
     String description;
     String content;
     Boolean isDeleted;
+    Boolean isNew;
     Set<CategoryResponse> categories;
     Set<FilterSubProductResponse> subProducts;
     String supplierId;

@@ -162,10 +162,22 @@ public class PromotionServiceImpl implements IPromotionService {
     public boolean isPromotionValid(String code) {
         if (code == null || code.isBlank()) return false;
         String cleanCode = code.trim().toUpperCase();
+        Promotion promotion = promotionRepository.findByCodeAndDeletedFalse(cleanCode).orElse(null);
+        if (promotion == null) return false;
+
+        long now = Instant.now().toEpochMilli();
+        if (promotion.getStartAt() != null) {
+            long startAtMillis = promotion.getStartAt().toInstant(ZoneOffset.UTC).toEpochMilli();
+            if (now < startAtMillis) return false;
+        }
+        if (promotion.getEndAt() != null) {
+            long endAtMillis = promotion.getEndAt().toInstant(ZoneOffset.UTC).toEpochMilli();
+            if (now > endAtMillis) return false;
+        }
+
         ensureRedisState(cleanCode);
         String stockKey = getStockKey(cleanCode);
         String expireKey = getExpireKey(cleanCode);
-        long now = Instant.now().toEpochMilli();
         return redisScriptService.checkPromotionCode(stockKey, expireKey, now);
     }
 
@@ -180,6 +192,23 @@ public class PromotionServiceImpl implements IPromotionService {
         if (userId != null && !userId.isBlank() &&
                 promotionUsageRepository.existsByUserIdAndPromotionCodeAndStatus(userId, cleanCode, PromotionUsageStatus.USED)) {
             throw new AppException(ErrorCode.PROMOTION_ALREADY_USED);
+        }
+
+        Promotion promotion = promotionRepository.findByCodeAndDeletedFalse(cleanCode)
+                .orElseThrow(() -> new AppException(ErrorCode.PROMOTION_NOT_FOUND));
+
+        long now = Instant.now().toEpochMilli();
+        if (promotion.getStartAt() != null) {
+            long startAtMillis = promotion.getStartAt().toInstant(ZoneOffset.UTC).toEpochMilli();
+            if (now < startAtMillis) {
+                throw new AppException(ErrorCode.PROMOTION_NOT_STARTED);
+            }
+        }
+        if (promotion.getEndAt() != null) {
+            long endAtMillis = promotion.getEndAt().toInstant(ZoneOffset.UTC).toEpochMilli();
+            if (now > endAtMillis) {
+                throw new AppException(ErrorCode.PROMOTION_EXPIRED);
+            }
         }
 
         ensureRedisState(cleanCode);
@@ -206,6 +235,23 @@ public class PromotionServiceImpl implements IPromotionService {
         if (userId != null && !userId.isBlank() &&
                 promotionUsageRepository.existsByUserIdAndPromotionCodeAndStatus(userId, cleanCode, PromotionUsageStatus.USED)) {
             throw new AppException(ErrorCode.PROMOTION_ALREADY_USED);
+        }
+
+        Promotion promotion = promotionRepository.findByCodeAndDeletedFalse(cleanCode)
+                .orElseThrow(() -> new AppException(ErrorCode.PROMOTION_NOT_FOUND));
+
+        long now = Instant.now().toEpochMilli();
+        if (promotion.getStartAt() != null) {
+            long startAtMillis = promotion.getStartAt().toInstant(ZoneOffset.UTC).toEpochMilli();
+            if (now < startAtMillis) {
+                throw new AppException(ErrorCode.PROMOTION_NOT_STARTED);
+            }
+        }
+        if (promotion.getEndAt() != null) {
+            long endAtMillis = promotion.getEndAt().toInstant(ZoneOffset.UTC).toEpochMilli();
+            if (now > endAtMillis) {
+                throw new AppException(ErrorCode.PROMOTION_EXPIRED);
+            }
         }
 
         ensureRedisState(cleanCode);

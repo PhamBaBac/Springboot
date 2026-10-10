@@ -6,6 +6,7 @@ import com.bacpham.kanban_service.helper.exception.ErrorCode;
 import com.bacpham.kanban_service.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
@@ -37,11 +38,20 @@ public class UserCacheService {
             return entry.user();
         }
 
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
-
-        cache.put(email, new CacheEntry(user, System.currentTimeMillis() + DEFAULT_TTL_MILLIS));
-        return user;
+        try {
+            User user = userRepository.findByEmail(email)
+                    .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+            cache.put(email, new CacheEntry(user, System.currentTimeMillis() + DEFAULT_TTL_MILLIS));
+            return user;
+        } catch (DataAccessException e) {
+            // DB tạm thời không khả dụng - fallback sang stale cache nếu có
+            if (entry != null) {
+                log.warn("DB unavailable, serving stale cache for user [{}]: {}", email, e.getMessage());
+                return entry.user();
+            }
+            // Không có cache → ném lên để filter xử lý và trả 503
+            throw e;
+        }
     }
 
     public void evictUser(String email) {
