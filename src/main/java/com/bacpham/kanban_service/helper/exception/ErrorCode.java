@@ -23,8 +23,6 @@ public enum ErrorCode {
     UNSUPPORTED_MEDIA_TYPE(1010, "Định dạng dữ liệu gửi lên (Content-Type) không được hỗ trợ", HttpStatus.UNSUPPORTED_MEDIA_TYPE),
     REDIS_CONNECTION_ERROR(1011, "Không thể kết nối đến máy chủ Redis. Vui lòng thử lại sau.", HttpStatus.SERVICE_UNAVAILABLE),
     RATE_LIMIT_EXCEEDED(1012, "Bạn đã gửi quá nhiều yêu cầu. Vui lòng thử lại sau ít phút.", HttpStatus.TOO_MANY_REQUESTS),
-    INVALID_CAPTCHA(1013, "Xác thực Captcha không hợp lệ hoặc đã hết hạn. Vui lòng thử lại.", HttpStatus.BAD_REQUEST),
-    CAPTCHA_REQUIRED(1014, "Phát hiện đăng nhập bất thường. Vui lòng xác thực mã bảo vệ Captcha.", HttpStatus.BAD_REQUEST),
 
     USER_NOT_FOUND(2001, "Không tìm thấy thông tin tài khoản", HttpStatus.NOT_FOUND),
     USER_ALREADY_EXISTS(2002, "Tài khoản hoặc email này đã tồn tại trên hệ thống", HttpStatus.BAD_REQUEST),
@@ -83,6 +81,7 @@ public enum ErrorCode {
     NO_COMPLETED_ORDER_FOR_REVIEW(6003, "Bạn chỉ có thể đánh giá sau khi đã hoàn thành đơn hàng", HttpStatus.BAD_REQUEST),
     REVIEW_ALREADY_EXISTS_FOR_ORDER(6004, "Bạn đã gửi đánh giá cho đơn hàng này rồi", HttpStatus.BAD_REQUEST),
     REVIEW_REJECTED_BY_MODERATION(6005, "Nội dung đánh giá bị từ chối do vi phạm tiêu chuẩn cộng đồng", HttpStatus.BAD_REQUEST),
+    REVIEW_NOT_FOUND(6006, "Không tìm thấy đánh giá", HttpStatus.NOT_FOUND),
     ADDRESS_NOT_FOUND(7001, "Không tìm thấy thông tin địa chỉ", HttpStatus.NOT_FOUND),
     SHIPMENT_NOT_FOUND(7002, "Không tìm thấy thông tin kiện hàng", HttpStatus.NOT_FOUND),
     ORDER_ITEM_NOT_IN_ORDER(7003, "Sản phẩm không thuộc về đơn hàng này", HttpStatus.BAD_REQUEST),

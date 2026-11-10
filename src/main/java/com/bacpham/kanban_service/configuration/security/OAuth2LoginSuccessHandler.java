@@ -152,6 +152,7 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
             newUser.setProviderId(finalProviderId);
             newUser.setAvatarUrl(finalAvatarUrl);
             newUser.setPassword(passwordEncoder.encode(UUID.randomUUID().toString()));
+            newUser.setFirstLogin(true);
             return userRepository.save(newUser);
         });
         String exchangeCode = UUID.randomUUID().toString();
@@ -176,6 +177,13 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
             return;
         }
 
+        boolean isFirstLogin = user.isFirstLogin();
+        if (isFirstLogin) {
+            user.setFirstLogin(false);
+            userRepository.save(user);
+            userCacheService.evictUser(user.getEmail());
+        }
+
         // Khi user KHÔNG bật 2FA: cấp token và set cookie bình thường
         String accessToken = jwtService.generateAccessToken(user);
         String refreshToken = jwtService.generateRefreshToken(user);
@@ -195,6 +203,7 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
                 .userId(user.getId())
                 .email(user.getEmail())
                 .mfaEnabled(false)
+                .firstLogin(isFirstLogin)
                 .build();
 
         redisService.set("oauth2:code:" + exchangeCode, objectMapper.writeValueAsString(authResponse));

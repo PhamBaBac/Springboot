@@ -24,6 +24,9 @@ import lombok.experimental.FieldDefaults;
         @Column(name = "parent_id")
         String parentId;
 
+        @Column(name = "image")
+        String image;
+
         @ManyToOne
         @JoinColumn(name = "supplier_id")
         private Supplier supplier;

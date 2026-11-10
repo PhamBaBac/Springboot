@@ -6,6 +6,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import com.bacpham.kanban_service.dto.request.UpdateProfileRequest;
 import com.bacpham.kanban_service.dto.request.AdminCreateUserRequest;
 import com.bacpham.kanban_service.dto.request.ChangePasswordRequest;
 import com.bacpham.kanban_service.dto.request.ResetPasswordRequest;
@@ -48,6 +49,41 @@ public class UserService implements IUserService {
     private final GenericRedisService<String, String, String> redisService;
     private final UserCacheService userCacheService;
     private final UserAuditLogRepository auditLogRepository;
+
+    @Override
+    @Transactional
+    public UserResponse updateProfile(UpdateProfileRequest request, Principal connectedUser) {
+        if (connectedUser == null) {
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+
+        User user = repository.findByEmail(connectedUser.getName())
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        if (request != null) {
+            if (request.getFirstName() != null && !request.getFirstName().isBlank()) {
+                user.setFirstname(request.getFirstName().trim());
+            }
+
+            if (request.getLastName() != null && !request.getLastName().isBlank()) {
+                user.setLastname(request.getLastName().trim());
+            }
+
+            if (request.getPhoneNumber() != null) {
+                user.setPhoneNumber(request.getPhoneNumber().trim());
+            }
+
+            if (request.getAvatarUrl() != null && !request.getAvatarUrl().isBlank()) {
+                user.setAvatarUrl(request.getAvatarUrl().trim());
+            }
+
+            repository.save(user);
+            userCacheService.evictUser(user.getEmail());
+            log.info("Cập nhật thông tin thành công cho tài khoản: {}", user.getEmail());
+        }
+
+        return userMapper.toUserResponse(user);
+    }
 
     @Override
     public void changePassword(ChangePasswordRequest request, Principal connectedUser) {

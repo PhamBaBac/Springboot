@@ -16,9 +16,11 @@ public class UserResponse {
     private String firstname;
     private String lastname;
     private String email;
+    private String phoneNumber;
     private String avatarUrl;
     private Role role;
     private boolean mfaEnabled;
     private Provider provider;
     private String createdAt;
+    private boolean firstLogin;
 }

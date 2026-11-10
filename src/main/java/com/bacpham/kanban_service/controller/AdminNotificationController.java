@@ -1,6 +1,5 @@
 package com.bacpham.kanban_service.controller;
 
-import com.bacpham.kanban_service.configuration.socket.NotificationSocketPublisher;
 import com.bacpham.kanban_service.dto.request.AdminNotificationRequest;
 import com.bacpham.kanban_service.dto.request.ApiResponse;
 import com.bacpham.kanban_service.dto.response.AdminNotificationResponse;
@@ -26,7 +25,6 @@ import org.springframework.web.bind.annotation.*;
 public class AdminNotificationController {
 
     IAdminNotificationService notificationService;
-    NotificationSocketPublisher socketPublisher;
 
     @GetMapping
     public ApiResponse<PageResponse<AdminNotificationResponse>> getNotifications(
@@ -104,7 +102,6 @@ public class AdminNotificationController {
     @PostMapping
     public ApiResponse<AdminNotificationResponse> createNotification(@Valid @RequestBody AdminNotificationRequest request) {
         AdminNotificationResponse response = notificationService.createNotification(request);
-        socketPublisher.broadcastToAdmin(response);
         return ApiResponse.<AdminNotificationResponse>builder()
                 .data(response)
                 .message("Tạo thông báo thành công")

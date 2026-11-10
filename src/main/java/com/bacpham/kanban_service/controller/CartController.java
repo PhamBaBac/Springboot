@@ -8,6 +8,7 @@ import com.bacpham.kanban_service.service.ICartService;
 import com.bacpham.kanban_service.entity.User;
 import com.bacpham.kanban_service.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
@@ -30,7 +31,7 @@ public class CartController {
 
     @PostMapping("/add")
     public ApiResponse<CartResponse> addToCart(
-            @RequestBody CartCreateRequest request,
+            @Valid @RequestBody CartCreateRequest request,
             Principal connectedUser
     ) {
         User user = getAuthenticatedUser(connectedUser);
@@ -84,8 +85,15 @@ public class CartController {
     }
 
     @PutMapping("/updateFull")
-    public ApiResponse<CartResponse> updateCartFull(@RequestBody CartUpdateRequest request,
-                                                    @RequestParam String id) {
+    public ApiResponse<CartResponse> updateCartFull(
+            @RequestBody CartUpdateRequest request,
+            @RequestParam String id,
+            Principal connectedUser
+    ) {
+        User user = getAuthenticatedUser(connectedUser);
+        if (user != null) {
+            request.setCreatedBy(user.getId());
+        }
         CartResponse updatedCart = cartService.updateCartFull(request, id);
         return ApiResponse.<CartResponse>builder()
                 .message("Cập nhật giỏ hàng thành công")

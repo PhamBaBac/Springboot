@@ -1,5 +1,6 @@
 package com.bacpham.kanban_service.dto.request;
 
+import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 
 @Getter
@@ -10,6 +11,8 @@ import lombok.*;
 @ToString
 public class CartCreateRequest {
     private String createdBy;
+
+    @NotBlank(message = "Mã biến thể sản phẩm (subProductId) không được để trống")
     private String subProductId;
     private String size;
     private String color;

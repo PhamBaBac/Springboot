@@ -17,6 +17,10 @@ import org.springframework.security.core.userdetails.UserDetails;
 @Entity
 @Table(name = "user", uniqueConstraints = {
         @UniqueConstraint(columnNames = "email")
+}, indexes = {
+        @Index(name = "idx_user_email", columnList = "email"),
+        @Index(name = "idx_user_role", columnList = "role"),
+        @Index(name = "idx_user_created_at", columnList = "created_at")
 })
 @Getter
 @Setter
@@ -43,8 +47,15 @@ public class User extends BaseModel implements UserDetails {
     @Column(columnDefinition = "TEXT")
     String avatarUrl;
 
+    @Column(length = 20)
+    String phoneNumber;
+
     @Column(nullable = false)
     boolean mfaEnabled = false;
+
+    @Column(name = "first_login", columnDefinition = "boolean default true")
+    @Builder.Default
+    boolean firstLogin = true;
 
     @Column(length = 255)
     @JsonIgnore

@@ -39,6 +39,10 @@ public class CartServiceImpl implements ICartService {
     public CartResponse addToCart(CartCreateRequest request) {
         log.info("cart create request: {}", request);
 
+        if (request.getSubProductId() == null || request.getSubProductId().trim().isEmpty()) {
+            throw new AppException(ErrorCode.SUB_PRODUCT_NOT_FOUND);
+        }
+
         SubProduct subProduct = subProductService.findById(request.getSubProductId());
         if (subProduct == null) {
             throw new AppException(ErrorCode.SUB_PRODUCT_NOT_FOUND);
@@ -146,8 +150,16 @@ public class CartServiceImpl implements ICartService {
         SubProduct newSubProduct = subProductRepository.findById(request.getSubProductId())
                 .orElseThrow(() -> new AppException(ErrorCode.SUB_PRODUCT_NOT_FOUND));
 
-        User user = userRepository.findById(request.getCreatedBy())
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        User user = null;
+        if (request.getCreatedBy() != null && !request.getCreatedBy().isBlank()) {
+            user = userRepository.findById(request.getCreatedBy()).orElse(null);
+        }
+        if (user == null) {
+            user = currentCart.getCreatedBy();
+        }
+        if (user == null) {
+            throw new AppException(ErrorCode.USER_NOT_FOUND);
+        }
 
         Optional<Cart> existingCartOpt = cartRepository
                 .findBySubProduct_IdAndCreatedByAndIdNot(

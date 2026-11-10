@@ -12,7 +12,10 @@ import java.util.Map;
 import java.util.Set;
 
 @Entity
-@Table(name = "sub_products")
+@Table(name = "sub_products", indexes = {
+        @Index(name = "idx_subproduct_product_id", columnList = "product_id"),
+        @Index(name = "idx_subproduct_sku", columnList = "sku")
+})
 @Getter
 @Setter
 @Builder
@@ -37,7 +40,7 @@ public class SubProduct extends BaseModel {
     @Column(columnDefinition = "JSON")
     Map<String, String> attributes;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "product_id", nullable = false)
     Product product;
 

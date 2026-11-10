@@ -17,4 +17,5 @@ public class CategoryResponse implements Serializable {
     private String slug;
     private String description;
     private String parentId;
+    private String image;
 }

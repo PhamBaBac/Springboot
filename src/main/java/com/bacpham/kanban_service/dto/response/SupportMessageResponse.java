@@ -17,6 +17,7 @@ import java.util.List;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @ToString
 public class SupportMessageResponse {
+    String id;
     String conversationId;
     String senderId;
     String receiverId;

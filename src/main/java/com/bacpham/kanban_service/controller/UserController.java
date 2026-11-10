@@ -1,5 +1,6 @@
 package com.bacpham.kanban_service.controller;
 
+import com.bacpham.kanban_service.dto.request.UpdateProfileRequest;
 import com.bacpham.kanban_service.dto.request.AdminCreateUserRequest;
 import com.bacpham.kanban_service.dto.request.ApiResponse;
 import com.bacpham.kanban_service.dto.request.ChangePasswordRequest;
@@ -32,6 +33,18 @@ public class UserController {
 
     private final IUserService service;
     private final UserActivityService userActivityService;
+
+    @PutMapping({"/profile", "/update"})
+    public ApiResponse<UserResponse> updateProfile(
+            @RequestBody UpdateProfileRequest request,
+            Principal connectedUser
+    ) {
+        UserResponse response = service.updateProfile(request, connectedUser);
+        return ApiResponse.<UserResponse>builder()
+                .data(response)
+                .message("Cập nhật thông tin cá nhân thành công")
+                .build();
+    }
 
 
     @PatchMapping("/changePassword")

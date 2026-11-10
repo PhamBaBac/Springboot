@@ -275,9 +275,18 @@ public class ProductServiceImpl implements IProductService {
                 sortBy);
 
         Page<Product> filteredProductsPage = productRepository.findAll(spec, pageable);
-        log.info("Filtered products page: {}", filteredProductsPage);
-
-        Page<ProductResponse> responsePage = filteredProductsPage.map(productMapper::toProductResponse);
+        List<String> pageIds = filteredProductsPage.getContent().stream().map(Product::getId).toList();
+        List<Product> productsWithAssociations = pageIds.isEmpty()
+                ? List.of()
+                : productRepository.findByIdsWithAssociations(pageIds);
+        Map<String, Product> productMap = productsWithAssociations.stream()
+                .collect(Collectors.toMap(Product::getId, p -> p, (a, b) -> a));
+        List<ProductResponse> responses = pageIds.stream()
+                .map(productMap::get)
+                .filter(Objects::nonNull)
+                .map(productMapper::toProductResponse)
+                .toList();
+        Page<ProductResponse> responsePage = new PageImpl<>(responses, pageable, filteredProductsPage.getTotalElements());
 
         try {
             PageResponse<ProductResponse> toCache = PageResponse.<ProductResponse>builder()

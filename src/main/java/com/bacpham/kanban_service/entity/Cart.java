@@ -7,7 +7,10 @@ import lombok.experimental.FieldDefaults;
 
 
 @Entity
-@Table(name = "cart")
+@Table(name = "cart", indexes = {
+        @Index(name = "idx_cart_user_id", columnList = "user_id"),
+        @Index(name = "idx_cart_user_subproduct", columnList = "user_id, sub_product_id")
+})
 @Getter
 @Setter
 @Builder

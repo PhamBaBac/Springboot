@@ -54,7 +54,7 @@ public class Product extends BaseModel {
     @Column(columnDefinition = "JSON")
     List<String> images;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "supplier_id", nullable = false)
     Supplier supplier;
 

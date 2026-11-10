@@ -11,5 +11,4 @@ import lombok.experimental.FieldDefaults;
 public class AuthenticationRequest {
     private String email;
     private String password;
-    private String captchaToken;
 }

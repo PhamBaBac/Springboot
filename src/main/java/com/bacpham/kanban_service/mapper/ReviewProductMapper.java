@@ -15,13 +15,22 @@ public interface ReviewProductMapper {
     @Mapping(target = "order", source = "orderId")
     Review toEntity(ReviewProductRequest request);
 
+    @Mapping(source = "id", target = "id")
     @Mapping(source = "createdBy.id", target = "createdBy")
     @Mapping(source = "createdBy.firstname", target = "userFirstname")
     @Mapping(source = "createdBy.lastname", target = "userLastname")
+    @Mapping(source = "createdBy.email", target = "userEmail")
     @Mapping(source = "createdBy.avatarUrl", target = "userAvatar")
+    @Mapping(source = "order.id", target = "orderId")
     @Mapping(source = "subProduct.id", target = "subProductId")
+    @Mapping(source = "subProduct.product.id", target = "productId")
+    @Mapping(source = "subProduct.product.title", target = "productName")
+    @Mapping(source = "subProduct.sku", target = "productSku")
     @Mapping(source = "subProduct.color", target = "color")
     @Mapping(source = "subProduct.size", target = "size")
+    @Mapping(target = "productThumbnail", expression = "java(review.getSubProduct() != null && review.getSubProduct().getImages() != null && !review.getSubProduct().getImages().isEmpty() ? review.getSubProduct().getImages().get(0) : null)")
+    @Mapping(target = "repliedByName", expression = "java(review.getRepliedBy() != null ? (review.getRepliedBy().getFirstname() + \" \" + review.getRepliedBy().getLastname()).trim() : null)")
+    @Mapping(target = "status", expression = "java(review.getStatus() != null ? review.getStatus() : com.bacpham.kanban_service.enums.ReviewStatus.APPROVED)")
     ReviewProductResponse toResponse(Review review);
 
     default User map(String createdBy) {
@@ -34,6 +43,7 @@ public interface ReviewProductMapper {
             return null;
         }
     }
+
     default SubProduct mapSubProduct(String subProductId) {
         try {
             UUID uuid = UUID.fromString(subProductId);

@@ -8,6 +8,7 @@ import com.bacpham.kanban_service.dto.response.UserAuditLogResponse;
 import com.bacpham.kanban_service.dto.response.UserResponse;
 import com.bacpham.kanban_service.enums.Role;
 
+import com.bacpham.kanban_service.dto.request.UpdateProfileRequest;
 import java.security.Principal;
 
 /**
@@ -16,6 +17,11 @@ import java.security.Principal;
  * vao interface nay thay vi UserService concrete class.
  */
 public interface IUserService {
+
+    /**
+     * Cap nhat thong tin ca nhan (ten, avatar, so dien thoai) cua nguoi dung dang dang nhap.
+     */
+    UserResponse updateProfile(UpdateProfileRequest request, Principal connectedUser);
 
     /**
      * Doi mat khau nguoi dung dang dang nhap.

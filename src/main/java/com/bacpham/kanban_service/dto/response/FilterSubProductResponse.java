@@ -14,6 +14,7 @@ import java.io.Serializable;
 @ToString
 public class FilterSubProductResponse implements Serializable {
     private static final long serialVersionUID = 1L;
+    String id;
     String sku;
     String size;
     String color;

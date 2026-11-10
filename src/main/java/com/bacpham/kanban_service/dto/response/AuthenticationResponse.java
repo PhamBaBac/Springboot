@@ -17,4 +17,5 @@ public class AuthenticationResponse {
     private String secretImageUri;
     private String userId;
     private String email;
+    private Boolean firstLogin;
 }

@@ -37,7 +37,7 @@ import com.bacpham.kanban_service.helper.exception.AppException;
 import com.bacpham.kanban_service.helper.exception.ErrorCode;
 import com.bacpham.kanban_service.repository.UserRepository;
 import com.bacpham.kanban_service.service.IAuthenticationService;
-import com.bacpham.kanban_service.service.TurnstileService;
+import com.bacpham.kanban_service.service.UserCacheService;
 import com.bacpham.kanban_service.tfa.TwoFactorAuthenticationService;
 import com.bacpham.kanban_service.utils.email.EmailService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -74,17 +74,12 @@ public class AuthenticationServiceImpl implements IAuthenticationService {
     private final TwoFactorAuthenticationService tfaService;
     private final EmailService emailService;
     private final GenericRedisService<String, String, String> redisService;
-    private final TurnstileService turnstileService;
+    private final UserCacheService userCacheService;
     @Value("${application.cookie.secure:false}")
     private boolean isCookieSecure;
 
     @Override
     public void register(RegisterRequest request) {
-        // Kiểm tra Captcha chống bot tạo tài khoản tự động
-        if (!turnstileService.verify(request.getCaptchaToken(), null)) {
-            throw new AppException(ErrorCode.INVALID_CAPTCHA);
-        }
-
         if (request.getRole() == null) {
             request.setRole(Role.USER);
         }
@@ -138,13 +133,6 @@ public class AuthenticationServiceImpl implements IAuthenticationService {
             }
         } catch (NumberFormatException ignored) {}
 
-        // Nếu nhập sai từ 3 lần trở lên -> Bắt buộc giải mã Captcha
-        if (failedAttempts >= 3) {
-            if (!turnstileService.verify(request.getCaptchaToken(), null)) {
-                throw new AppException(ErrorCode.CAPTCHA_REQUIRED, "Phát hiện đăng nhập sai nhiều lần. Vui lòng xác thực mã bảo vệ.");
-            }
-        }
-
         try {
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
@@ -159,9 +147,6 @@ public class AuthenticationServiceImpl implements IAuthenticationService {
                 redisService.setTimeToLive(lockKey, 15, TimeUnit.MINUTES);
                 redisService.delete(failedKey);
                 throw new AppException(ErrorCode.ACCOUNT_TEMPORARILY_LOCKED);
-            }
-            if (attempts != null && attempts >= 3) {
-                throw new AppException(ErrorCode.CAPTCHA_REQUIRED, "Tài khoản hoặc mật khẩu không chính xác. Vui lòng xác thực mã bảo vệ.");
             }
             throw new AppException(ErrorCode.INVALID_CREDENTIALS);
         }
@@ -179,6 +164,13 @@ public class AuthenticationServiceImpl implements IAuthenticationService {
                     .build();
         }
 
+        boolean isFirstLogin = user.isFirstLogin();
+        if (isFirstLogin) {
+            user.setFirstLogin(false);
+            repository.save(user);
+            userCacheService.evictUser(user.getEmail());
+        }
+
         String accessToken = createAndStoreAccessToken(user);
         createOrRenewRefreshToken(user, response);
 
@@ -186,6 +178,7 @@ public class AuthenticationServiceImpl implements IAuthenticationService {
                 .accessToken(accessToken)
                 .userId(user.getId())
                 .mfaEnabled(false)
+                .firstLogin(isFirstLogin)
                 .build();
     }
 
@@ -205,6 +198,13 @@ public class AuthenticationServiceImpl implements IAuthenticationService {
             repository.save(user);
         }
 
+        boolean isFirstLogin = user.isFirstLogin();
+        if (isFirstLogin) {
+            user.setFirstLogin(false);
+            repository.save(user);
+            userCacheService.evictUser(user.getEmail());
+        }
+
         String accessToken = createAndStoreAccessToken(user);
         createOrRenewRefreshToken(user, response);
 
@@ -212,6 +212,7 @@ public class AuthenticationServiceImpl implements IAuthenticationService {
                 .accessToken(accessToken)
                 .userId(user.getId())
                 .mfaEnabled(true)
+                .firstLogin(isFirstLogin)
                 .build();
     }
 
@@ -327,9 +328,6 @@ public class AuthenticationServiceImpl implements IAuthenticationService {
     public void sendCodeEmail(SendCodeRequest request) throws MessagingException {
         if (request == null) {
             throw new AppException(ErrorCode.INVALID_INPUT);
-        }
-        if (!turnstileService.verify(request.getCaptchaToken(), null)) {
-            throw new AppException(ErrorCode.INVALID_CAPTCHA);
         }
         sendCodeEmail(request.getEmail());
     }
@@ -452,6 +450,7 @@ public class AuthenticationServiceImpl implements IAuthenticationService {
                     .accessToken(accessToken)
                     .userId(savedUser.getId())
                     .mfaEnabled(savedUser.isMfaEnabled())
+                    .firstLogin(true)
                     .build();
 
         } catch (IOException e) {
@@ -487,6 +486,7 @@ public class AuthenticationServiceImpl implements IAuthenticationService {
                 .role(request.getRole() != null ? request.getRole() : Role.USER)
                 .provider(Provider.LOCAL)
                 .mfaEnabled(request.isMfaEnabled())
+                .firstLogin(true)
                 .build();
     }
 

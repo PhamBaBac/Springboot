@@ -1,10 +1,9 @@
 package com.bacpham.kanban_service.event;
 
-import com.bacpham.kanban_service.configuration.socket.NotificationSocketPublisher;
-import com.bacpham.kanban_service.dto.response.AdminNotificationResponse;
 import com.bacpham.kanban_service.service.IAdminNotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
@@ -15,12 +14,12 @@ import org.springframework.transaction.event.TransactionalEventListener;
 public class NotificationEventListener {
 
     private final IAdminNotificationService notificationService;
-    private final NotificationSocketPublisher socketPublisher;
 
     /**
      * Lắng nghe sự kiện NotificationEvent sau khi transaction commit thành công.
-     * fallbackExecution = true đảm bảo sự kiện vẫn được xử lý nếu được gọi ngoài @Transactional.
+     * Chạy bất đồng bộ (@Async) trên thread pool riêng để không chặn thread của request chính.
      */
+    @Async("taskExecutor")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     public void onNotificationEvent(NotificationEvent event) {
         if (event == null || event.getRequest() == null) {
@@ -33,9 +32,7 @@ public class NotificationEventListener {
                     event.getRequest().title(),
                     event.getRequest().targetUrl());
 
-            AdminNotificationResponse savedResponse = notificationService.createNotification(event.getRequest());
-
-            socketPublisher.broadcastToAdmin(savedResponse);
+            notificationService.createNotification(event.getRequest());
 
         } catch (Exception e) {
             log.error("Lỗi khi xử lý NotificationEvent: {}", e.getMessage(), e);
