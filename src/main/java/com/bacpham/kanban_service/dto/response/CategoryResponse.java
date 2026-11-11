@@ -3,6 +3,7 @@ package com.bacpham.kanban_service.dto.response;
 import lombok.*;
 
 import java.io.Serializable;
+import java.util.Date;
 
 @Getter
 @Setter
@@ -18,4 +19,5 @@ public class CategoryResponse implements Serializable {
     private String description;
     private String parentId;
     private String image;
+    private Date createdAt;
 }

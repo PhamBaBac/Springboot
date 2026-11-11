@@ -17,6 +17,10 @@ public interface IPromotionService {
 
     List<PromotionResponse> getAllPromotions();
 
+    List<PromotionResponse> getActivePromotions();
+
+    PromotionResponse getActiveCampaign();
+
     void deletePromotion(String id);
 
     boolean isPromotionValid(String code);

@@ -60,6 +60,20 @@ public class PromotionController {
                 .data(promotionService.getAllPromotions())
                 .build();
     }
+
+    @GetMapping("/active")
+    public ApiResponse<List<PromotionResponse>> getActivePromotions() {
+        return ApiResponse.<List<PromotionResponse>>builder()
+                .data(promotionService.getActivePromotions())
+                .build();
+    }
+
+    @GetMapping("/active-campaign")
+    public ApiResponse<PromotionResponse> getActiveCampaign() {
+        return ApiResponse.<PromotionResponse>builder()
+                .data(promotionService.getActiveCampaign())
+                .build();
+    }
     @GetMapping("/code/{code}")
     public ApiResponse<PromotionResponse> getPromotionByCode(@PathVariable String code) {
         log.info("getPromotionByCode:", code);

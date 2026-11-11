@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 
 import java.security.SecureRandom;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
@@ -139,6 +140,25 @@ public class PromotionServiceImpl implements IPromotionService {
                 .stream()
                 .map(promotionMapper::toResponse)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<PromotionResponse> getActivePromotions() {
+        LocalDateTime now = LocalDateTime.now();
+        return promotionRepository.findActivePromotions(now)
+                .stream()
+                .map(promotionMapper::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public PromotionResponse getActiveCampaign() {
+        LocalDateTime now = LocalDateTime.now();
+        List<Promotion> activeList = promotionRepository.findActiveCampaigns(now);
+        if (activeList.isEmpty()) {
+            return null;
+        }
+        return promotionMapper.toResponse(activeList.get(0));
     }
 
     @Override

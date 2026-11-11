@@ -23,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -54,10 +55,16 @@ public class CategoryServiceImpl implements ICategoryService {
 
     public List<CategoryResponse> getCategories() {
         String key = "categories";
+        Comparator<CategoryResponse> comparator = Comparator
+                .comparing(CategoryResponse::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder()))
+                .thenComparing(CategoryResponse::getTitle, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
+
         try {
             Map<String, CategoryResponse> cached = redisService.getField(key);
             if (cached != null && !cached.isEmpty()) {
-                return new ArrayList<>(cached.values());
+                List<CategoryResponse> list = new ArrayList<>(cached.values());
+                list.sort(comparator);
+                return list;
             }
         } catch (Exception e) {
             log.warn("Redis get failed for categories, evicting: {}", e.getMessage());
@@ -69,6 +76,7 @@ public class CategoryServiceImpl implements ICategoryService {
         List<Category> categoriesFromDb = categoryRepository.findAllByDeletedFalse();
         List<CategoryResponse> responses = categoriesFromDb.stream()
                 .map(categoryMapper::toCategoryResponse)
+                .sorted(comparator)
                 .toList();
 
         try {

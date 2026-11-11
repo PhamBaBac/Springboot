@@ -21,4 +21,5 @@ public class PromotionRequest {
     private LocalDateTime endAt;
     private Double minOrderAmount;
     private Double maxDiscountAmount;
+    private Boolean isCampaign;
 }

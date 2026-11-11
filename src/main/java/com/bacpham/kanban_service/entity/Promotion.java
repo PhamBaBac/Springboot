@@ -50,4 +50,7 @@ public class Promotion extends BaseModel {
 
     @Column(name = "max_discount_amount")
     BigDecimal maxDiscountAmount;
+
+    @Column(name = "is_campaign")
+    Boolean isCampaign = false;
 }
